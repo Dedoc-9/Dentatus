@@ -334,3 +334,61 @@ def is_valid_kappa(mu, kappa_dim=11, tol=1e-8) -> bool:
         if abs(kappa_stalk - kappa_geom) > tol:
             return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# Integral curvature validity -- EXP-308
+# ---------------------------------------------------------------------------
+
+EPS_REL = 1e-9   # relative regularization floor for bbox extents (EXP-308 rev)
+# floor = max(lx_raw, ly_raw, lz_raw) * EPS_REL applied per-axis independently.
+# Rationale: abs floor 1e-6 and relative floor give identical results for all
+# normal extents >= 1e-3; relative floor is strictly correct for degenerate
+# extents < 1e-7 where abs floor would over-clamp relative to bbox scale.
+
+
+def kappa_integral(bbox, eps_rel=EPS_REL):
+    """
+    kappa = 2*(ly*lz/lx + lx*lz/ly + lx*ly/lz) / (lx*ly + ly*lz + lx*lz)
+
+    Area-weighted mean curvature integral over rectangular bbox surface.
+    Each face pair contributes face_area * (2/extent_perpendicular).
+    Regularized: eps = max(lx,ly,lz) * eps_rel; each li = max(li, eps).
+
+    For unit cube: kappa = 2.0
+    For uniform octant [0,0.5]^3: kappa = 4.0
+    """
+    lo, hi = bbox
+    lx_raw = float(hi[0] - lo[0])
+    ly_raw = float(hi[1] - lo[1])
+    lz_raw = float(hi[2] - lo[2])
+    eps = max(lx_raw, ly_raw, lz_raw) * eps_rel
+    lx = max(lx_raw, eps)
+    ly = max(ly_raw, eps)
+    lz = max(lz_raw, eps)
+    num = 2.0 * (ly * lz / lx + lx * lz / ly + lx * ly / lz)
+    den = lx * ly + ly * lz + lx * lz
+    return num / den
+
+
+def is_valid_kappa_308(mu, kappa_dim=11, tol=1e-8) -> bool:
+    """
+    Integral curvature predicate (EXP-308).
+
+    For every claim with stalk.shape[0] > kappa_dim AND bbox not None:
+      kappa_geom = kappa_integral(claim.bbox)
+      | stalk[kappa_dim] - kappa_geom | < tol
+
+    Claims without bbox or stalk dim <= kappa_dim: skipped.
+    Empty graph: trivially valid.
+    """
+    for cid, claim in mu.claims.items():
+        if claim.stalk.shape[0] <= kappa_dim:
+            continue
+        if claim.bbox is None:
+            continue
+        kappa_geom = kappa_integral(claim.bbox)
+        kappa_stalk = float(claim.stalk[kappa_dim])
+        if abs(kappa_stalk - kappa_geom) > tol:
+            return False
+    return True

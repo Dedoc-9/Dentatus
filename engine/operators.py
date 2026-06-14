@@ -1853,3 +1853,273 @@ def apply_gamma_307_recursive(
         spent_now += rc
 
     return mu_next, total_cost
+
+
+# ===========================================================================
+# EXP-308 -- Gamma_308 (d=12: kappa=kappa_integral, bbox-hash payload)
+# ===========================================================================
+
+def _kappa_integral(bbox, eps_rel=1e-9):
+    """
+    kappa = 2*(ly*lz/lx + lx*lz/ly + lx*ly/lz) / (lx*ly + ly*lz + lx*lz)
+    Regularized: eps = max(lx,ly,lz) * eps_rel; li = max(li, eps).
+    Mirrors validity.kappa_integral (relative floor, EXP-308 rev).
+    """
+    lo, hi = bbox
+    lx_raw = float(hi[0] - lo[0])
+    ly_raw = float(hi[1] - lo[1])
+    lz_raw = float(hi[2] - lo[2])
+    eps = max(lx_raw, ly_raw, lz_raw) * eps_rel
+    lx = max(lx_raw, eps)
+    ly = max(ly_raw, eps)
+    lz = max(lz_raw, eps)
+    num = 2.0 * (ly * lz / lx + lx * lz / ly + lx * ly / lz)
+    den = lx * ly + ly * lz + lx * lz
+    return num / den
+
+
+def _bbox_hash_payload(bbox, depth: int, index: int) -> str:
+    """
+    payload = SHA256(bbox_lo_bytes + bbox_hi_bytes + depth_bytes + index_bytes)[:16]
+    bbox bytes: IEEE 754 big-endian doubles (struct '>ddd').
+    Deterministic function of geometry + recursion position.
+    """
+    import struct
+    lo, hi = bbox
+    raw = (struct.pack('>ddd', float(lo[0]), float(lo[1]), float(lo[2])) +
+           struct.pack('>ddd', float(hi[0]), float(hi[1]), float(hi[2])) +
+           struct.pack('>I', depth) +
+           struct.pack('>I', index))
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+def apply_gamma_308(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    weights=None,
+):
+    """
+    Gamma_308 -- d=12 with kappa = kappa_integral(bbox).
+
+    Identical to apply_gamma_307 except:
+      kappa_child_i = _kappa_integral(child_bbox_i)
+      F[11,11] = kappa_child_i / kappa_parent
+      Post-validates with is_valid_kappa_308 (not is_valid_kappa).
+    """
+    from engine.validity import (
+        is_valid, is_valid_b, is_spatially_valid,
+        is_unit_norm, is_valid_block_diagonal_306, is_valid_kappa_308,
+    )
+
+    if claim_id not in mu.active:
+        raise PartitionError(f"GAMMA308_ERROR: claim {claim_id} not in active set.")
+    parent = mu.claims[claim_id]
+    if parent.bbox is None:
+        raise PartitionError(f"GAMMA308_ERROR: claim {claim_id} has no bbox.")
+
+    d = parent.stalk.shape[0]
+    if d != 12:
+        raise PartitionError(f"GAMMA308_ERROR: EXP-308 requires d=12, got d={d}.")
+    if partition_key not in SPATIAL_KEYS:
+        raise PartitionError(
+            f"GAMMA308_UNKNOWN_KEY: '{partition_key}' not in {list(SPATIAL_KEYS.keys())}."
+        )
+    N = SPATIAL_KEYS[partition_key]
+    if len(payloads) != N:
+        raise PartitionError(f"GAMMA308_ERROR: expected {N} payloads, got {len(payloads)}.")
+
+    k_children = sum(len(zlib.compress(p.encode("utf-8"), level=9)) for p in payloads)
+    k_limit = parent.K_bound + C_KBOUND * math.log(N)
+    if k_children > k_limit:
+        raise PartitionError(
+            f"GAMMA308_INFORMATION_OVERFLOW: sum K={k_children:.1f} > limit={k_limit:.2f}"
+        )
+
+    cost = _cost(C0=1.0, beta=beta, S=mu.S)
+    if spent + cost > budget:
+        raise PartitionError(
+            f"GAMMA308_BUDGET: spent={spent:.4f} + cost={cost:.4f} > B0={budget}"
+        )
+
+    child_bboxes = _compute_child_bboxes(parent.bbox, partition_key)
+
+    p_lo, p_hi = parent.bbox
+    parent_vol = float(np.prod(p_hi - p_lo))
+    if parent_vol < 1e-30:
+        omegas = [1.0 / N] * N
+    else:
+        vols = [float(np.prod(cb[1] - cb[0])) for cb in child_bboxes]
+        total_vol = sum(vols)
+        omegas = [v / total_vol for v in vols]
+    if weights is not None:
+        total_w = sum(weights)
+        omegas = [w / total_w for w in weights]
+
+    b0A, b1A = SECTOR_A_DIMS[0], SECTOR_A_DIMS[-1] + 1
+    b0B, b1B = SECTOR_B_DIMS[0], SECTOR_B_DIMS[-1] + 1
+    b0N = SECTOR_C_DIMS[0]; b1N = SECTOR_C_DIMS[-1] + 1
+    b_k = SECTOR_C_KAPPA_DIM
+
+    stalk_A = parent.stalk[b0A:b1A]
+    d_A = len(SECTOR_A_DIMS)
+    if N <= d_A:
+        stalk_A_children = _orthogonal_decompose(stalk_A, N)
+    else:
+        full_children = _orthogonal_decompose(parent.stalk, N)
+        stalk_A_children = [c[b0A:b1A] for c in full_children]
+
+    p_centroid = (p_lo + p_hi) / 2.0
+    n_children = [
+        _centroid_outward_normal((cb[0] + cb[1]) / 2.0, p_centroid)
+        for cb in child_bboxes
+    ]
+
+    kappa_parent = float(parent.stalk[b_k])
+
+    t_new = mu.t + 1
+    new_claims = dict(mu.claims)
+    new_entailments = dict(mu.entailments)
+    child_ids = []
+
+    stalk_A_parent = parent.stalk[b0A:b1A]
+    stalk_B_parent = parent.stalk[b0B:b1B]
+    stalk_N_parent = parent.stalk[b0N:b1N]
+    stalk_A_nsq = float(np.dot(stalk_A_parent, stalk_A_parent))
+    stalk_B_nsq = float(np.dot(stalk_B_parent, stalk_B_parent))
+    stalk_N_nsq = float(np.dot(stalk_N_parent, stalk_N_parent))
+
+    for i, (payload, omega, stalk_A_i, (c_lo, c_hi), n_child) in enumerate(
+            zip(payloads, omegas, stalk_A_children, child_bboxes, n_children)):
+
+        centroid_B = (c_lo + c_hi) / 2.0
+        kappa_child = _kappa_integral((c_lo, c_hi))
+
+        child_stalk = np.empty(d)
+        child_stalk[b0A:b1A] = stalk_A_i
+        child_stalk[b0B:b0B+3] = centroid_B
+        child_stalk[SECTOR_B_DIMS[-1]] = 1.0
+        child_stalk[b0N:b1N] = n_child
+        child_stalk[b_k] = kappa_child
+
+        prov = Provenance(
+            parent_ids=(claim_id,),
+            operator_id=f"Gamma308:{partition_key}:{i}",
+            timestamp=now_iso(),
+        )
+        child = Claim(provenance=prov, payload=payload, stalk=child_stalk,
+                      t=t_new, bbox=(c_lo, c_hi))
+        child_ids.append(child.id)
+        new_claims[child.id] = child
+
+        F = np.zeros((d, d))
+        if stalk_A_nsq > 1e-30:
+            F[b0A:b1A, b0A:b1A] = np.outer(stalk_A_i, stalk_A_parent) / stalk_A_nsq
+        if stalk_B_nsq > 1e-30:
+            F[b0B:b1B, b0B:b1B] = (
+                np.outer(child_stalk[b0B:b1B], stalk_B_parent) / stalk_B_nsq
+            )
+        if stalk_N_nsq > 1e-30:
+            F[b0N:b1N, b0N:b1N] = np.outer(n_child, stalk_N_parent) / stalk_N_nsq
+        if abs(kappa_parent) > 1e-30:
+            F[b_k, b_k] = kappa_child / kappa_parent
+        else:
+            F[b_k, b_k] = 0.0
+
+        det_B = float(np.linalg.det(F[b0B:b1B, b0B:b1B]))
+        det_sign = int(np.sign(det_B)) if abs(det_B) > 1e-30 else 1
+
+        ent = Entailment(
+            source_id=claim_id,
+            target_id=child.id,
+            etype=EntailmentType.SPATIAL,
+            restriction=F,
+            predicate_hash=hashlib.sha256(F.tobytes()).hexdigest()[:16],
+            omega=omega,
+            det_sign=det_sign,
+        )
+        new_entailments[(claim_id, child.id)] = ent
+
+    new_active = (mu.active - {claim_id}) | frozenset(child_ids)
+    new_S_A = mu.next_S_A()
+    new_S_C = mu.next_S_C()
+    new_S   = np.concatenate([new_S_A, new_S_C])
+
+    new_state = MuState(
+        t=t_new, claims=new_claims, entailments=new_entailments,
+        active=new_active, S=new_S, alpha=mu.alpha, S_A=new_S_A, S_C=new_S_C,
+    )
+    new_state.seal()
+
+    if not is_valid(new_state):
+        raise PartitionError("GAMMA308_CONSISTENCY_ERROR: is_valid failed.")
+    if not is_valid_b(new_state):
+        raise PartitionError("GAMMA308_CONSISTENCY_ERROR: is_valid_b failed.")
+    if not is_unit_norm(new_state):
+        raise PartitionError("GAMMA308_UNIT_NORM_ERROR: is_unit_norm failed.")
+    if not is_spatially_valid(new_state):
+        raise PartitionError("GAMMA308_SPATIAL_ERROR: bbox containment violated.")
+    if not is_valid_block_diagonal_306(new_state):
+        raise PartitionError("GAMMA308_BLOCK_DIAGONAL_ERROR: off-diagonal coupling.")
+    if not is_valid_kappa_308(new_state):
+        raise PartitionError("GAMMA308_KAPPA_ERROR: kappa != kappa_integral(bbox).")
+
+    return new_state, cost
+
+
+def apply_gamma_308_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+):
+    """
+    Recursive Gamma_308 with bbox-hash payloads.
+
+    payload_i = SHA256(bbox_lo_bytes + bbox_hi_bytes + depth_bytes + index_bytes)[:16]
+    (deterministic function of child bbox geometry + recursion position)
+
+    K_budget decays by exp(-LAMBDA_DECAY) per level. Terminates when K_budget < K_MIN_PARTITION.
+    """
+    if K_budget < K_MIN_PARTITION:
+        return mu, 0.0
+
+    N = SPATIAL_KEYS[partition_key]
+    # Payloads derived from CHILD bboxes (computed before partition for determinism)
+    child_bboxes_preview = _compute_child_bboxes(mu.claims[claim_id].bbox, partition_key)
+    payloads = [
+        _bbox_hash_payload(child_bboxes_preview[i], depth, i)
+        for i in range(N)
+    ]
+
+    try:
+        mu_next, cost = apply_gamma_308(
+            mu=mu, claim_id=claim_id, partition_key=partition_key,
+            payloads=payloads, beta=beta, budget=budget, spent=spent,
+        )
+    except PartitionError:
+        return mu, 0.0
+
+    total_cost = cost
+    spent_now = spent + cost
+    K_child = K_budget * math.exp(-LAMBDA_DECAY)
+    new_child_ids = [cid for cid in mu_next.active if cid not in mu.active]
+
+    for cid in new_child_ids:
+        mu_next, rc = apply_gamma_308_recursive(
+            mu=mu_next, claim_id=cid, partition_key=partition_key,
+            beta=beta, budget=budget, spent=spent_now,
+            K_budget=K_child, depth=depth + 1,
+        )
+        total_cost += rc
+        spent_now += rc
+
+    return mu_next, total_cost
