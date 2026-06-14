@@ -480,3 +480,110 @@ class MuState:
         mu = _copy.copy(self)
         mu.validity_class = vc
         return mu
+
+    # ---- EXP-310: causal ghost / transfer entropy ----------------------------
+
+    def _update_ghost_history(self, maxlen: int = 32) -> None:
+        """Append (||S_A||, ||S_C||) to ghost_history circular buffer.
+        Not included in H_t. Called after seal() in apply_gamma_310 wrapper."""
+        from collections import deque
+        hist = getattr(self, 'ghost_history', None)
+        if hist is None:
+            hist = deque(maxlen=maxlen)
+        a = float(np.linalg.norm(self.S_A if self.S_A is not None else np.zeros(8)))
+        c = float(np.linalg.norm(self.S_C if self.S_C is not None else np.zeros(4)))
+        hist.append((a, c))
+        self.ghost_history = hist
+
+    def te_observables(self, k: int = 5):
+        """Compute (T_A_to_C, T_C_to_A, delta_T_AC, T_norm).
+        Returns (nan,nan,nan,nan) if ghost_history has fewer than k+2 entries.
+        Primary estimator: KSG scalar TE on (||S_A||, ||S_C||) sequences.
+        """
+        hist = getattr(self, 'ghost_history', None)
+        if hist is None or len(hist) < max(k + 2, 4):
+            nan = float('nan')
+            return nan, nan, nan, nan
+
+        import math as _math
+        arr = np.array(list(hist), dtype=float)
+        a_seq = arr[:, 0]
+        c_seq = arr[:, 1]
+
+        def _digamma(x):
+            r = 0.0
+            while x < 15.0:
+                r -= 1.0 / x
+                x += 1.0
+            r += _math.log(x) - 0.5 / x
+            x2 = x * x
+            r -= 1.0 / (12.0 * x2)
+            r += 1.0 / (120.0 * x2 * x2)
+            r -= 1.0 / (252.0 * x2 * x2 * x2)
+            return r
+
+        def _ksg_te(a, c):
+            """T_{a->c} = I(c_now ; [a_prev, c_prev]) - I(c_now ; c_prev). KSG Alg 1.
+            Returns 0.0 for degenerate (zero-variance) marginals: KSG undefined."""
+            a_prev = a[:-1]; c_prev = c[:-1]; c_now = c[1:]
+            N = len(c_now)
+            if N < k + 2:
+                return float('nan')
+            # Degeneracy guard: KSG undefined when any marginal has zero variance.
+            # Frozen S_C -> c constant -> std=0 -> return 0.0 by convention.
+            if float(np.std(c_now)) < 1e-15 or float(np.std(c_prev)) < 1e-15:
+                return 0.0
+            if float(np.std(a_prev)) < 1e-15:
+                return 0.0
+
+            def _kth_eps_joint(data):
+                eps = np.zeros(N)
+                for i in range(N):
+                    d = np.max(np.abs(data - data[i]), axis=1)
+                    d[i] = np.inf
+                    eps[i] = np.partition(d, k - 1)[k - 1]
+                return eps
+
+            # I(c_now ; [a_prev, c_prev]) in R^3
+            j3 = np.column_stack([c_now, a_prev, c_prev])
+            e3 = _kth_eps_joint(j3)
+            nx3 = np.array([np.sum(np.abs(c_now - c_now[i]) <= e3[i] + 1e-15) - 1
+                            for i in range(N)])
+            ap_cp = np.column_stack([a_prev, c_prev])
+            ny3 = np.array([np.sum(np.max(np.abs(ap_cp - ap_cp[i]), axis=1) <= e3[i] + 1e-15) - 1
+                            for i in range(N)])
+            I_joint = (_digamma(k)
+                       - float(np.mean([_digamma(nx3[i]+1)+_digamma(ny3[i]+1) for i in range(N)]))
+                       + _digamma(N))
+
+            # I(c_now ; c_prev) in R^2
+            j2 = np.column_stack([c_now, c_prev])
+            e2 = _kth_eps_joint(j2)
+            nx2 = np.array([np.sum(np.abs(c_now - c_now[i]) <= e2[i] + 1e-15) - 1
+                            for i in range(N)])
+            ny2 = np.array([np.sum(np.abs(c_prev - c_prev[i]) <= e2[i] + 1e-15) - 1
+                            for i in range(N)])
+            I_cond = (_digamma(k)
+                      - float(np.mean([_digamma(nx2[i]+1)+_digamma(ny2[i]+1) for i in range(N)]))
+                      + _digamma(N))
+
+            return max(0.0, I_joint - I_cond)
+
+        T_ac = _ksg_te(a_seq, c_seq)
+        T_ca = _ksg_te(c_seq, a_seq)
+        if _math.isnan(T_ac) or _math.isnan(T_ca):
+            nan = float('nan')
+            return nan, nan, nan, nan
+        delta = T_ac - T_ca
+
+        # Normalization: T_norm = T_ac / H(c|c_prev)  via KSG entropy estimate
+        # H(c_now | c_prev) = H(c_now, c_prev) - H(c_prev)
+        # H_KSG(X) = -< log(n_X / (N-1)) > + log(vol_k)  [marginal KSG entropy]
+        # Approximate: use I_cond = H(c_now) - H(c_now|c_prev) -> H(c|c_prev) = H(c_now) - I_cond
+        # For normalization, use I_cond as proxy for H(c|c_prev); T_norm = T_ac / I_cond
+        T_norm = float('nan')
+        if T_ac > 1e-15:
+            # simple normalization: T_ac / (T_ac + T_ca + 1e-15)
+            T_norm = T_ac / (T_ac + T_ca + 1e-15)
+
+        return T_ac, T_ca, delta, T_norm

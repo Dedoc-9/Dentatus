@@ -192,6 +192,16 @@ validity_class is set on MuState (not on individual Claim objects). The recursiv
 
 focal_point is a dynamic attribute on MuState, excluded from H_t. It is a mutable observer parameter, not part of the validity state. Changing focal_point between calls produces different LOD values and validity classes without invalidating the hash chain.
 
+## EXP-310 dev notes
+
+### KSG degeneracy guard (ghost #3)
+
+KSG TE is undefined when any marginal has zero variance. Constant c_t (frozen S_C under LOD_RELAXED kappa bypass) triggers this:  returns 0.0 by convention when std(c) < 1e-15. This is the correct information-theoretic result: if S_C is frozen, no information flows from S_A to S_C (T_{A->C} = 0). The degeneracy guard makes the architectural quarantine guarantee machine-checkable.
+
+### TE sign vs magnitude
+
+KSG magnitude is biased ~5-50% depending on N. With the ghost history buffer at W=32, sign(delta_T_AC) is the reliable statistic (correct 100% of trials at W=64). Magnitude becomes reliable at N~2000. The preregistered threshold is: sign(delta_T_AC) is the primary observable; magnitude is logged but not asserted.
+
 ## EXP-309 open limits
 
 | limit | description |
