@@ -1,0 +1,19 @@
+{
+  "project": "Dentatus",
+  "protocol_version": "exp301-v1",
+  "errata": [
+    {
+      "erratum_id": "E-301-001",
+      "erratum_type": "declaration_parameter_correction",
+      "filed": "pre-execution",
+      "instrument_affected": false,
+      "parameter": "d / seed_stalk",
+      "value_declared": {"d": 1, "seed_stalk": [1.0]},
+      "value_corrected": {"d": 4, "seed_stalk": [1.0, 0.0, 0.0, 0.0]},
+      "reason": "d=1 violates Phi precondition: _orthogonal_decompose requires d >= N. N=2 is the minimum useful partition. d=4 supports up to N=4 partitions with full orthogonality. Correction pre-execution; no operators have run.",
+      "declaration_hash_pre":  "0d484ed67e20295117c934eca52bf1b41bd3e989f662440652585197c7629868",
+      "declaration_hash_post": "3699af66174f42c58184b73b42f6acfae01929b5764fa3d7247505abe826aedd",
+      "date": "2026-06-13"
+    }
+  ]
+}

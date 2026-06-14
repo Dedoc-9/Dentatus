@@ -23,7 +23,7 @@ ROOT = Path(__file__).parent
 
 # Load Seed_0 declaration
 DECL = json.loads(
-    (ROOT / "studies/exp301_generative_engine/SEED_DECLARATION_exp301.json").read_text()
+    (ROOT / "studies/exp301_generative_engine/SEED_DECLARATION_exp301.json").read_text(encoding="utf-8")
 )
 assert DECL["protocol_version"] == "exp301-v1", "Protocol version mismatch"
 assert DECL["status"] == "LOCKED", "Seed_0 declaration not locked"
