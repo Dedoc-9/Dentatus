@@ -159,6 +159,8 @@ class MuState:
     active:      FrozenSet[str]
     S:           np.ndarray
     alpha:       float = ALPHA_DEFAULT
+    S_A:         Optional[np.ndarray] = field(default=None)  # dual ghost Sector A+B dims 0-7 (EXP-306)
+    S_C:         Optional[np.ndarray] = field(default=None)  # dual ghost Sector C dims 8-11 (EXP-306)
     _H:          Optional[str]  = field(default=None, repr=False)
     _sealed:     bool           = field(default=False, repr=False)
 
@@ -249,10 +251,17 @@ class MuState:
     # ---- hash / seal -----------------------------------------------------
 
     def seal(self) -> str:
-        """Compute and lock H_t. Raises if already sealed."""
+        """Compute and lock H_t. Raises if already sealed.
+        When dual ghost (S_A, S_C) active: S_hash = concat(S_A, S_C).
+        Backward compat: S_A/S_C None -> use S directly.
+        """
         if self._sealed:
             raise RuntimeError(f"State t={self.t} already sealed; H={self._H}")
-        self._H      = _compute_H(self.Z(), self.S, self.active, self.t)
+        if self.S_A is not None and self.S_C is not None:
+            S_hash = np.concatenate([self.S_A, self.S_C])
+        else:
+            S_hash = self.S
+        self._H      = _compute_H(self.Z(), S_hash, self.active, self.t)
         self._sealed = True
         return self._H
 
@@ -283,13 +292,71 @@ class MuState:
                     stack.append(tgt)
         return frozenset(visited)
 
-    def subtree_stalk_matrix(self, cid: str) -> np.ndarray:
-        """Shape (d, n): stalk matrix for all nodes in subtree(cid)."""
-        ids = self.subtree_ids(cid)
-        stalks = [self.claims[i].stalk for i in ids if i in self.claims]
-        if not stalks:
-            return np.zeros((1, 1))
-        return np.column_stack(stalks)
+    # ---- dual ghost (EXP-306) ------------------------------------------------
 
-    def is_leaf(self, cid: str) -> bool:
-        return not any(src == cid for (src, _) in self.entailments)
+    def G_A(self) -> np.ndarray:
+        """G_A = Z_A - Pi_{W_A}(Z_A) over dims 0:8 (Sectors A+B).
+        Projects Z_A onto column space of W_basis[0:8, :].
+        Returns zero vector if stalk dim < 8.
+        """
+        Z = self.Z()
+        d = Z.shape[0]
+        if d < 8:
+            return np.zeros(d)
+        Z_A = Z[0:8]
+        W = self.W_basis()
+        W_A = W[0:8, :]
+        try:
+            coeff, _, _, _ = np.linalg.lstsq(W_A, Z_A, rcond=None)
+            proj = W_A @ coeff
+        except np.linalg.LinAlgError:
+            proj = np.zeros_like(Z_A)
+        return Z_A - proj
+
+    def G_C(self) -> np.ndarray:
+        """G_C = Z_C - Pi_{W_C}(Z_C) over dims 8:12 (Sector C incl. kappa).
+        Projects Z_C onto column space of W_basis[8:12, :].
+        Returns zero vector of shape (4,) if stalk dim < 12.
+        """
+        Z = self.Z()
+        d = Z.shape[0]
+        if d < 12:
+            return np.zeros(4)
+        Z_C = Z[8:12]
+        W = self.W_basis()
+        W_C = W[8:12, :]
+        try:
+            coeff, _, _, _ = np.linalg.lstsq(W_C, Z_C, rcond=None)
+            proj = W_C @ coeff
+        except np.linalg.LinAlgError:
+            proj = np.zeros_like(Z_C)
+        return Z_C - proj
+
+    def next_S_A(self) -> np.ndarray:
+        """S_A_{t+1} = alpha * S_A + (1-alpha) * G_A_t  (EXP-306 dual ghost)."""
+        G = self.G_A()
+        s = self.S_A if self.S_A is not None else np.zeros(8)
+        if s.shape != G.shape:
+            s = np.zeros_like(G)
+        return self.alpha * s + (1.0 - self.alpha) * G
+
+    def next_S_C(self) -> np.ndarray:
+        """S_C_{t+1} = alpha * S_C + (1-alpha) * G_C_t  (EXP-306 dual ghost)."""
+        G = self.G_C()
+        s = self.S_C if self.S_C is not None else np.zeros(4)
+        if s.shape != G.shape:
+            s = np.zeros_like(G)
+        return self.alpha * s + (1.0 - self.alpha) * G
+
+    def B_A(self) -> float:
+        """B_A(t) = ||S_A|| / (||Z[0:8]|| + eps)  (EXP-306 photometric ghost ratio)."""
+        S_A = self.S_A if self.S_A is not None else np.zeros(8)
+        Z_A = self.Z()[0:8] if self.Z().shape[0] >= 8 else self.Z()
+        return float(np.linalg.norm(S_A) / (np.linalg.norm(Z_A) + EPSILON))
+
+    def B_C(self) -> float:
+        """B_C(t) = ||S_C|| / (||Z[8:12]|| + eps)  (EXP-306 geometric ghost ratio)."""
+        S_C = self.S_C if self.S_C is not None else np.zeros(4)
+        Z = self.Z()
+        Z_C = Z[8:12] if Z.shape[0] >= 12 else np.zeros(4)
+        return float(np.linalg.norm(S_C) / (np.linalg.norm(Z_C) + EPSILON))

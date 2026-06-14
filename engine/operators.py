@@ -1290,13 +1290,184 @@ def apply_gamma_305(
         raise PartitionError("GAMMA305_BLOCK_DIAGONAL_ERROR: off-diagonal sector coupling detected.")
 
     return new_state, cost
-    F[b0B:b1B, b0B:b1B] = (
+
+
+# ===========================================================================
+# EXP-306 -- Gamma_306 (d=12: centroid-outward normals, kappa additive,
+#            dual ghost S_A/S_C, recursive K-budget decay)
+# ===========================================================================
+
+SECTOR_C_KAPPA_DIM = 11  # kappa scalar, dims [8,9,10,11] = Sector C in EXP-306
+K_MIN_PARTITION = 16     # atomic floor for recursive K-budget
+LAMBDA_DECAY = 0.6931471805599453  # ln(2); halves K_budget per depth
+
+
+def _centroid_outward_normal(centroid_child, centroid_parent):
+    """
+    n = normalize(centroid_child - centroid_parent).
+    Degenerate (same centroid): return [0,0,1].
+    """
+    d = centroid_child - centroid_parent
+    norm = float(np.linalg.norm(d))
+    if norm < 1e-12:
+        return np.array([0.0, 0.0, 1.0])
+    return d / norm
+
+
+def apply_gamma_306(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    weights=None,
+):
+    """
+    Gamma_306 -- d=12 spatial partition with centroid-outward normals,
+    kappa additive split, and dual ghost (S_A, S_C).
+
+    Sector C (dims 8-11):
+      [8:11] normal: n_child = normalize(centroid_child - centroid_parent)
+      [11]   kappa:  kappa_child_i = kappa_parent * omega_i
+
+    Restriction map (12x12 block-diagonal):
+      F[0:4,   0:4 ] = F_A (outer product, Sector A)
+      F[4:8,   4:8 ] = F_B (outer product, Sector B)
+      F[8:11,  8:11] = F_C (outer product, centroid-outward n_child)
+      F[11,    11  ] = omega_i (kappa scalar block)
+      All off-diagonal sector cross blocks = 0.
+
+    Dual ghost update:
+      S_A_{t+1} = alpha * S_A_t + (1-alpha) * G_A_t  (dims 0-7)
+      S_C_{t+1} = alpha * S_C_t + (1-alpha) * G_C_t  (dims 8-11)
+
+    Returns: (new_mu, cost)
+    """
+    from engine.validity import (
+        is_valid, is_valid_b, is_spatially_valid,
+        is_unit_norm, is_valid_block_diagonal_306,
+    )
+    import math
+
+    if claim_id not in mu.active:
+        raise PartitionError(f"GAMMA306_ERROR: claim {claim_id} not in active set.")
+    parent = mu.claims[claim_id]
+    if parent.bbox is None:
+        raise PartitionError(f"GAMMA306_ERROR: claim {claim_id} has no bbox.")
+
+    d = parent.stalk.shape[0]
+    if d != 12:
+        raise PartitionError(f"GAMMA306_ERROR: EXP-306 requires d=12, got d={d}.")
+    if partition_key not in SPATIAL_KEYS:
+        raise PartitionError(
+            f"GAMMA306_UNKNOWN_KEY: '{partition_key}' not in {list(SPATIAL_KEYS.keys())}."
+        )
+    N = SPATIAL_KEYS[partition_key]
+    if len(payloads) != N:
+        raise PartitionError(f"GAMMA306_ERROR: expected {N} payloads, got {len(payloads)}.")
+
+    k_children = sum(len(zlib.compress(p.encode("utf-8"), level=9)) for p in payloads)
+    k_limit = parent.K_bound + C_KBOUND * math.log(N)
+    if k_children > k_limit:
+        raise PartitionError(
+            f"GAMMA306_INFORMATION_OVERFLOW: sum K={k_children:.1f} > limit={k_limit:.2f}"
+        )
+
+    cost = _cost(C0=1.0, beta=beta, S=mu.S)
+    if spent + cost > budget:
+        raise PartitionError(
+            f"GAMMA306_BUDGET: spent={spent:.4f} + cost={cost:.4f} > B0={budget}"
+        )
+
+    child_bboxes = _compute_child_bboxes(parent.bbox, partition_key)
+
+    p_lo, p_hi = parent.bbox
+    parent_vol = float(np.prod(p_hi - p_lo))
+    if parent_vol < 1e-30:
+        omegas = [1.0 / N] * N
+    else:
+        vols = [float(np.prod(cb[1] - cb[0])) for cb in child_bboxes]
+        total_vol = sum(vols)
+        omegas = [v / total_vol for v in vols]
+    if weights is not None:
+        total = sum(weights)
+        omegas = [w / total for w in weights]
+
+    b0A, b1A = SECTOR_A_DIMS[0], SECTOR_A_DIMS[-1] + 1   # [0:4]
+    b0B, b1B = SECTOR_B_DIMS[0], SECTOR_B_DIMS[-1] + 1   # [4:8]
+    b0N = SECTOR_C_DIMS[0]                                 # 8 (normal start)
+    b1N = SECTOR_C_DIMS[-1] + 1                            # 11 (normal end)
+    b_k = SECTOR_C_KAPPA_DIM                               # 11 (kappa scalar)
+
+    stalk_A = parent.stalk[b0A:b1A]
+    d_A = len(SECTOR_A_DIMS)
+    full_children_cache = None
+
+    if N <= d_A:
+        stalk_A_children = _orthogonal_decompose(stalk_A, N)
+    else:
+        full_children_cache = _orthogonal_decompose(parent.stalk, N)
+        stalk_A_children = [c[b0A:b1A] for c in full_children_cache]
+
+    # Sector C normals: centroid-outward convention
+    p_centroid = (p_lo + p_hi) / 2.0  # parent centroid
+    n_children = [
+        _centroid_outward_normal((cb[0] + cb[1]) / 2.0, p_centroid)
+        for cb in child_bboxes
+    ]
+
+    kappa_parent = float(parent.stalk[b_k])
+
+    t_new = mu.t + 1
+    new_claims = dict(mu.claims)
+    new_entailments = dict(mu.entailments)
+    child_ids = []
+
+    stalk_A_parent = parent.stalk[b0A:b1A]
+    stalk_B_parent = parent.stalk[b0B:b1B]
+    stalk_N_parent = parent.stalk[b0N:b1N]
+
+    stalk_A_nsq = float(np.dot(stalk_A_parent, stalk_A_parent))
+    stalk_B_nsq = float(np.dot(stalk_B_parent, stalk_B_parent))
+    stalk_N_nsq = float(np.dot(stalk_N_parent, stalk_N_parent))
+
+    for i, (payload, omega, stalk_A_i, (c_lo, c_hi), n_child) in enumerate(
+            zip(payloads, omegas, stalk_A_children, child_bboxes, n_children)):
+
+        centroid_B = (c_lo + c_hi) / 2.0  # R^3 centroid for Sector B
+
+        child_stalk = np.empty(d)
+        child_stalk[b0A:b1A] = stalk_A_i          # Sector A
+        child_stalk[b0B:b0B+3] = centroid_B        # Sector B xyz
+        child_stalk[SECTOR_B_DIMS[-1]] = 1.0       # Sector B w = 1
+        child_stalk[b0N:b1N] = n_child             # Sector C normal (centroid-outward)
+        child_stalk[b_k] = kappa_parent * omega     # kappa additive split
+
+        prov = Provenance(
+            parent_ids=(claim_id,),
+            operator_id=f"Gamma306:{partition_key}:{i}",
+            timestamp=now_iso(),
+        )
+        child = Claim(provenance=prov, payload=payload, stalk=child_stalk,
+                      t=t_new, bbox=(c_lo, c_hi))
+        child_ids.append(child.id)
+        new_claims[child.id] = child
+
+        # Block-diagonal restriction map (12x12)
+        F = np.zeros((d, d))
+
+        if stalk_A_nsq > 1e-30:
+            F[b0A:b1A, b0A:b1A] = np.outer(stalk_A_i, stalk_A_parent) / stalk_A_nsq
+        if stalk_B_nsq > 1e-30:
+            F[b0B:b1B, b0B:b1B] = (
                 np.outer(child_stalk[b0B:b1B], stalk_B_parent) / stalk_B_nsq
             )
-
-        # Sector C block
-        if stalk_C_nsq > 1e-30:
-            F[b0C:b1C, b0C:b1C] = np.outer(n_child, stalk_C_parent) / stalk_C_nsq
+        if stalk_N_nsq > 1e-30:
+            F[b0N:b1N, b0N:b1N] = np.outer(n_child, stalk_N_parent) / stalk_N_nsq
+        # kappa scalar block
+        F[b_k, b_k] = omega
 
         det_B = float(np.linalg.det(F[b0B:b1B, b0B:b1B]))
         det_sign = int(np.sign(det_B)) if abs(det_B) > 1e-30 else 1
@@ -1314,35 +1485,101 @@ def apply_gamma_305(
 
     new_active = (mu.active - {claim_id}) | frozenset(child_ids)
 
+    # Dual ghost update
+    new_S_A = mu.next_S_A()
+    new_S_C = mu.next_S_C()
+    new_S   = np.concatenate([new_S_A, new_S_C])  # for backward-compat S field
+
     new_state = MuState(
         t=t_new,
         claims=new_claims,
         entailments=new_entailments,
         active=new_active,
-        S=mu.next_S(),
+        S=new_S,
         alpha=mu.alpha,
+        S_A=new_S_A,
+        S_C=new_S_C,
     )
     new_state.seal()
 
     if not is_valid(new_state):
-        raise PartitionError(
-            "GAMMA305_CONSISTENCY_ERROR: is_valid (Sector A) failed. Reverting."
-        )
+        raise PartitionError("GAMMA306_CONSISTENCY_ERROR: is_valid failed.")
     if not is_valid_b(new_state):
-        raise PartitionError(
-            "GAMMA305_CONSISTENCY_ERROR: is_valid_b (Sector B) failed. Reverting."
-        )
+        raise PartitionError("GAMMA306_CONSISTENCY_ERROR: is_valid_b failed.")
     if not is_unit_norm(new_state):
-        raise PartitionError(
-            "GAMMA305_UNIT_NORM_ERROR: is_unit_norm (Sector C) failed. Reverting."
-        )
+        raise PartitionError("GAMMA306_UNIT_NORM_ERROR: is_unit_norm failed.")
     if not is_spatially_valid(new_state):
-        raise PartitionError(
-            "GAMMA305_SPATIAL_ERROR: bbox containment violated. Reverting."
-        )
-    if not is_valid_block_diagonal(new_state):
-        raise PartitionError(
-            "GAMMA305_BLOCK_DIAGONAL_ERROR: off-diagonal sector coupling detected. Reverting."
-        )
+        raise PartitionError("GAMMA306_SPATIAL_ERROR: bbox containment violated.")
+    if not is_valid_block_diagonal_306(new_state):
+        raise PartitionError("GAMMA306_BLOCK_DIAGONAL_ERROR: off-diagonal coupling.")
 
     return new_state, cost
+
+
+def apply_gamma_306_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    payload_fn,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+):
+    """
+    Recursive Gamma_306 with soft-decay K-budget.
+
+    Applies apply_gamma_306 to claim_id, then recursively to all
+    resulting active leaves, decaying K_budget each level:
+      K_budget_child = K_budget * exp(-LAMBDA_DECAY * 1) = K_budget / 2
+
+    Termination: K_budget < K_MIN_PARTITION -> return mu unchanged.
+
+    payload_fn: callable(depth, index) -> payload string for child i at depth d.
+      Example: lambda d, i: f"node_d{d}_i{i}"
+
+    Returns: (final_mu, total_cost)
+    """
+    import math
+    if K_budget < K_MIN_PARTITION:
+        return mu, 0.0
+
+    N = SPATIAL_KEYS[partition_key]
+    payloads = [payload_fn(depth, i) for i in range(N)]
+
+    try:
+        mu_next, cost = apply_gamma_306(
+            mu=mu, claim_id=claim_id, partition_key=partition_key,
+            payloads=payloads, beta=beta, budget=budget, spent=spent,
+        )
+    except PartitionError:
+        return mu, 0.0
+
+    total_cost = cost
+    spent_now = spent + cost
+
+    K_child = K_budget * math.exp(-LAMBDA_DECAY)  # halved
+
+    # Identify new leaf children (active nodes that came from claim_id)
+    new_child_ids = [
+        cid for cid in mu_next.active
+        if cid not in mu.active
+    ]
+
+    for cid in new_child_ids:
+        mu_next, rc = apply_gamma_306_recursive(
+            mu=mu_next,
+            claim_id=cid,
+            partition_key=partition_key,
+            payload_fn=payload_fn,
+            beta=beta,
+            budget=budget,
+            spent=spent_now,
+            K_budget=K_child,
+            depth=depth + 1,
+        )
+        total_cost += rc
+        spent_now += rc
+
+    return mu_next, total_cost

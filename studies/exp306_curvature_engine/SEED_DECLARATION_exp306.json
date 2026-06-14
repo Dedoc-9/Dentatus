@@ -1,0 +1,62 @@
+{
+  "experiment": "EXP-306",
+  "protocol_version": "exp306-v1",
+  "title": "Curvature Engine",
+  "inherits_from": "exp305-v1",
+  "d": 12,
+  "stalk_schema": {
+    "dims": ["mass","r","g","b","x","y","z","w","nx","ny","nz","kappa"],
+    "sectors": {
+      "A": {
+        "dims": [0,1,2,3],
+        "labels": ["mass","r","g","b"],
+        "conservation": "additive_sum"
+      },
+      "B": {
+        "dims": [4,5,6,7],
+        "labels": ["x","y","z","w"],
+        "conservation": "barycentric",
+        "w_invariant": 1.0
+      },
+      "C": {
+        "dims": [8,9,10,11],
+        "labels": ["nx","ny","nz","kappa"],
+        "normal_dims": [8,9,10],
+        "normal_conservation": "unit_norm",
+        "normal_convention": "centroid_outward",
+        "normal_formula": "normalize(centroid_child - centroid_parent)",
+        "kappa_dim": 11,
+        "kappa_conservation": "additive_sum",
+        "kappa_split": "volume_proportional"
+      }
+    }
+  },
+  "seed_stalk": [1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 0.0],
+  "seed_bbox_lo": [0.0, 0.0, 0.0],
+  "seed_bbox_hi": [1.0, 1.0, 1.0],
+  "ghost_dual": {
+    "S_A_dims": [0,1,2,3,4,5,6,7],
+    "S_C_dims": [8,9,10,11],
+    "alpha": 0.85,
+    "note": "Independent EMA. S_A and S_C separate in MuState."
+  },
+  "recursive_gamma": {
+    "lambda": 0.6931471805599453,
+    "K_MIN_PARTITION": 16,
+    "K_budget_0": 256,
+    "depth_max": 4,
+    "decay": "K_budget(depth) = K_budget_0 * exp(-lambda * depth)"
+  },
+  "mirror_operator": {
+    "P_yz": {
+      "polar_flip_dims": [4],
+      "axial_flip_dims": [8],
+      "description": "reflection in yz-plane: x->-x, nx->-nx"
+    }
+  },
+  "beta": 0.1,
+  "B0": 100.0,
+  "alpha": 0.85,
+  "declaration_hash": "5a8e1afc590d8ffb9dfe33977005eb888798c1ccdc9dd64c59b797eb8d48fe47",
+  "status": "LOCKED"
+}

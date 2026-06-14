@@ -252,10 +252,39 @@ def is_valid_block_diagonal(mu, tol=1e-7) -> bool:
         if np.linalg.norm(F[8:11, 0:8]) > tol:
             return False
     return True
- tol:
-            return False
-        if np.linalg.norm(F[4:8, 8:11]) > tol:
-            return False
-        if np.linalg.norm(F[8:11, 0:8]) > tol:
-            return False
+
+
+def is_valid_block_diagonal_306(mu, tol=1e-7) -> bool:
+    """
+    Block-diagonal restriction map predicate for EXP-306 (d=12).
+    Sector boundaries: A=[0:4], B=[4:8], C=[8:12]
+    Off-diagonal cross blocks must be near-zero.
+    Also handles d=11 (delegates to is_valid_block_diagonal).
+    Skips F with shape other than (11,11) or (12,12).
+    """
+    from engine.state import EntailmentType
+    for (src_id, tgt_id), ent in mu.entailments.items():
+        if ent.etype not in (EntailmentType.PARTITION, EntailmentType.SPATIAL):
+            continue
+        F = ent.restriction
+        if F.shape == (11, 11):
+            # delegate to EXP-305 check
+            if np.linalg.norm(F[0:4, 4:11]) > tol:
+                return False
+            if np.linalg.norm(F[4:8, 0:4]) > tol:
+                return False
+            if np.linalg.norm(F[4:8, 8:11]) > tol:
+                return False
+            if np.linalg.norm(F[8:11, 0:8]) > tol:
+                return False
+        elif F.shape == (12, 12):
+            if np.linalg.norm(F[0:4, 4:12]) > tol:
+                return False
+            if np.linalg.norm(F[4:8, 0:4]) > tol:
+                return False
+            if np.linalg.norm(F[4:8, 8:12]) > tol:
+                return False
+            if np.linalg.norm(F[8:12, 0:8]) > tol:
+                return False
+        # else: skip non-matching shapes
     return True
