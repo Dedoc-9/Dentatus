@@ -1,0 +1,257 @@
+"""
+state.py — Core state structures for EXP-301.
+
+H_t = HASH(Z_t ⊕ S_t ⊕ W_t ⊕ t ⊕ protocol_version)
+G_t = Z_t − Π_{W_t}(Z_t)
+S_{t+1} = α·S_t + (1−α)·G_t
+
+Dual space (S, G) and primary space (Z) never collapsed into a single representation.
+Orthogonality enforced: S_t ⊥ W_t by construction.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import zlib
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Dict, FrozenSet, Optional, Tuple
+
+import numpy as np
+
+PROTOCOL_VERSION = "exp301-v1"
+ALPHA_DEFAULT    = 0.85
+EPSILON          = 1e-12
+C_KBOUND         = 2          # K-bound slack constant (ENGINE_AXIOMS §2.1)
+
+
+# ---------------------------------------------------------------------------
+# Primitives
+# ---------------------------------------------------------------------------
+
+class EntailmentType(Enum):
+    PARTITION   = "PARTITION"
+    SYNTHESIS   = "SYNTHESIS"
+    DEPENDENCY  = "DEPENDENCY"
+
+
+@dataclass(frozen=True)
+class Provenance:
+    parent_ids:  Tuple[str, ...]
+    operator_id: str
+    timestamp:   str            # ISO 8601
+
+    def to_dict(self) -> dict:
+        return {
+            "parent_ids":  list(self.parent_ids),
+            "operator_id": self.operator_id,
+            "timestamp":   self.timestamp,
+        }
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Claim (node)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Claim:
+    """
+    Node in the claim DAG.
+    id   = SHA-256(provenance ⊕ payload ⊕ t ⊕ protocol_version)[:16]
+    K    ≈ len(zlib.compress(payload, level=9))
+    """
+    provenance: Provenance
+    payload:    str
+    stalk:      np.ndarray      # F(v) ∈ ℝ^d
+    t:          int
+
+    # computed at init
+    id:      str = field(init=False)
+    K_bound: int = field(init=False)
+
+    def __post_init__(self):
+        raw = json.dumps({
+            "provenance":       self.provenance.to_dict(),
+            "payload":          self.payload,
+            "t":                self.t,
+            "protocol_version": PROTOCOL_VERSION,
+        }, sort_keys=True).encode()
+        self.id      = hashlib.sha256(raw).hexdigest()[:16]
+        self.K_bound = len(zlib.compress(self.payload.encode("utf-8"), level=9))
+
+    def stalk_norm(self) -> float:
+        return float(np.linalg.norm(self.stalk))
+
+
+# ---------------------------------------------------------------------------
+# Entailment (edge)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Entailment:
+    """
+    Directed edge (source → target).
+    restriction: linear map F(source) → F(target), shape (d_tgt, d_src)
+    """
+    source_id:      str
+    target_id:      str
+    etype:          EntailmentType
+    restriction:    np.ndarray      # (d_tgt, d_src)
+    predicate_hash: str
+
+
+# ---------------------------------------------------------------------------
+# State hash
+# ---------------------------------------------------------------------------
+
+def _compute_H(
+    Z: np.ndarray,
+    S: np.ndarray,
+    W: FrozenSet[str],
+    t: int,
+) -> str:
+    """H_t = HASH(Z_t ⊕ S_t ⊕ W_t ⊕ t ⊕ protocol_version)"""
+    payload = json.dumps({
+        "Z":                Z.tolist(),
+        "S":                S.tolist(),
+        "W":                sorted(W),
+        "t":                t,
+        "protocol_version": PROTOCOL_VERSION,
+    }, sort_keys=True).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# MuState
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MuState:
+    """
+    Full engine state μ_t = cellular sheaf (G_t, F_t).
+
+    claims:      V_t — id → Claim
+    entailments: E_t — (src_id, tgt_id) → Entailment
+    active:      W_t — frozenset of leaf claim ids (out-degree 0)
+    S:           EMA ghost accumulation ∈ ℝ^D
+    alpha:       EMA coefficient
+    t:           current timestep
+    """
+    t:           int
+    claims:      Dict[str, Claim]
+    entailments: Dict[Tuple[str, str], Entailment]
+    active:      FrozenSet[str]
+    S:           np.ndarray
+    alpha:       float = ALPHA_DEFAULT
+    _H:          Optional[str]  = field(default=None, repr=False)
+    _sealed:     bool           = field(default=False, repr=False)
+
+    # ---- primary space ----------------------------------------------------
+
+    def Z(self) -> np.ndarray:
+        """Z_t: concatenation of active claim stalks (sorted by id)."""
+        if not self.active:
+            return np.zeros(1)
+        return np.concatenate([self.claims[cid].stalk for cid in sorted(self.active)])
+
+    def W_basis(self) -> np.ndarray:
+        """Column matrix of active stalks, shape (d, |W_t|)."""
+        stalks = [self.claims[cid].stalk for cid in sorted(self.active)]
+        if not stalks:
+            return np.zeros((1, 1))
+        return np.column_stack(stalks)
+
+    # ---- dual space -------------------------------------------------------
+
+    def G(self) -> np.ndarray:
+        """G_t = Z_t − Π_{W_t}(Z_t)  (ghost residual, orthogonal to W_t)."""
+        Z = self.Z()
+        W = self.W_basis()
+        try:
+            coeff, _, _, _ = np.linalg.lstsq(W, Z, rcond=None)
+            proj = W @ coeff
+        except np.linalg.LinAlgError:
+            proj = np.zeros_like(Z)
+        return Z - proj
+
+    def next_S(self) -> np.ndarray:
+        """S_{t+1} = α·S_t + (1−α)·G_t"""
+        G = self.G()
+        s = self.S
+        # broadcast to matching dim if needed
+        if s.shape != G.shape:
+            s = np.zeros_like(G)
+        return self.alpha * s + (1.0 - self.alpha) * G
+
+    # ---- observables (pure numeric) --------------------------------------
+
+    def B(self) -> float:
+        """B(t) = ||S_t|| / (||Z_t|| + ε)"""
+        return float(np.linalg.norm(self.S) / (np.linalg.norm(self.Z()) + EPSILON))
+
+    def ESS(self) -> float:
+        """ESS = (Σ wᵢ)² / Σ wᵢ²  over active claim stalk norms."""
+        if not self.active:
+            return 0.0
+        w = np.array([self.claims[cid].stalk_norm() for cid in self.active])
+        denom = float((w ** 2).sum())
+        return float(w.sum() ** 2 / denom) if denom > 0 else 0.0
+
+    def eta_CLT(self) -> float:
+        """η_CLT = √|W_t| · (μ̂_stalk − μ_stalk)  (uses grand mean across all claims)."""
+        if not self.active:
+            return 0.0
+        active_norms  = np.array([self.claims[cid].stalk_norm() for cid in self.active])
+        all_norms     = np.array([c.stalk_norm() for c in self.claims.values()])
+        mu_hat = active_norms.mean()
+        mu     = all_norms.mean() if len(all_norms) > 0 else 0.0
+        return float(np.sqrt(len(self.active)) * (mu_hat - mu))
+
+    # ---- hash / seal -----------------------------------------------------
+
+    def seal(self) -> str:
+        """Compute and lock H_t. Raises if already sealed."""
+        if self._sealed:
+            raise RuntimeError(f"State t={self.t} already sealed; H={self._H}")
+        self._H      = _compute_H(self.Z(), self.S, self.active, self.t)
+        self._sealed = True
+        return self._H
+
+    @property
+    def H(self) -> str:
+        if not self._sealed:
+            raise RuntimeError(f"State t={self.t} not sealed; call seal() first.")
+        return self._H
+
+    # ---- graph helpers ---------------------------------------------------
+
+    def subtree_ids(self, cid: str) -> FrozenSet[str]:
+        """All ancestor ids reachable by walking source edges (includes cid)."""
+        visited: set = set()
+        stack = [cid]
+        while stack:
+            node = stack.pop()
+            if node in visited:
+                continue
+            visited.add(node)
+            for (src, tgt) in self.entailments:
+                if tgt == node:
+                    stack.append(src)
+        return frozenset(visited)
+
+    def subtree_stalk_matrix(self, cid: str) -> np.ndarray:
+        """Shape (d, n): stalk matrix for all nodes in subtree(cid)."""
+        ids    = self.subtree_ids(cid)
+        stalks = [self.claims[i].stalk for i in ids if i in self.claims]
+        if not stalks:
+            return np.zeros((1, 1))
+        return np.column_stack(stalks)
+
+    def is_leaf(self, cid: str) -> bool:
+        return not any(src == cid for (src, _) in self.entailments)
