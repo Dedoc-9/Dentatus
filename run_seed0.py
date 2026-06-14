@@ -1,13 +1,13 @@
 """
-run_seed0.py — First execution: initialize Seed_0 and verify engine invariants.
+run_seed0.py -- First execution: initialize Seed_0 and verify engine invariants.
 
 Validates:
   1. Seed_0 Claim constructed and hashed
   2. MuState sealed with valid H_0
-  3. is_valid(μ_0) — sheaf Laplacian check (trivially True for single node)
-  4. Observables: B(0), ESS(0), η_CLT(0)
+  3. is_valid(mu_0) -- forward entailment consistency (trivially True for single node)
+  4. Observables: B(0), ESS(0), eta_CLT(0)
   5. Confluence cert issuable for Seed_0 (no convergences at t=0)
-  6. Ω(Seed_0) produces a valid Artifact
+  6. Omega(Seed_0) produces a valid Artifact
   7. Budget and backreaction at t=0
 
 DECLARED parameters sourced from SEED_DECLARATION_exp301.json.
@@ -60,7 +60,7 @@ print(f"Seed_0 K_bound: {seed_claim.K_bound} bytes")
 print(f"Seed_0 stalk:   {seed_stalk.tolist()}")
 
 # ---------------------------------------------------------------------------
-# 2. Initialize μ_0
+# 2. Initialize mu_0
 # ---------------------------------------------------------------------------
 
 S_init = np.zeros_like(seed_stalk)
@@ -83,8 +83,8 @@ print(f"\nH_0: {H0}")
 
 lam = lambda_min(mu0)
 valid = is_valid(mu0)
-print(f"\nλ_min(L_F(μ_0)): {lam:.6f}  →  is_valid: {valid}")
-assert valid, "INVARIANT FAIL: μ_0 must be valid"
+print(f"\nlambda_min(L_F(mu_0)): {lam:.6f}  ->  is_valid: {valid}")
+assert valid, "INVARIANT FAIL: mu_0 must be valid"
 
 # ---------------------------------------------------------------------------
 # 4. Observables
@@ -99,12 +99,12 @@ S_norm = float(np.linalg.norm(mu0.S))
 print(f"\nObservables at t=0:")
 print(f"  B(0)    = {B:.6f}   (ghost-to-primary ratio)")
 print(f"  ESS(0)  = {ESS:.4f}")
-print(f"  η_CLT   = {eta:.6f}")
+print(f"  eta_CLT = {eta:.6f}")
 print(f"  ||Z_0|| = {Z_norm:.6f}")
 print(f"  ||S_0|| = {S_norm:.6f}")
 
 # ---------------------------------------------------------------------------
-# 5. Confluence registry — Seed_0 path
+# 5. Confluence registry -- Seed_0 path
 # ---------------------------------------------------------------------------
 
 reg = ConfluenceRegistry()
@@ -114,7 +114,7 @@ print(f"\nConfluence cert (Seed_0): {cert}")
 print(f"Registry summary: {reg.summary()}")
 
 # ---------------------------------------------------------------------------
-# 6. Ω(Seed_0) — first observation
+# 6. Omega(Seed_0) -- first observation
 # ---------------------------------------------------------------------------
 
 artifact = apply_omega(mu0, seed_claim.id, confluence_cert=cert)
@@ -125,8 +125,8 @@ print(json.dumps(artifact, indent=2))
 # 7. Budget status
 # ---------------------------------------------------------------------------
 
-print(f"\nBudget: spent=0.0 / B₀={B0}  (Ω is free)")
-print(f"β (backreaction coeff): {BETA}")
+print(f"\nBudget: spent=0.0 / B0={B0}  (Omega is free)")
+print(f"beta (backreaction coeff): {BETA}")
 print(f"\n=== Seed_0 PASS: all invariants satisfied ===")
 print(f"declaration_hash: {DECL['declaration_hash']}")
 print(f"H_0:              {H0}")

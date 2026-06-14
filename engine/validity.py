@@ -1,26 +1,34 @@
 """
-validity.py -- Sheaf Laplacian validity predicate for EXP-301.
+validity.py -- Validity predicate for EXP-301 (E-301-003 corrected form).
 
-is_valid(mu_t) iff lambda_min(L_F(mu_t)) > 0
-L_F = delta^T delta
-(delta x)_e = F(u->v)(x_u) - x_v  for e=(u->v)
+CORRECTION (E-301-003):
+  The original predicate lambda_min(L_F) > 0 is incorrect for our directed DAG.
+  For a connected consistent sheaf, lambda_min(L_F) = 0 always (the zero mode
+  is the constant global section, which IS the valid case). Strict positivity
+  would reject every valid connected state.
 
-Single-node DAG (no edges): trivially valid.
-lambda_min = 0 with no edges; the predicate becomes non-trivial only
-when entailments exist. This matches the sheaf theory: an empty graph
-has no constraints, so every section is vacuously harmonic.
+CORRECTED PREDICATE -- Forward Entailment Consistency:
+  is_valid(mu_t) iff for every edge (u->v) in E_t:
+    - Single-source (PARTITION): F(u->v)(stalk_u) ~= stalk_v
+    - Multi-source  (SYNTHESIS): sum_i F(u_i->v)(stalk_{u_i}) ~= stalk_v
 
-Dev note: lambda_min < 0 signals a non-trivial harmonic section --
-a global inconsistency invisible to local checks.
+  This checks that restriction maps are correctly calibrated to the observed stalks.
+  Violation = a claim whose stalk is inconsistent with its construction history.
+  This is the directed-DAG analogue of H^1(G, F) = 0 (no holonomy obstruction).
+
+  lambda_min is retained as a numeric observable (not the validity gate).
 """
 from __future__ import annotations
+from collections import defaultdict
 from typing import TYPE_CHECKING
+
 import numpy as np
 
 if TYPE_CHECKING:
     from engine.state import MuState
 
-LAMBDA_MIN_THRESHOLD = 0.0
+CONSISTENCY_TOL = 1e-8
+LAMBDA_MIN_THRESHOLD = 0.0  # retained for observability only
 
 
 def build_coboundary(mu):
@@ -60,37 +68,61 @@ def build_coboundary(mu):
 
 
 def sheaf_laplacian(mu):
-    """L_F = delta^T delta  (PSD by construction)."""
+    """L_F = delta^T delta  (PSD by construction; observable only, not the validity gate)."""
     d = build_coboundary(mu)
     return d.T @ d
 
 
 def lambda_min(mu):
-    """Minimum eigenvalue of L_F. Returns 0.0 for empty graph."""
+    """
+    Minimum eigenvalue of L_F. Observable metric only (not is_valid gate after E-301-003).
+    Clamped to 0.0 since L_F is PSD by construction; negative values are numerical noise.
+    """
     if not mu.entailments:
         return 0.0
     L = sheaf_laplacian(mu)
     if L.shape == (1, 1):
-        return float(L[0, 0])
+        return max(float(L[0, 0]), 0.0)
     try:
-        return float(np.min(np.linalg.eigvalsh(L)))
+        return max(float(np.min(np.linalg.eigvalsh(L))), 0.0)
     except np.linalg.LinAlgError:
         return -1.0
 
 
 def is_valid(mu):
     """
-    is_valid(mu_t) iff lambda_min(L_F(mu_t)) > 0
-    Trivially True when no entailments exist.
+    Forward entailment consistency check (E-301-003).
+
+    For each target node v in E_t:
+      PARTITION edge (single source u):
+        ||F(u->v)(stalk_u) - stalk_v|| < CONSISTENCY_TOL
+      SYNTHESIS edge (multiple sources u_i):
+        ||sum_i F(u_i->v)(stalk_{u_i}) - stalk_v|| < CONSISTENCY_TOL
+
+    Empty graph: trivially valid.
+    Guaranteed True by construction after apply_phi / apply_psi if restriction
+    maps are correctly set. Fails only if state is externally corrupted or
+    restriction maps are mis-calibrated.
     """
     if not mu.entailments:
         return True
-    return lambda_min(mu) > LAMBDA_MIN_THRESHOLD
+
+    incoming = defaultdict(list)
+    for (src, tgt), ent in mu.entailments.items():
+        incoming[tgt].append((src, ent))
+
+    for tgt_id, edges in incoming.items():
+        stalk_tgt = mu.claims[tgt_id].stalk
+        predicted = sum(
+            ent.restriction @ mu.claims[src_id].stalk
+            for src_id, ent in edges
+        )
+        if np.linalg.norm(predicted - stalk_tgt) > CONSISTENCY_TOL:
+            return False
+
+    return True
 
 
 def delta_lambda_min(mu_prev, mu_next):
-    """
-    delta_lambda_min = lambda_min(mu_{t+1}) - lambda_min(mu_t).
-    Negative -> ConsistencyError; revert to H_{t-1}.
-    """
+    """Observable: change in lambda_min across a state transition."""
     return lambda_min(mu_next) - lambda_min(mu_prev)

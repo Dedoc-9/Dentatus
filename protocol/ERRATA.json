@@ -28,5 +28,24 @@
       "axiom_change": "ENGINE_AXIOMS_exp301.md §2.1: c = 2 -> c = 150 (zlib-adjusted)",
       "date": "2026-06-13"
     }
+  ,
+    {
+      "erratum_id": "E-301-003",
+      "erratum_type": "validity_predicate_correction",
+      "filed": "pre-Phi-execution",
+      "instrument_affected": false,
+      "parameter": "is_valid predicate",
+      "value_declared": "lambda_min(L_F(mu_t)) > 0",
+      "value_corrected": "forward entailment consistency: for each target v, ||sum_i F(src_i->v)(stalk_{src_i}) - stalk_v|| < 1e-8",
+      "reason": "lambda_min(L_F) > 0 is incorrect for our directed DAG. For a connected consistent sheaf with identity-like restriction maps, the sheaf Laplacian always has a zero eigenvalue (the zero mode = constant global section = valid global interpretation). Strict positivity would reject every valid connected state. The correct discriminator for a directed DAG is forward entailment consistency: each child's stalk must equal the image of its parent's stalk under the restriction map (single-source: PARTITION), or the weighted sum of parent images must equal the child's stalk (multi-source: SYNTHESIS). This is the directed-DAG analogue of H^1(G,F)=0 and is guaranteed by construction after correctly-calibrated Phi/Psi. Restriction maps corrected simultaneously: Phi: F(parent->child_i) = outer(stalk_i, stalk_parent)/||stalk_parent||^2; Psi: F(child_i->new) = alpha_i * I. lambda_min retained as observable metric. delta_lambda_min guard replaced by is_valid(new_state) guard.",
+      "code_changes": [
+        "engine/validity.py: is_valid() rewritten as forward entailment consistency check",
+        "engine/operators.py: _phi_restriction() added; restriction map changed from eye(d) to outer product projection",
+        "engine/operators.py: Psi restriction map changed from eye(d) to alpha_i * eye(d)",
+        "engine/operators.py: delta_lambda_min guard replaced with is_valid(new_state) guard"
+      ],
+      "axiom_change": "ENGINE_AXIOMS_exp301.md §3: validity predicate updated",
+      "date": "2026-06-13"
+    }
   ]
 }

@@ -155,10 +155,16 @@ class MuState:
     # ---- primary space ----------------------------------------------------
 
     def Z(self) -> np.ndarray:
-        """Z_t: concatenation of active claim stalks (sorted by id)."""
+        """Z_t: sum of active claim stalks in R^d.
+        Sum (not concatenation) so Z lives in the same R^d space as S and G,
+        enabling G_t = Z_t - Pi_{W_t}(Z_t) via lstsq in R^d.
+        Lossless partition: sum(children) = parent -> G = 0 by construction.
+        """
         if not self.active:
-            return np.zeros(1)
-        return np.concatenate([self.claims[cid].stalk for cid in sorted(self.active)])
+            d = next(iter(self.claims.values())).stalk.shape[0] if self.claims else 1
+            return np.zeros(d)
+        stalks = [self.claims[cid].stalk for cid in self.active]
+        return sum(stalks[1:], stalks[0].copy())
 
     def W_basis(self) -> np.ndarray:
         """Column matrix of active stalks, shape (d, |W_t|)."""

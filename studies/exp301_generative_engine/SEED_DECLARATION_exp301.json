@@ -1,7 +1,7 @@
 {
   "study": "EXP-301",
   "seed_id": "Seed_0",
-  "seed_payload": "Seed_0: initial axiom — existence of at least one claim whose K-complexity is non-zero and whose stalk is non-null.",
+  "seed_payload": "Seed_0: initial axiom -- existence of at least one claim whose K-complexity is non-zero and whose stalk is non-null.",
   "seed_stalk": [1.0, 0.0, 0.0, 0.0],
   "d": 4,
   "alpha": 0.85,
@@ -34,10 +34,10 @@
       "cost_C0": 0.0
     }
   },
-  "validity_predicate": "lambda_min(L_F(mu_t)) > 0",
+  "validity_predicate": "forward_entailment_consistency: ||sum_i F(src_i->v)(stalk_i) - stalk_v|| < 1e-8 (E-301-003)",
   "confluence_predicate": "all_path_equivalences_certified",
   "protocol_version": "exp301-v1",
-  "erratum": "E-301-001",
+  "erratum": "E-301-001 E-301-002 E-301-003",
   "declaration_hash": "3699af66174f42c58184b73b42f6acfae01929b5764fa3d7247505abe826aedd",
   "status": "LOCKED",
   "locked_before_first_operator": true

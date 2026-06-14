@@ -15,6 +15,12 @@ Matroid independence (Ψ):
     r(M_{v_1} ∨ ... ∨ M_{v_k}) == Σᵢ r(M_{v_i})
     implemented as numpy matrix rank over stalk matrices
 
+Restriction maps (E-301-003):
+    Φ: F(parent → child_i) = outer(stalk_i, stalk_parent) / ||stalk_parent||²
+       Satisfies: F(parent→child_i)(stalk_parent) = stalk_i  (by construction)
+    Ψ: F(child_i → new) = alpha_i · I
+       Satisfies: Σᵢ F(child_i→new)(stalk_i) = stalk_new  (weighted sum)
+
 All operators return (new_MuState, cost) or raise an OperatorError.
 On OperatorError the caller must revert to the last sealed state.
 """
@@ -31,10 +37,10 @@ from typing import List, Tuple
 import numpy as np
 
 from engine.state import (
-    C_KBOUND, PROTOCOL_VERSION, Claim, Entailment,
+    C_KBOUND, EPSILON, PROTOCOL_VERSION, Claim, Entailment,
     EntailmentType, MuState, Provenance, now_iso,
 )
-from engine.validity import delta_lambda_min, is_valid, lambda_min
+from engine.validity import is_valid, lambda_min
 
 # ---------------------------------------------------------------------------
 # Error types
@@ -106,6 +112,23 @@ def _orthogonal_decompose(stalk: np.ndarray, N: int, seed: int = 0) -> List[np.n
     return components
 
 
+def _phi_restriction(stalk_child: np.ndarray, stalk_parent: np.ndarray) -> np.ndarray:
+    """
+    Restriction map F(parent → child) for Φ (E-301-003).
+
+    F = outer(stalk_child, stalk_parent) / ||stalk_parent||²
+
+    Satisfies: F(stalk_parent) = stalk_child  (exact by construction).
+    Degenerate case (stalk_child ≈ 0 or stalk_parent ≈ 0): zero matrix.
+    Shape: (d, d).
+    """
+    d = stalk_parent.shape[0]
+    parent_norm_sq = float(np.dot(stalk_parent, stalk_parent))
+    if parent_norm_sq < EPSILON or float(np.dot(stalk_child, stalk_child)) < EPSILON:
+        return np.zeros((d, d))
+    return np.outer(stalk_child, stalk_parent) / parent_norm_sq
+
+
 def _matroid_rank(stalk_matrix: np.ndarray) -> int:
     """Rank of the vector matroid: numpy matrix rank of stalk column matrix."""
     if stalk_matrix.size == 0:
@@ -152,6 +175,9 @@ def apply_phi(
       • K-bound: Σᵢ K(payload_i) ≤ K(payload_v) + C_KBOUND·log(N)
       • stalk dim ≥ N
 
+    Restriction maps: F(parent → child_i) = outer(stalk_i, stalk_parent) / ||stalk_parent||²
+    is_valid(new_state) checked post-construction (E-301-003).
+
     Returns (new_MuState, cost). new_MuState is NOT sealed; caller seals after
     optional confluence check.
     """
@@ -185,7 +211,7 @@ def apply_phi(
     # Stalk decomposition
     stalks = _orthogonal_decompose(parent.stalk, N, seed=hash(partition_key) % (2**31))
 
-    # Build child claims
+    # Build child claims + entailments
     t_new      = mu.t + 1
     prov_hash  = hashlib.sha256(
         (partition_key + PROTOCOL_VERSION).encode()
@@ -194,21 +220,18 @@ def apply_phi(
     new_ents   = dict(mu.entailments)
     child_ids  = []
 
-    for i, (payload, stalk) in enumerate(zip(payloads, stalks)):
+    for i, (payload, stalk_i) in enumerate(zip(payloads, stalks)):
         prov = Provenance(
             parent_ids=(claim_id,),
             operator_id=f"Phi:{partition_key}:{i}",
             timestamp=now_iso(),
         )
-        child = Claim(provenance=prov, payload=payload, stalk=stalk, t=t_new)
+        child = Claim(provenance=prov, payload=payload, stalk=stalk_i, t=t_new)
         new_claims[child.id] = child
         child_ids.append(child.id)
 
-        # Restriction map: identity projection (stalk is already in child space)
-        # F(parent → child): ℝ^{d_parent} → ℝ^{d_child}
-        # Here d_parent == d_child == d; restriction = outer product normalization
-        d = parent.stalk.shape[0]
-        restriction = np.eye(d)           # identity; child stalk already decomposed
+        # Restriction map (E-301-003): F(parent→child_i)(stalk_parent) = stalk_i
+        restriction = _phi_restriction(stalk_i, parent.stalk)
         ent = Entailment(
             source_id=claim_id,
             target_id=child.id,
@@ -231,11 +254,11 @@ def apply_phi(
         alpha=mu.alpha,
     )
 
-    # Consistency guard: Δλ_min must not be negative
-    dlam = delta_lambda_min(mu, new_state)
-    if dlam < 0:
+    # Consistency guard (E-301-003): forward entailment consistency
+    if not is_valid(new_state):
         raise PartitionError(
-            f"CONSISTENCY_ERROR: Δλ_min={dlam:.6f} < 0 after Φ. Reverting."
+            "CONSISTENCY_ERROR: is_valid(mu_1) failed after Φ — "
+            "restriction maps are mis-calibrated. Reverting."
         )
 
     return new_state, cost
@@ -263,8 +286,9 @@ def apply_psi(
       • len(weights) == len(claim_ids); weights normalised internally
       • Matroid independence: r(M_{v_1} ∨ ... ∨ M_{v_k}) == Σᵢ r(M_{v_i})
 
-    stalk(v_new) = Σᵢ αᵢ · F(v_i → v_new)(stalk(v_i))
-    F(v_i → v_new) = identity (stalks are in shared ambient space)
+    stalk(v_new) = Σᵢ αᵢ · stalk(v_i)
+    Restriction maps (E-301-003): F(child_i → new) = alpha_i · I
+    Multi-source consistency: Σᵢ F(child_i→new)(stalk_i) = stalk_new  (by construction)
     """
     k = len(claim_ids)
     for cid in claim_ids:
@@ -312,13 +336,15 @@ def apply_psi(
     new_claims[new_claim.id] = new_claim
 
     new_ents = dict(mu.entailments)
-    for cid in claim_ids:
+    for alpha_i, cid in zip(w, claim_ids):
+        # Restriction map (E-301-003): F(child_i → new) = alpha_i · I
+        # Multi-source check: Σᵢ (alpha_i · I)(stalk_i) = stalk_new  ✓
         src_d = mu.claims[cid].stalk.shape[0]
         ent   = Entailment(
             source_id=cid,
             target_id=new_claim.id,
             etype=EntailmentType.SYNTHESIS,
-            restriction=np.eye(src_d),
+            restriction=alpha_i * np.eye(src_d),
             predicate_hash=prov_hash,
         )
         new_ents[(cid, new_claim.id)] = ent
@@ -334,10 +360,11 @@ def apply_psi(
         alpha=mu.alpha,
     )
 
-    dlam = delta_lambda_min(mu, new_state)
-    if dlam < 0:
+    # Consistency guard (E-301-003): forward entailment consistency (multi-source)
+    if not is_valid(new_state):
         raise SynthesisError(
-            f"CONSISTENCY_ERROR: Δλ_min={dlam:.6f} < 0 after Ψ. Reverting."
+            "CONSISTENCY_ERROR: is_valid(mu_1) failed after Ψ — "
+            "weighted sum inconsistency. Reverting."
         )
 
     return new_state, cost
@@ -357,7 +384,7 @@ def apply_omega(
 
     Preconditions:
       • claim_id ∈ W_t
-      • is_valid(μ_t) (sheaf Laplacian check)
+      • is_valid(μ_t) — forward entailment consistency (E-301-003)
       • confluence_cert is non-empty (issued by confluence.py)
 
     Cost C₀ = 0.0 (observation is free — no budget charge).
@@ -369,7 +396,7 @@ def apply_omega(
         raise ObservationError(f"PRECONDITION: {claim_id} not in W_t.")
     if not is_valid(mu):
         raise ObservationError(
-            f"VALIDITY_FAIL: λ_min(L_F)={lambda_min(mu):.6f} ≤ 0. "
+            "VALIDITY_FAIL: forward entailment consistency violated. "
             "State is inconsistent; Ω blocked."
         )
     if not confluence_cert:

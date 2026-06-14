@@ -15,7 +15,7 @@ All deviations recorded here before lock.
 
 | component | submitted | hardened | reason |
 |-----------|-----------|----------|--------|
-| Validity predicate | r(Matroid(μ_t)) == 1 | λ_min(L_F(μ_t)) > 0 | §3 |
+| Validity predicate | r(Matroid(μ_t)) == 1 | forward entailment consistency (E-301-003) | §3 |
 | Φ conservation | "preserves information density" | K-bound §2.1 | underspecified |
 | Ψ compatibility | "Galois closures non-intersecting" | r(M_A ∨ M_B) = r(M_A) + r(M_B) | §2.2 |
 | [NEW] Path structure | single-path DAG | 2-categorical confluence | §5 |
@@ -131,40 +131,50 @@ v marked OBSERVED, removed from W_t.
 
 ---
 
-## 3. Validity Predicate — Sheaf Laplacian (hardened)
+## 3. Validity Predicate — Forward Entailment Consistency (E-301-003 corrected)
 
 **Submitted**: `r(Matroid(μ_t)) == 1`
 
-**Failure mode of submitted form**: rank-1 matroid over V_t forces every pair of nodes
-into the same circuit — all claims co-dependent. This rejects any DAG with independent
-claim lineages. More fundamentally, matroid rank captures independence structure only;
-it does not detect semantic inconsistency between claim contents.
+**First hardening (superseded by E-301-003)**: `λ_min(L_F(μ_t)) > 0`
 
-**Hardened**:
+**Failure mode of λ_min > 0**: For any connected consistent sheaf on a DAG, the
+sheaf Laplacian L_F = δᵀδ has λ_min = 0 by construction. The zero mode corresponds
+to the constant global section (all nodes have the same value under restriction maps) —
+precisely the valid case. Strict positivity would block every valid connected state.
+λ_min > 0 is the correct predicate for detecting inconsistency in UNDIRECTED sheaves
+where all paths must close; for a directed acyclic graph it is never achievable.
 
-    is_valid(μ_t)  iff  λ_min(L_F(μ_t)) > 0
+**Corrected (E-301-003)**:
 
-where L_F = δᵀδ is the cellular sheaf Laplacian and δ is the coboundary operator:
+    is_valid(μ_t)  iff  for each target v ∈ V_t:
+      ||Σᵢ F(uᵢ → v)(stalk_{uᵢ}) - stalk_v|| < ε
 
-    (δx)_e = F(u → v)(x_u) - x_v    for e = (u → v)
+where the sum is over all edges (uᵢ → v) entering v.
+- Single-source edge (PARTITION): F(parent → child)(stalk_parent) ≈ stalk_child
+- Multi-source edges (SYNTHESIS): Σᵢ F(childᵢ → new)(stalk_i) ≈ stalk_new
 
-**Interpretation**:
-- λ_min > 0 iff no non-trivial harmonic sections exist — no global inconsistency that
-  appears locally consistent
-- λ_min = 0 signals Pseudo-T contamination precisely: a claim satisfying all local
-  predicates while globally underdetermined
-- L_F is positive semi-definite by construction; λ_min < 0 is impossible
+**Interpretation**: each claim's stalk must be exactly derivable from its construction
+history under the declared restriction maps. Violation = stalk corrupted externally,
+restriction maps mis-calibrated, or state rolled back incorrectly.
 
-**Computation**: L_F is block-structured; λ_min via power iteration with deflation.
-O(|E|·d²) per step for sparse DAGs.
+**Restriction maps (corrected simultaneously)**:
+- Φ: `F(parent → child_i) = outer(stalk_i, stalk_parent) / ||stalk_parent||²`
+  Satisfies `F(stalk_parent) = stalk_i` exactly by construction.
+- Ψ: `F(child_i → new) = αᵢ · I`
+  Satisfies `Σᵢ αᵢ · stalk_i = stalk_new` by construction.
+- Both: degenerate case (zero stalk) → zero matrix restriction.
 
-**Invariant enforcement**: at each operator invocation, compute Δλ_min.
-If Δλ_min < 0, operator returns ConsistencyError; state reverts to H_{t-1}.
+**Invariant enforcement**: after each operator, check is_valid(new_state).
+If False, operator returns ConsistencyError; state reverts to H_{t-1}.
 
-**Connection to EXP-102 M3**: M3 ≈ mean closure size / N is a coarse bound on
-entailment graph density. High M3 predicts large off-diagonal mass in L_F, predicting
-small λ_min. The EXP-102 null finding (M3 does not predict detection rate) is consistent
-with L_F being a more sensitive instrument — M3 aggregates what L_F resolves per-edge.
+**λ_min retained as observable**: λ_min(L_F) is computed and logged as a numeric
+metric. It is PSD-clamped (max(λ, 0)) and reported alongside B(t), ESS, η_CLT.
+It does NOT gate operator execution.
+
+**Connection to EXP-102 M3**: The validity correction does not affect M3 linkage.
+Forward consistency is a per-edge predicate; M3 aggregates claim closure density.
+High M3 → dense restriction map matrix → forward consistency violations are
+detectable before the state space collapses (earlier warning signal than M3).
 
 ---
 
@@ -328,7 +338,7 @@ declaration_hash committed before any operator invocation.
 - stalk_collapse: merging Z and S into single representation
 - retroactive_confluence_cert: certifying after Ω called
 - budget_retroactive_adjustment: changing B₀ after Seed_0 committed
-- validity_predicate_shift: changing sheaf Laplacian threshold post-first-operator
+- validity_predicate_shift: changing the forward consistency tolerance ε post-first-operator
 
 ---
 
