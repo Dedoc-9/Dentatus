@@ -238,7 +238,12 @@ class MuState:
     # ---- graph helpers ---------------------------------------------------
 
     def subtree_ids(self, cid: str) -> FrozenSet[str]:
-        """All ancestor ids reachable by walking source edges (includes cid)."""
+        """All descendant ids reachable by walking target edges (includes cid).
+        Traverses DOWNSTREAM (src->tgt direction) to collect claim's own content
+        and all claims it produced. Used for matroid independence check in Psi:
+        M_v = vector matroid of v and its descendants (not ancestors).
+        Ancestors are shared across siblings and would collapse union rank.
+        """
         visited: set = set()
         stack = [cid]
         while stack:
@@ -247,8 +252,8 @@ class MuState:
                 continue
             visited.add(node)
             for (src, tgt) in self.entailments:
-                if tgt == node:
-                    stack.append(src)
+                if src == node:
+                    stack.append(tgt)
         return frozenset(visited)
 
     def subtree_stalk_matrix(self, cid: str) -> np.ndarray:
