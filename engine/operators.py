@@ -418,3 +418,125 @@ def apply_omega(
         "protocol_version": PROTOCOL_VERSION,
     }
     return artifact
+
+
+# ---------------------------------------------------------------------------
+# R3 — Tensor product artifact and joint observation (ENGINE_AXIOMS §5.5)
+# ---------------------------------------------------------------------------
+
+def tensor_product_artifact(
+    art1:    dict,
+    art2:    dict,
+    weights: List[float] = None,
+) -> dict:
+    """
+    Monoidal product: Art_A ⊗ Art_B → Art_tensor
+
+    Defined on Artifact dicts produced by apply_omega.
+    stalk(A⊗B) = w_A·stalk(A) + w_B·stalk(B)   (same weighted sum as Ψ)
+
+    R3 invariant: stalk(Ω(Ψ(A,B))) == stalk(Ω(A) ⊗ Ω(B))
+    Proof: stalk(v_AB) = Σᵢ αᵢ·stalk(vᵢ) by Ψ construction;
+           tensor uses same αᵢ weights; equality is exact.
+
+    K-bound factorization: K(A⊗B) = K(A) + K(B) (not claimed to be tight;
+    the synthesised payload may be shorter — that is the information gain of Ψ).
+    """
+    if weights is None:
+        weights = [0.5, 0.5]
+    w = np.array(weights, dtype=float)
+    w = w / w.sum()
+    s1 = np.array(art1["stalk"], dtype=float)
+    s2 = np.array(art2["stalk"], dtype=float)
+    stalk_product = w[0] * s1 + w[1] * s2
+    return {
+        "type":             "TENSOR_PRODUCT",
+        "claim_ids":        [art1["claim_id"], art2["claim_id"]],
+        "payloads":         [art1["payload"],   art2["payload"]],
+        "stalk":            stalk_product.tolist(),
+        "K_bound_sum":      art1["K_bound"] + art2["K_bound"],
+        "K_synthesis_gain": (art1["K_bound"] + art2["K_bound"]) - art1.get("K_bound", 0),
+        "weights":          w.tolist(),
+        "confluence_certs": [art1["confluence_cert"], art2["confluence_cert"]],
+        "state_hashes":     [art1["state_hash"],      art2["state_hash"]],
+        "t":                max(art1["t"], art2["t"]),
+        "protocol_version": PROTOCOL_VERSION,
+    }
+
+
+def check_r3(
+    art_psi:    dict,
+    art_tensor: dict,
+    tol:        float = 1e-10,
+) -> Tuple[bool, float]:
+    """
+    R3 stalk invariant: ||stalk(Ω(Ψ(A,B))) − stalk(Ω(A)⊗Ω(B))|| < tol
+
+    Returns (passes: bool, err: float).
+    """
+    s_psi    = np.array(art_psi["stalk"],    dtype=float)
+    s_tensor = np.array(art_tensor["stalk"], dtype=float)
+    err = float(np.linalg.norm(s_psi - s_tensor))
+    return err < tol, err
+
+
+def apply_omega_tensor(
+    mu:             MuState,
+    claim_ids:      List[str],
+    certs:          List[str],
+    weights:        List[float] = None,
+) -> dict:
+    """
+    Ω⊗(v_1, ..., v_k) → TensorArtifact
+
+    Joint observation of k matroid-independent claims.
+    Preconditions:
+      • ∀ i: claim_ids[i] ∈ W_t
+      • is_valid(μ_t)
+      • Matroid independence: r(M_{v_1} ∨ ... ∨ M_{v_k}) = Σᵢ r(M_{v_i})
+      • ∀ i: certs[i] non-empty (issued by ConfluenceRegistry)
+
+    Returns TensorArtifact dict (type="TENSOR_PRODUCT") over the k claims.
+    Cost C₀ = 0.0 (observation is free).
+
+    Raises ObservationError if preconditions fail.
+    """
+    k = len(claim_ids)
+    if len(certs) != k:
+        raise ObservationError(f"PRECONDITION: len(certs)={len(certs)} != k={k}.")
+    for cid in claim_ids:
+        if cid not in mu.active:
+            raise ObservationError(f"PRECONDITION: {cid} not in W_t.")
+    if not is_valid(mu):
+        raise ObservationError("VALIDITY_FAIL: forward entailment consistency violated.")
+    if not _check_matroid_independence(mu, claim_ids):
+        raise ObservationError(
+            "MATROID_VIOLATION: claims are not matroid-independent. "
+            "R3 requires r(M_{v_1}∨...∨M_{v_k}) = Σᵢ r(M_{v_i})."
+        )
+    for cert in certs:
+        if not cert:
+            raise ObservationError("CONFLUENCE_CERT_MISSING: all certs must be non-empty.")
+
+    # Observe each component
+    arts = [apply_omega(mu, cid, cert) for cid, cert in zip(claim_ids, certs)]
+
+    # Build tensor product iteratively
+    if weights is None:
+        weights = [1.0 / k] * k
+    w = np.array(weights, dtype=float); w = w / w.sum()
+
+    result = arts[0].copy()
+    result = {
+        "type":             "TENSOR_PRODUCT",
+        "claim_ids":        [a["claim_id"] for a in arts],
+        "payloads":         [a["payload"]  for a in arts],
+        "stalk":            sum(w[i] * np.array(arts[i]["stalk"]) for i in range(k)).tolist(),
+        "K_bound_sum":      sum(a["K_bound"] for a in arts),
+        "weights":          w.tolist(),
+        "confluence_certs": [a["confluence_cert"] for a in arts],
+        "state_hashes":     [a["state_hash"]      for a in arts],
+        "t":                mu.t,
+        "protocol_version": PROTOCOL_VERSION,
+    }
+    return result
