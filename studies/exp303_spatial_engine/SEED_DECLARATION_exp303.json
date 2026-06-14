@@ -1,0 +1,80 @@
+{
+  "study": "EXP-303",
+  "seed_id": "Seed_0_spatial",
+  "seed_payload": "Seed_0_spatial: a unit cube [0,1]^3 with white color (1,1,1) and outward surface normal (0,0,1). Constitutes the minimal spatial claim with position, color, and orientation simultaneously non-degenerate.",
+  "seed_stalk": [
+    0.5,
+    0.5,
+    0.5,
+    1.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0,
+    1.0
+  ],
+  "seed_bbox_lo": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "seed_bbox_hi": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "stalk_schema": {
+    "dims": [
+      "x",
+      "y",
+      "z",
+      "r",
+      "g",
+      "b",
+      "nx",
+      "ny",
+      "nz"
+    ],
+    "position_dims": [
+      0,
+      1,
+      2
+    ],
+    "color_dims": [
+      3,
+      4,
+      5
+    ],
+    "normal_dims": [
+      6,
+      7,
+      8
+    ]
+  },
+  "d": 9,
+  "alpha": 0.85,
+  "beta": 0.4,
+  "B0": 100.0,
+  "spatial_partition_schema": {
+    "axis_bisect_x": "N=2: bisect along x-axis",
+    "axis_bisect_y": "N=2: bisect along y-axis",
+    "axis_bisect_z": "N=2: bisect along z-axis",
+    "octree_split": "N=8: bisect all three axes simultaneously"
+  },
+  "synthesis_schema": {
+    "spatial_blend": "weighted centroid; blended color and normal"
+  },
+  "spatial_validity": "bbox_containment: for each SPATIAL entailment (src->tgt), bbox(tgt) subset bbox(src) component-wise within 1e-10",
+  "algebraic_validity": "forward_entailment_consistency (E-301-003): ||sum_i F(src_i->v)(stalk_i) - stalk_v|| < 1e-8",
+  "rewrite_rules": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "inherited_from": "exp302-v1",
+  "protocol_version": "exp303-v1",
+  "erratum": "",
+  "declaration_hash": "c77fb46519495c1a4088f1cc7adb538dfb212521f4ef8ce42f80001966a92d33",
+  "status": "LOCKED",
+  "locked_before_first_operator": true
+}

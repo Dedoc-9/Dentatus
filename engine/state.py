@@ -35,6 +35,7 @@ class EntailmentType(Enum):
     PARTITION   = "PARTITION"
     SYNTHESIS   = "SYNTHESIS"
     DEPENDENCY  = "DEPENDENCY"
+    SPATIAL     = "SPATIAL"     # geometric subdivision edge (EXP-303)
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,9 @@ class Claim:
     payload:    str
     stalk:      np.ndarray      # F(v) ∈ ℝ^d
     t:          int
+    bbox:       Optional[Tuple[np.ndarray, np.ndarray]] = None
+                                # geometric bounding box (lo,hi) in ℝ^3 — EXP-303
+                                # spatial metadata; NOT included in id hash
 
     # computed at init
     id:      str = field(init=False)

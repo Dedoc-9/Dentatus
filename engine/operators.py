@@ -540,3 +540,215 @@ def apply_omega_tensor(
         "protocol_version": PROTOCOL_VERSION,
     }
     return result
+
+
+# ---------------------------------------------------------------------------
+# Γ — Spatial Subdivision Operator (EXP-303)
+# ---------------------------------------------------------------------------
+
+# Spatial partition keys and their N values
+SPATIAL_KEYS = {
+    "axis_bisect_x": 2,
+    "axis_bisect_y": 2,
+    "axis_bisect_z": 2,
+    "octree_split":  8,
+}
+
+
+def _compute_child_bboxes(
+    parent_bbox: Tuple[np.ndarray, np.ndarray],
+    key: str,
+) -> List[Tuple[np.ndarray, np.ndarray]]:
+    """
+    Compute child bounding boxes for a given spatial partition key.
+    Returns list of (lo, hi) tuples, one per child.
+
+    axis_bisect_x/y/z: N=2, bisect along the named axis.
+    octree_split:      N=8, bisect all three axes simultaneously.
+      Children ordered by 3-bit index (bit2=x, bit1=y, bit0=z):
+        i=0: (lo_x, lo_y, lo_z)  i=1: (lo_x, lo_y, hi_z)
+        i=2: (lo_x, hi_y, lo_z)  i=3: (lo_x, hi_y, hi_z)
+        i=4: (hi_x, lo_y, lo_z)  i=5: (hi_x, lo_y, hi_z)
+        i=6: (hi_x, hi_y, lo_z)  i=7: (hi_x, hi_y, hi_z)
+    """
+    lo, hi = np.array(parent_bbox[0], dtype=float), np.array(parent_bbox[1], dtype=float)
+    mid = (lo + hi) / 2.0
+
+    if key == "axis_bisect_x":
+        return [
+            (lo.copy(),              np.array([mid[0], hi[1], hi[2]])),
+            (np.array([mid[0], lo[1], lo[2]]), hi.copy()),
+        ]
+    elif key == "axis_bisect_y":
+        return [
+            (lo.copy(),              np.array([hi[0], mid[1], hi[2]])),
+            (np.array([lo[0], mid[1], lo[2]]), hi.copy()),
+        ]
+    elif key == "axis_bisect_z":
+        return [
+            (lo.copy(),              np.array([hi[0], hi[1], mid[2]])),
+            (np.array([lo[0], lo[1], mid[2]]), hi.copy()),
+        ]
+    elif key == "octree_split":
+        corners = [lo, mid]   # corners[0]=lo half, corners[1]=hi half
+        bboxes = []
+        for ix in range(2):
+            for iy in range(2):
+                for iz in range(2):
+                    c_lo = np.array([corners[ix][0], corners[iy][1], corners[iz][2]])
+                    c_hi = np.array([corners[1-ix if ix==0 else ix][0],
+                                     corners[1-iy if iy==0 else iy][1],
+                                     corners[1-iz if iz==0 else iz][2]])
+                    # Simpler: lo = [mid[d] if bit set else lo[d]], hi = [hi[d] if bit set else mid[d]]
+                    c_lo2 = np.array([mid[0] if ix else lo[0],
+                                      mid[1] if iy else lo[1],
+                                      mid[2] if iz else lo[2]])
+                    c_hi2 = np.array([hi[0] if ix else mid[0],
+                                      hi[1] if iy else mid[1],
+                                      hi[2] if iz else mid[2]])
+                    bboxes.append((c_lo2, c_hi2))
+        return bboxes
+    else:
+        raise PartitionError(f"UNKNOWN_SPATIAL_KEY: '{key}' not in SPATIAL_KEYS.")
+
+
+def apply_gamma(
+    mu:            MuState,
+    claim_id:      str,
+    partition_key: str,
+    payloads:      List[str],
+    beta:          float,
+    budget:        float,
+    spent:         float,
+) -> Tuple[MuState, float]:
+    """
+    Γ(v, partition_key) → {v_1, ..., v_N}
+
+    Spatial subdivision operator (EXP-303).
+
+    Two independent channels:
+      Algebraic: uses _orthogonal_decompose (sum conservation, same as Φ)
+        Σᵢ stalk(child_i) = stalk(parent)  — unchanged
+      Geometric: assigns bbox to each child via _compute_child_bboxes
+        bbox(child_i) ⊂ bbox(parent)  — spatial containment invariant
+
+    Preconditions:
+      • claim_id ∈ W_t
+      • partition_key ∈ SPATIAL_KEYS
+      • mu.claims[claim_id].bbox is not None  (parent must have bbox declared)
+      • K-bound (same as Φ, C_KBOUND·log(N))
+      • dim check: d ≥ N (from _orthogonal_decompose)
+
+    Post-conditions:
+      • is_valid(new_state)   [forward entailment consistency on algebraic stalks]
+      • is_spatially_valid(new_state)  [bbox containment on SPATIAL edges]
+
+    Entailment type: EntailmentType.SPATIAL (distinct from PARTITION).
+    Cost: C₀ = 1.0 (same as Φ), with backreaction.
+    """
+    from engine.validity import is_spatially_valid
+    from engine.state import EntailmentType
+
+    if claim_id not in mu.active:
+        raise PartitionError(f"PRECONDITION: {claim_id} not in W_t.")
+    if partition_key not in SPATIAL_KEYS:
+        raise PartitionError(
+            f"UNKNOWN_SPATIAL_KEY: '{partition_key}'. "
+            f"Valid keys: {list(SPATIAL_KEYS.keys())}"
+        )
+    N = SPATIAL_KEYS[partition_key]
+    if len(payloads) != N:
+        raise PartitionError(f"PRECONDITION: len(payloads)={len(payloads)} != N={N}.")
+
+    parent = mu.claims[claim_id]
+    if parent.bbox is None:
+        raise PartitionError(
+            f"PRECONDITION: claim {claim_id} has no bbox. "
+            "Spatial subdivision requires a declared bounding box on the parent claim."
+        )
+
+    # K-bound (same as Φ)
+    k_children = sum(len(zlib.compress(p.encode("utf-8"), level=9)) for p in payloads)
+    k_limit = parent.K_bound + C_KBOUND * math.log(N)
+    if k_children > k_limit:
+        raise PartitionError(
+            f"INFORMATION_OVERFLOW: Σ K(children)={k_children:.1f} > "
+            f"K(parent)+c·log(N)={k_limit:.2f}"
+        )
+
+    # Backreaction cost
+    cost = _cost(1.0, beta, mu.S)
+    if spent + cost > budget:
+        raise BudgetExceeded(
+            f"Budget exceeded: spent={spent:.4f} + cost={cost:.4f} > B₀={budget}"
+        )
+
+    # Algebraic channel: orthogonal stalk decomposition
+    stalks = _orthogonal_decompose(
+        parent.stalk, N, seed=hash(partition_key) % (2**31)
+    )
+
+    # Geometric channel: compute child bboxes
+    child_bboxes = _compute_child_bboxes(parent.bbox, partition_key)
+
+    # Build child claims + SPATIAL entailments
+    t_new     = mu.t + 1
+    prov_hash = hashlib.sha256(
+        (partition_key + PROTOCOL_VERSION).encode()
+    ).hexdigest()[:16]
+    new_claims = dict(mu.claims)
+    new_ents   = dict(mu.entailments)
+    child_ids  = []
+
+    for i, (payload, stalk_i, bbox_i) in enumerate(zip(payloads, stalks, child_bboxes)):
+        prov = Provenance(
+            parent_ids=(claim_id,),
+            operator_id=f"Gamma:{partition_key}:{i}",
+            timestamp=now_iso(),
+        )
+        child = Claim(
+            provenance=prov,
+            payload=payload,
+            stalk=stalk_i,
+            t=t_new,
+            bbox=bbox_i,   # geometric metadata
+        )
+        new_claims[child.id] = child
+        child_ids.append(child.id)
+
+        # Algebraic restriction map (same as Φ)
+        restriction = _phi_restriction(stalk_i, parent.stalk)
+        ent = Entailment(
+            source_id=claim_id,
+            target_id=child.id,
+            etype=EntailmentType.SPATIAL,
+            restriction=restriction,
+            predicate_hash=prov_hash,
+        )
+        new_ents[(claim_id, child.id)] = ent
+
+    new_active = (mu.active - {claim_id}) | frozenset(child_ids)
+    new_state  = MuState(
+        t=t_new,
+        claims=new_claims,
+        entailments=new_ents,
+        active=new_active,
+        S=mu.next_S(),
+        alpha=mu.alpha,
+    )
+
+    # Algebraic validity
+    if not is_valid(new_state):
+        raise PartitionError(
+            "CONSISTENCY_ERROR: is_valid failed after Γ — "
+            "algebraic restriction maps mis-calibrated. Reverting."
+        )
+
+    # Spatial validity
+    if not is_spatially_valid(new_state):
+        raise PartitionError(
+            "SPATIAL_CONTAINMENT_ERROR: bbox(child) ⊄ bbox(parent) after Γ. "
+            "Geometric channel invariant violated. Reverting."
+        )
+
+    return new_state, cost

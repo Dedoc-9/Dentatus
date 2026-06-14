@@ -126,3 +126,36 @@ def is_valid(mu):
 def delta_lambda_min(mu_prev, mu_next):
     """Observable: change in lambda_min across a state transition."""
     return lambda_min(mu_next) - lambda_min(mu_prev)
+
+
+# ---------------------------------------------------------------------------
+# Spatial validity — EXP-303
+# ---------------------------------------------------------------------------
+
+def is_spatially_valid(mu) -> bool:
+    """
+    Spatial bounding-box containment check (EXP-303).
+    For every SPATIAL entailment (src → tgt):
+      bbox(tgt) ⊆ bbox(src)  i.e. lo_src ≤ lo_tgt and hi_tgt ≤ hi_src
+      (component-wise, with tolerance 1e-10)
+
+    Returns True if:
+      - no SPATIAL entailments exist (trivially valid), OR
+      - all SPATIAL edges satisfy bbox containment.
+    Returns False if any child bbox violates containment.
+    Skips edges where either endpoint has bbox=None.
+    """
+    from engine.state import EntailmentType
+    TOL = 1e-10
+    for (src_id, tgt_id), ent in mu.entailments.items():
+        if ent.etype != EntailmentType.SPATIAL:
+            continue
+        parent = mu.claims[src_id]
+        child  = mu.claims[tgt_id]
+        if parent.bbox is None or child.bbox is None:
+            continue
+        p_lo, p_hi = parent.bbox
+        c_lo, c_hi = child.bbox
+        if not (np.all(c_lo >= p_lo - TOL) and np.all(c_hi <= p_hi + TOL)):
+            return False
+    return True
