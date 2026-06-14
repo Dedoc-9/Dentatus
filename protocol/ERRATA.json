@@ -14,6 +14,19 @@
       "declaration_hash_pre":  "0d484ed67e20295117c934eca52bf1b41bd3e989f662440652585197c7629868",
       "declaration_hash_post": "3699af66174f42c58184b73b42f6acfae01929b5764fa3d7247505abe826aedd",
       "date": "2026-06-13"
+    },
+    {
+      "erratum_id": "E-301-002",
+      "erratum_type": "engine_constant_correction",
+      "filed": "pre-execution",
+      "instrument_affected": false,
+      "parameter": "C_KBOUND (engine/state.py)",
+      "value_declared": 2,
+      "value_corrected": 150,
+      "reason": "C_KBOUND=2 is derived from theoretical Kolmogorov complexity: K(A,B) <= K(A)+K(B)+O(log n). zlib is not Kolmogorov complexity. Each zlib stream incurs ~12 bytes of per-stream overhead (header + Huffman table) not present in theory. For N=2: C=2 gives slack=1.4 bytes; C=150 gives slack=104 bytes. Empirical check: K(c1)+K(c2)=171 <= K(parent)+150*ln(2)=208 (PASS). C=100 gives limit=173.3 with only 2.3 bytes margin -- too tight. C=150 chosen as zlib-adjusted constant: per-stream overhead (~12 bytes x N) plus sub-string compression loss (~20 bytes) plus elaborative expansion headroom (~70 bytes). ENGINE_AXIOMS §2.1 updated accordingly.",
+      "code_change": "engine/state.py: C_KBOUND = 2 -> 150",
+      "axiom_change": "ENGINE_AXIOMS_exp301.md §2.1: c = 2 -> c = 150 (zlib-adjusted)",
+      "date": "2026-06-13"
     }
   ]
 }

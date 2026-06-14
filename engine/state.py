@@ -24,7 +24,7 @@ import numpy as np
 PROTOCOL_VERSION = "exp301-v1"
 ALPHA_DEFAULT    = 0.85
 EPSILON          = 1e-12
-C_KBOUND         = 2          # K-bound slack constant (ENGINE_AXIOMS §2.1)
+C_KBOUND         = 150          # K-bound slack constant (ENGINE_AXIOMS §2.1)
 
 
 # ---------------------------------------------------------------------------

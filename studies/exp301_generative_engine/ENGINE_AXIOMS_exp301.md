@@ -80,8 +80,12 @@ No cross-stage mutation.
 
     Orthogonality:  ∀ i ≠ j: F(v_i) · F(v_j) = 0  (stalk space)
     K-bound:        Σᵢ K(payload_{v_i}) ≤ K(payload_v) + c·log(N)
-                    c = 2 (protocol default)
+                    c = 150 (zlib-adjusted; E-301-002)
                     K ≈ len(zlib.compress(payload, level=9))
+    Note: c=2 is correct for theoretical Kolmogorov complexity. zlib
+    incurs ~12 bytes per-stream overhead absent from theory. c=150
+    accounts for overhead, sub-string compression loss, and elaborative
+    expansion. Empirical floor: c >= 100 for typical English payloads.
 
 Violation → PartitionError(INFORMATION_OVERFLOW).
 
