@@ -1,0 +1,43 @@
+{
+  "study": "EXP-301",
+  "seed_id": "Seed_0",
+  "seed_payload": "Seed_0: initial axiom — existence of at least one claim whose K-complexity is non-zero and whose stalk is non-null.",
+  "seed_stalk": [1.0],
+  "d": 1,
+  "alpha": 0.85,
+  "beta": 0.4,
+  "B0": 100.0,
+  "partition_schema": {
+    "default_partition": "uniform orthogonal decomposition of stalk space"
+  },
+  "synthesis_schema": {
+    "default_synthesis": "weighted sum of input stalks with matroid independence check"
+  },
+  "rewrite_rules": ["R1", "R2", "R3"],
+  "functor_signatures": {
+    "Phi": {
+      "inputs": ["claim_id: str", "N: int >= 2", "partition_key: str"],
+      "outputs": ["List[claim_id]", "PartitionError"],
+      "conservation": "K-bound + stalk orthogonality",
+      "cost_C0": 1.0
+    },
+    "Psi": {
+      "inputs": ["List[claim_id]", "synthesis_key: str"],
+      "outputs": ["claim_id", "SynthesisError"],
+      "independence_check": "matroid_union_rank == sum_of_individual_ranks",
+      "cost_C0": "k (number of inputs)"
+    },
+    "Omega": {
+      "inputs": ["claim_id"],
+      "outputs": ["Artifact", "ObservationError"],
+      "preconditions": ["is_valid(mu_t)", "is_confluent(mu_t)"],
+      "cost_C0": 0.0
+    }
+  },
+  "validity_predicate": "lambda_min(L_F(mu_t)) > 0",
+  "confluence_predicate": "all_path_equivalences_certified",
+  "protocol_version": "exp301-v1",
+  "declaration_hash": "0d484ed67e20295117c934eca52bf1b41bd3e989f662440652585197c7629868",
+  "status": "LOCKED",
+  "locked_before_first_operator": true
+}
