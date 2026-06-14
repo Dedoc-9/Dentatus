@@ -175,8 +175,18 @@ class MuState:
 
     # ---- dual space -------------------------------------------------------
 
-    def G(self) -> np.ndarray:
-        """G_t = Z_t − Π_{W_t}(Z_t)  (ghost residual, orthogonal to W_t)."""
+    def G(self, registry=None) -> np.ndarray:
+        """
+        G_t = (Z_t − Π_{W_t}(Z_t)) + path_coherence_residual  (E-301-004)
+
+        base term: projection residual (0 for lossless operators by construction)
+        coherence term: Σ_{unresolved ConvergenceRecords} (stalk1 − stalk2)
+          Non-zero iff declare_convergence() called on registry without a
+          registered 2-morphism resolving the pair.
+
+        registry: ConfluenceRegistry | None.
+          If None, returns base term only (backward compatible).
+        """
         Z = self.Z()
         W = self.W_basis()
         try:
@@ -184,11 +194,18 @@ class MuState:
             proj = W @ coeff
         except np.linalg.LinAlgError:
             proj = np.zeros_like(Z)
-        return Z - proj
+        base_G = Z - proj
 
-    def next_S(self) -> np.ndarray:
-        """S_{t+1} = α·S_t + (1−α)·G_t"""
-        G = self.G()
+        if registry is not None:
+            d = Z.shape[0]
+            residual = registry.path_residual_sum(d=d)
+            if residual.shape == base_G.shape:
+                return base_G + residual
+        return base_G
+
+    def next_S(self, registry=None) -> np.ndarray:
+        """S_{t+1} = α·S_t + (1−α)·G_t(registry)"""
+        G = self.G(registry=registry)
         s = self.S
         # broadcast to matching dim if needed
         if s.shape != G.shape:
