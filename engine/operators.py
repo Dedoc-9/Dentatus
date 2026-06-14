@@ -2268,3 +2268,200 @@ def apply_gamma_309_recursive(
             spent_now += rc
 
     return mu_next, total_cost
+
+
+# ============================================================
+# EXP-311: The Asymmetric Injection
+# G_inject auxiliary residual; A->C directed ghost activation
+# Declaration hash: 10659ed4d37c027aed4144fd847c3e35986e49e45be596c9cc77b6806d040f35
+# ============================================================
+
+_ALPHA_EMA_311 = 0.85
+_ALPHA_LEAK_311 = 0.1
+_BETA_CA_311 = 0.3
+_MASS_REF_311 = 2.0     # ||[1,1,1,1]||; unit seed Sector A norm
+_KAPPA_REF_311 = 2.0    # kappa_integral([0,1]^3); unit cube kappa
+
+
+def apply_gamma_311(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    focal_point=None,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+):
+    """
+    EXP-311 non-lossless Gamma operator.
+
+    Wraps apply_gamma_309 with G_inject auxiliary residual injection:
+      G_inject_C[3] = alpha_leak * (||Z_before[0:4]|| / mass_ref)   [A->C]
+      G_inject_A[7] = alpha_leak * beta_CA * (Z_before[11] / kappa_ref)  [C->A, weaker]
+
+    S_C and S_A updated via EMA from G_inject after apply_gamma_309 returns.
+    G_t = Z_t - Pi_W(Z_t) = 0 identity unchanged (structural result).
+    G_inject is orthogonal auxiliary channel; NOT G_t.
+
+    G_inject values appended to mu_next.G_inject_log (non-hashed trace field).
+
+    Returns: (mu_next, cost, validity_class)
+    """
+    # Step 1: record Z_before (stalk aggregate before expansion)
+    Z_before = mu.Z()
+
+    # Step 2: run apply_gamma_309
+    mu_309, cost, validity_class = apply_gamma_309(
+        mu=mu,
+        claim_id=claim_id,
+        partition_key=partition_key,
+        payloads=payloads,
+        beta=beta,
+        budget=budget,
+        spent=spent,
+        focal_point=focal_point,
+        thresholds=thresholds,
+    )
+
+    # Step 3: compute G_inject from Z_before (stateless: only declared inputs)
+    import numpy as _np
+    mass_norm = float(_np.linalg.norm(Z_before[0:4]))
+    kappa_val = float(Z_before[11])
+
+    G_inject_C = _np.zeros(4)
+    G_inject_C[3] = alpha_leak * (mass_norm / (mass_ref + 1e-15))
+
+    G_inject_A = _np.zeros(8)
+    G_inject_A[7] = alpha_leak * beta_CA * (kappa_val / (kappa_ref + 1e-15))
+
+    # Step 4: EMA update S_C
+    s_c = mu_309.S_C if mu_309.S_C is not None else _np.zeros(4)
+    s_c_new = _ALPHA_EMA_311 * s_c + (1.0 - _ALPHA_EMA_311) * G_inject_C
+    mu_next = mu_309._replace_S_C(s_c_new)
+
+    # Step 5: EMA update S_A
+    s_a = mu_next.S_A if mu_next.S_A is not None else _np.zeros(8)
+    s_a_new = _ALPHA_EMA_311 * s_a + (1.0 - _ALPHA_EMA_311) * G_inject_A
+    mu_next = mu_next._replace_S_A(s_a_new)
+
+    # Step 6: append G_inject trace (non-hashed)
+    # Read from INPUT mu (not mu_next): apply_gamma_309 constructs fresh MuState
+    # internally, dropping dynamic attributes. Propagate from the input state.
+    log = getattr(mu, 'G_inject_log', None)
+    if log is None:
+        log = []
+    log = log + [(float(G_inject_C[3]), float(G_inject_A[7]))]
+    mu_next.G_inject_log = log
+
+    # Step 7: update ghost history for TE
+    # Same issue: read ghost_history from INPUT mu, copy, append current norms.
+    import _collections_abc as _abc
+    from collections import deque as _deque
+    _hist_src = getattr(mu, 'ghost_history', None)
+    if _hist_src is None:
+        _hist = _deque(maxlen=32)
+    else:
+        _hist = _deque(_hist_src, maxlen=32)
+    _hist.append((float(_np.linalg.norm(s_a_new)), float(_np.linalg.norm(s_c_new))))
+    mu_next.ghost_history = _hist
+
+    return mu_next, cost, validity_class
+
+
+def apply_gamma_311_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+    focal_point=None,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+):
+    """
+    Recursive Gamma_311 with SPRT LOD gating and G_inject ghost activation.
+
+    Inherits LOD_RELAXED guard, focal point update, and ghost quarantine from
+    apply_gamma_309. Adds G_inject EMA update at every partition step.
+
+    Returns: (final_mu, total_cost)
+    """
+    if thresholds is None:
+        thresholds = _LOD_THRESHOLDS_309
+    if focal_point is None:
+        focal_point = mu.focal_point_value()
+
+    if K_budget < K_MIN_PARTITION:
+        return mu, 0.0
+
+    # LOD_RELAXED guard (MuState attribute, not Claim)
+    if getattr(mu, 'validity_class', 'FULL_VALID') == 'LOD_RELAXED':
+        return mu, 0.0
+
+    N = SPATIAL_KEYS[partition_key]
+    child_bboxes_preview = _compute_child_bboxes(mu.claims[claim_id].bbox, partition_key)
+    payloads = [
+        _bbox_hash_payload(child_bboxes_preview[i], depth, i)
+        for i in range(N)
+    ]
+
+    try:
+        mu_next, cost, validity_class = apply_gamma_311(
+            mu=mu,
+            claim_id=claim_id,
+            partition_key=partition_key,
+            payloads=payloads,
+            beta=beta,
+            budget=budget,
+            spent=spent,
+            focal_point=focal_point,
+            thresholds=thresholds,
+            alpha_leak=alpha_leak,
+            beta_CA=beta_CA,
+            mass_ref=mass_ref,
+            kappa_ref=kappa_ref,
+        )
+    except PartitionError:
+        return mu, 0.0
+
+    total_cost = cost
+    spent_now = spent + cost
+    K_child = K_budget * math.exp(-LAMBDA_DECAY)
+    fp_next = mu_next.focal_point_value()
+
+    # Only recurse into FULL_VALID children
+    if validity_class == 'FULL_VALID':
+        new_child_ids = [cid for cid in mu_next.active if cid not in mu.active]
+        for cid in new_child_ids:
+            mu_next, rc = apply_gamma_311_recursive(
+                mu=mu_next,
+                claim_id=cid,
+                partition_key=partition_key,
+                beta=beta,
+                budget=budget,
+                spent=spent_now,
+                K_budget=K_child,
+                depth=depth + 1,
+                focal_point=fp_next,
+                thresholds=thresholds,
+                alpha_leak=alpha_leak,
+                beta_CA=beta_CA,
+                mass_ref=mass_ref,
+                kappa_ref=kappa_ref,
+            )
+            total_cost += rc
+            spent_now += rc
+
+    return mu_next, total_cost
