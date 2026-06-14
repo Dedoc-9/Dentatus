@@ -379,16 +379,137 @@ def is_valid_kappa_308(mu, kappa_dim=11, tol=1e-8) -> bool:
       kappa_geom = kappa_integral(claim.bbox)
       | stalk[kappa_dim] - kappa_geom | < tol
 
-    Claims without bbox or stalk dim <= kappa_dim: skipped.
-    Empty graph: trivially valid.
+    Claims without bbox are skipped.
+    Returns True if no qualifying claims exist.
     """
     for cid, claim in mu.claims.items():
-        if claim.stalk.shape[0] <= kappa_dim:
-            continue
+        if claim.stalk.shape[0] > kappa_dim and claim.bbox is not None:
+            kappa_geom = kappa_integral(claim.bbox)
+            if abs(float(claim.stalk[kappa_dim]) - kappa_geom) > tol:
+                return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# LOD Observer validity -- EXP-309
+# ---------------------------------------------------------------------------
+
+LOD_EPS       = 1e-12   # distance floor for LOD computation
+LOD_THRESHOLDS_309 = {
+    "is_valid_kappa_308": 0.05,   # bypass when bbox > 20x its size from focal
+    "is_unit_norm":       0.10,   # bypass when bbox > 10x its size from focal
+    "is_spatially_valid": 0.01,   # bypass at extreme distance (100x)
+}
+NON_BYPASSABLE_309 = frozenset([
+    "is_valid",
+    "is_valid_b",
+    "is_valid_block_diagonal_306",
+])
+BYPASSABLE_309 = frozenset(LOD_THRESHOLDS_309.keys())
+
+
+def lod_value(bbox, focal_point, eps=LOD_EPS) -> float:
+    """
+    LOD(bbox, f) = max(lx,ly,lz) / (||centroid(bbox) - f||_2 + eps)
+
+    Returns float >= 0. Approaches inf as bbox centroid -> focal_point.
+    P_yz invariant: LOD(mirror_bbox, mirror_f) = LOD(fwd_bbox, fwd_f) exactly.
+    """
+    lo, hi = bbox
+    lx = float(hi[0] - lo[0]); ly = float(hi[1] - lo[1]); lz = float(hi[2] - lo[2])
+    l = max(lx, ly, lz)
+    c = (np.array(lo, dtype=float) + np.array(hi, dtype=float)) / 2.0
+    dist = float(np.linalg.norm(c - np.asarray(focal_point, dtype=float)))
+    return l / (dist + eps)
+
+
+def lod_bypass_set(bbox, focal_point,
+                   thresholds=None) -> frozenset:
+    """
+    Return frozenset of predicate names to bypass for this claim given focal_point.
+    A predicate is bypassed when LOD(bbox, focal_point) < threshold[predicate].
+    """
+    if thresholds is None:
+        thresholds = LOD_THRESHOLDS_309
+    lod = lod_value(bbox, focal_point)
+    return frozenset(p for p, tau in thresholds.items() if lod < tau)
+
+
+def is_lod_valid_309(mu, focal_point, thresholds=None):
+    """
+    Synchronous Predicate Relaxation Tier (SPRT) validity check.
+
+    Returns (bool, validity_class) where validity_class in
+    {'FULL_VALID', 'LOD_RELAXED', 'INVALID'}.
+
+    FULL_VALID:   all 6 predicates pass; no bypasses active.
+    LOD_RELAXED:  non-bypassed predicates pass; >=1 predicate bypassed.
+    INVALID:      any NON_BYPASSABLE predicate fails.
+
+    NON_BYPASSABLE are checked globally (whole mu):
+        is_valid, is_valid_b, is_valid_block_diagonal_306
+
+    Per-claim checks (bypassable):
+        is_valid_kappa_308, is_unit_norm, is_spatially_valid
+    """
+    import numpy as _np
+    if thresholds is None:
+        thresholds = LOD_THRESHOLDS_309
+
+    # --- Non-bypassable global checks ---
+    if not is_valid(mu):
+        return False, 'INVALID'
+    if not is_valid_b(mu):
+        return False, 'INVALID'
+    if not is_valid_block_diagonal_306(mu):
+        return False, 'INVALID'
+
+    any_bypass = False
+
+    for cid, claim in mu.claims.items():
         if claim.bbox is None:
             continue
-        kappa_geom = kappa_integral(claim.bbox)
-        kappa_stalk = float(claim.stalk[kappa_dim])
-        if abs(kappa_stalk - kappa_geom) > tol:
-            return False
-    return True
+        bypass = lod_bypass_set(claim.bbox, focal_point, thresholds)
+        if bypass:
+            any_bypass = True
+
+        # is_unit_norm per claim
+        if "is_unit_norm" not in bypass:
+            if claim.stalk.shape[0] >= 11:
+                n = claim.stalk[8:11]
+                if abs(float(_np.linalg.norm(n)) - 1.0) > 1e-6:
+                    return False, 'INVALID'
+
+        # is_valid_kappa_308 per claim
+        if "is_valid_kappa_308" not in bypass:
+            if claim.stalk.shape[0] > 11:
+                kappa_geom = kappa_integral(claim.bbox)
+                if abs(float(claim.stalk[11]) - kappa_geom) > 1e-8:
+                    return False, 'INVALID'
+
+    # is_spatially_valid: global; bypass only if ALL active claims have it bypassed
+    all_spatial_bypassed = all(
+        "is_spatially_valid" in lod_bypass_set(
+            mu.claims[c].bbox, focal_point, thresholds)
+        for c in mu.active
+        if mu.claims[c].bbox is not None
+    )
+    if not all_spatial_bypassed:
+        if not is_spatially_valid(mu):
+            return False, 'INVALID'
+
+    return True, ('LOD_RELAXED' if any_bypass else 'FULL_VALID')
+
+
+def bypass_registry_309(mu, focal_point, thresholds=None) -> dict:
+    """
+    Compute per-claim bypass sets for all claims with bboxes.
+    Returns Dict[claim_id -> frozenset[predicate_name]].
+    """
+    if thresholds is None:
+        thresholds = LOD_THRESHOLDS_309
+    return {
+        cid: lod_bypass_set(claim.bbox, focal_point, thresholds)
+        for cid, claim in mu.claims.items()
+        if claim.bbox is not None
+    }

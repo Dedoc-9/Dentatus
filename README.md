@@ -40,6 +40,7 @@ Cross-stage mutation outside the defined mapping is forbidden.
 | `apply_gamma_306` / `_recursive` | EXP-306 | additive: `kappa_child = kappa_parent * ω_i` |
 | `apply_gamma_307` / `_recursive` | EXP-307 | shape operator trace: `tr(H_bbox) = Σ 2/l_i` |
 | `apply_gamma_308` / `_recursive` | EXP-308 | area-weighted integral: `2(ly·lz/lx + lx·lz/ly + lx·ly/lz) / (lx·ly + ly·lz + lx·lz)` |
+| `apply_gamma_309` / `_recursive` | EXP-309 | SPRT LOD gating on top of EXP-308; focal point update; ghost quarantine |
 
 ### Stalk schema — d=12
 
@@ -176,6 +177,20 @@ Post-execution rule addition is forbidden. All predicates must be declared and l
 `SEED_DECLARATION_*.json` before any operator is implemented.
 
 ---
+
+## EXP-309 dev notes
+
+### Ghost quarantine ghost #2
+
+For lossless centroid-outward operators, G_C = 0 exactly (children sum to parent in Sector C). S_C therefore accumulates zero residual regardless of quarantine case. Quarantine becomes informative only when a non-lossless operator (e.g. asymmetric stalk injection) creates persistent G_C != 0.
+
+### LOD_RELAXED validity_class propagation
+
+validity_class is set on MuState (not on individual Claim objects). The recursive guard checks getattr(mu, "validity_class", "FULL_VALID") on the input state. A LOD_RELAXED input state blocks all further expansion of its active leaves. FULL_VALID states recurse normally.
+
+### Focal point is not hashed
+
+focal_point is a dynamic attribute on MuState, excluded from H_t. It is a mutable observer parameter, not part of the validity state. Changing focal_point between calls produces different LOD values and validity classes without invalidating the hash chain.
 
 ## EXP-309 open limits
 

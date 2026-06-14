@@ -2123,3 +2123,148 @@ def apply_gamma_308_recursive(
         spent_now += rc
 
     return mu_next, total_cost
+
+
+# ===========================================================================
+# EXP-309 -- Gamma_309 (SPRT LOD observer, focal point, ghost quarantine)
+# ===========================================================================
+
+from engine.validity import (
+    lod_value as _lod_value,
+    lod_bypass_set as _lod_bypass_set,
+    is_lod_valid_309 as _is_lod_valid_309,
+    bypass_registry_309 as _bypass_registry_309,
+    LOD_THRESHOLDS_309 as _LOD_THRESHOLDS_309,
+    NON_BYPASSABLE_309 as _NON_BYPASSABLE_309,
+)
+
+
+def apply_gamma_309(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    focal_point=None,
+    thresholds=None,
+):
+    """
+    Gamma_309: SPRT LOD-gated single-step partition.
+
+    Operator pipeline: mu -> Ltau -> Btau -> Rtau -> Z -> S -> W -> OBS
+    Validity class (SPRT):
+      FULL_VALID  : all 6 predicates pass, no bypasses active.
+      LOD_RELAXED : non-bypassed predicates pass; >=1 bypassable predicate bypassed.
+      INVALID     : any NON_BYPASSABLE predicate fails -> PartitionError.
+
+    LOD_RELAXED claims: not revert targets, not partition sources.
+    Ghost quarantine applied via mu.next_S_C_309(bypass_registry).
+    focal_point defaults to mu.focal_point_value() (mass-weighted centroid).
+    """
+    if thresholds is None:
+        thresholds = _LOD_THRESHOLDS_309
+    if focal_point is None:
+        focal_point = mu.focal_point_value()
+
+    # Step 1: run the base 308 partition
+    mu_next, cost = apply_gamma_308(
+        mu=mu, claim_id=claim_id, partition_key=partition_key,
+        payloads=payloads, beta=beta, budget=budget, spent=spent,
+    )
+
+    # Step 2: LOD validity check
+    valid, validity_class = _is_lod_valid_309(mu_next, focal_point, thresholds)
+    if not valid:
+        raise PartitionError(
+            f'apply_gamma_309: INVALID after partition. '
+            f'claim_id={claim_id}, partition_key={partition_key}'
+        )
+
+    # Step 3: ghost quarantine for LOD_RELAXED
+    bypass_reg = _bypass_registry_309(mu_next, focal_point, thresholds)
+    if validity_class == 'LOD_RELAXED':
+        s_c_new = mu_next.next_S_C_309(bypass_reg)
+        mu_next = mu_next._replace_S_C(s_c_new)
+
+    # Step 4: update focal point
+    fp_new = mu_next.next_focal_point()
+    mu_next = mu_next._replace_focal_point(fp_new)
+
+    # Step 5: tag validity class
+    mu_next = mu_next._replace_validity_class(validity_class)
+
+    return mu_next, cost, validity_class
+
+
+def apply_gamma_309_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+    focal_point=None,
+    thresholds=None,
+):
+    """
+    Recursive Gamma_309 with SPRT LOD gating.
+
+    LOD_RELAXED claims are NOT expanded (partition_source=False).
+    FULL_VALID claims recurse normally with decaying K_budget.
+    Ghost quarantine applied after each LOD_RELAXED step.
+    Focal point updated after each step.
+
+    Returns: (final_mu, total_cost)
+    """
+    if thresholds is None:
+        thresholds = _LOD_THRESHOLDS_309
+    if focal_point is None:
+        focal_point = mu.focal_point_value()
+
+    if K_budget < K_MIN_PARTITION:
+        return mu, 0.0
+
+    # LOD_RELAXED guard: do not expand a state produced by a LOD_RELAXED partition.
+    # validity_class is set on MuState by _replace_validity_class, not on Claim.
+    if getattr(mu, 'validity_class', 'FULL_VALID') == 'LOD_RELAXED':
+        return mu, 0.0
+
+    N = SPATIAL_KEYS[partition_key]
+    child_bboxes_preview = _compute_child_bboxes(mu.claims[claim_id].bbox, partition_key)
+    payloads = [
+        _bbox_hash_payload(child_bboxes_preview[i], depth, i)
+        for i in range(N)
+    ]
+
+    try:
+        mu_next, cost, validity_class = apply_gamma_309(
+            mu=mu, claim_id=claim_id, partition_key=partition_key,
+            payloads=payloads, beta=beta, budget=budget, spent=spent,
+            focal_point=focal_point, thresholds=thresholds,
+        )
+    except PartitionError:
+        return mu, 0.0
+
+    total_cost = cost
+    spent_now = spent + cost
+    K_child = K_budget * math.exp(-LAMBDA_DECAY)
+    fp_next = mu_next.focal_point_value()
+
+    # Only recurse into FULL_VALID children
+    if validity_class == 'FULL_VALID':
+        new_child_ids = [cid for cid in mu_next.active if cid not in mu.active]
+        for cid in new_child_ids:
+            mu_next, rc = apply_gamma_309_recursive(
+                mu=mu_next, claim_id=cid, partition_key=partition_key,
+                beta=beta, budget=budget, spent=spent_now,
+                K_budget=K_child, depth=depth + 1,
+                focal_point=fp_next, thresholds=thresholds,
+            )
+            total_cost += rc
+            spent_now += rc
+
+    return mu_next, total_cost

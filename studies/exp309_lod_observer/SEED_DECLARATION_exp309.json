@@ -1,0 +1,61 @@
+{
+  "experiment": "EXP-309",
+  "protocol_version": "exp309-v1",
+  "inherits": "exp308-v1",
+  "d": 12,
+  "seed_stalk": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.5,
+    0.5,
+    0.5,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+    2.0
+  ],
+  "seed_focal_point": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "lod": {
+    "formula": "max(lx,ly,lz) / (norm(centroid - f) + 1e-12)",
+    "eps": 1e-12,
+    "thresholds": {
+      "is_valid_kappa_308": 0.05,
+      "is_unit_norm": 0.1,
+      "is_spatially_valid": 0.01
+    },
+    "non_bypassable": [
+      "is_valid",
+      "is_valid_b",
+      "is_valid_block_diagonal_306"
+    ]
+  },
+  "validity_classes": {
+    "FULL_VALID": {
+      "cacheable": true,
+      "revert_target": true,
+      "partition_source": true
+    },
+    "LOD_RELAXED": {
+      "cacheable": false,
+      "revert_target": false,
+      "partition_source": false
+    }
+  },
+  "focal_point_update": "mass_weighted_centroid",
+  "focal_point_fallback": "geometric_centroid_of_bboxes",
+  "focal_convergence_eps": 1e-08,
+  "ghost_quarantine": {
+    "kappa_bypass": "freeze S_C[0:4]",
+    "norm_bypass": "freeze S_C[0:3], update S_C[3]"
+  },
+  "kappa_regularization": "eps_rel=1e-9; eps=max(lx,ly,lz)*eps_rel; li=max(li,eps)",
+  "declaration_hash": "1c3f709e924ca7a053f39666bfe6efbd0e40269918b33a31083e8b381fcca86c",
+  "status": "LOCKED"
+}

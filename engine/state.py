@@ -360,3 +360,123 @@ class MuState:
         Z = self.Z()
         Z_C = Z[8:12] if Z.shape[0] >= 12 else np.zeros(4)
         return float(np.linalg.norm(S_C) / (np.linalg.norm(Z_C) + EPSILON))
+
+    def eta_AC(self) -> float:
+        """
+        eta_AC(t) = |lambda_A . lambda_C| / (||lambda_A|| * ||lambda_C|| + eps)
+
+        Cosine similarity between per-sector projection coefficient vectors.
+        lambda_A: lstsq(W_basis[0:8,:], Z[0:8])  -- sector A+B weighting
+        lambda_C: lstsq(W_basis[8:12,:], Z[8:12]) -- sector C weighting
+
+        Returns 0.0 if |W_t| < 2 or either lambda is zero.
+        Range: [0, 1]. 0 = fully decoupled; 1 = identical stalk weighting.
+        """
+        if len(self.active) < 2:
+            return 0.0
+        Z = self.Z()
+        if Z.shape[0] < 12:
+            return 0.0
+        W = self.W_basis()
+        W_A = W[0:8, :];  Z_A = Z[0:8]
+        W_C = W[8:12, :]; Z_C = Z[8:12]
+        try:
+            lam_A, _, _, _ = np.linalg.lstsq(W_A, Z_A, rcond=None)
+            lam_C, _, _, _ = np.linalg.lstsq(W_C, Z_C, rcond=None)
+        except np.linalg.LinAlgError:
+            return 0.0
+        norm_A = float(np.linalg.norm(lam_A))
+        norm_C = float(np.linalg.norm(lam_C))
+        if norm_A < EPSILON or norm_C < EPSILON:
+            return 0.0
+        return float(abs(np.dot(lam_A, lam_C)) / (norm_A * norm_C + EPSILON))
+
+    # ---- EXP-309: focal point + LOD observer --------------------------------
+
+    # focal_point: Optional[np.ndarray] stored as instance attribute (not field)
+    # Set after construction: mu.focal_point = np.array([...])
+    # NOT included in H_t hash computation.
+
+    def next_focal_point(self, eps: float = 1e-12) -> np.ndarray:
+        """
+        f_{t+1} = mass-weighted centroid of active leaves.
+
+        pos_cid  = stalk_B[cid][0:3]   (dims 4,5,6)
+        mass_cid = ||stalk_A[cid]||_2  (dims 0:4)
+
+        Fallback: if total mass < eps -> geometric centroid of active bbox centroids.
+        """
+        if not self.active:
+            return np.zeros(3)
+        positions = np.array([self.claims[c].stalk[4:7] for c in self.active])
+        masses    = np.array([float(np.linalg.norm(self.claims[c].stalk[0:4]))
+                              for c in self.active])
+        total = float(masses.sum())
+        if total < eps:
+            bboxes = [self.claims[c].bbox for c in self.active
+                      if self.claims[c].bbox is not None]
+            if bboxes:
+                return np.mean([(lo + hi) / 2.0 for lo, hi in bboxes], axis=0)
+            return np.zeros(3)
+        return float(1.0 / total) * (positions * masses[:, None]).sum(axis=0)
+
+    def next_S_C_309(self, bypass_registry: dict) -> np.ndarray:
+        """
+        Ghost quarantine for EXP-309 (EMA with selective freeze).
+
+        bypass_registry: Dict[claim_id -> frozenset of bypassed predicate names]
+
+        CASE 1 (any active claim has is_valid_kappa_308 bypassed):
+            freeze S_C entirely -- spurious kappa residual must not accumulate.
+        CASE 2 (any active claim has is_unit_norm bypassed, kappa not bypassed):
+            freeze dims 0:3 (normal); update dim 3 (kappa) via standard EMA.
+        CASE 3 (no bypass active):
+            full EMA update (standard EXP-308 next_S_C).
+        """
+        bypassed_kappa = any("is_valid_kappa_308" in bypass_registry.get(c, frozenset())
+                             for c in self.active)
+        bypassed_norm  = any("is_unit_norm" in bypass_registry.get(c, frozenset())
+                             for c in self.active)
+
+        if bypassed_kappa:
+            # full freeze
+            s = self.S_C if self.S_C is not None else np.zeros(4)
+            return s.copy()
+        elif bypassed_norm:
+            # partial freeze: update kappa dim only
+            G_C = self.G_C()
+            s = (self.S_C if self.S_C is not None else np.zeros(4)).copy()
+            if s.shape[0] >= 4 and G_C.shape[0] >= 4:
+                s[3] = self.alpha * s[3] + (1.0 - self.alpha) * G_C[3]
+            return s
+        else:
+            return self.next_S_C()
+
+    def focal_point_value(self) -> np.ndarray:
+        """Return stored focal_point or default [0.5,0.5,0.5]."""
+        fp = getattr(self, 'focal_point', None)
+        return fp if fp is not None else np.array([0.5, 0.5, 0.5])
+
+    def _replace_S_C(self, s_c_new: np.ndarray) -> 'MuState':
+        """Return copy of self with S_C replaced; reseals (S_C affects H_t)."""
+        import copy as _copy
+        mu = _copy.copy(self)
+        mu.S_C     = s_c_new
+        mu._H      = None
+        mu._sealed = False
+        mu.seal()
+        return mu
+
+    def _replace_focal_point(self, fp: np.ndarray) -> 'MuState':
+        """Return copy of self with focal_point updated. Does not affect H_t."""
+        import copy as _copy
+        mu = _copy.copy(self)
+        mu.focal_point = fp
+        return mu
+
+    def _replace_validity_class(self, vc: str) -> 'MuState':
+        """Return copy of self with validity_class set. Does not affect H_t."""
+        import copy as _copy
+        mu = _copy.copy(self)
+        mu.validity_class = vc
+        return mu
