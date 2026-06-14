@@ -27,8 +27,7 @@
       "code_change": "engine/state.py: C_KBOUND = 2 -> 150",
       "axiom_change": "ENGINE_AXIOMS_exp301.md §2.1: c = 2 -> c = 150 (zlib-adjusted)",
       "date": "2026-06-13"
-    }
-  ,
+    },
     {
       "erratum_id": "E-301-003",
       "erratum_type": "validity_predicate_correction",
@@ -45,6 +44,23 @@
         "engine/operators.py: delta_lambda_min guard replaced with is_valid(new_state) guard"
       ],
       "axiom_change": "ENGINE_AXIOMS_exp301.md §3: validity predicate updated",
+      "date": "2026-06-13"
+    },
+    {
+      "erratum_id": "E-301-004",
+      "erratum_type": "ghost_channel_structural_note",
+      "filed": "post-trajectory-test",
+      "instrument_affected": false,
+      "parameter": "G_t (ghost residual)",
+      "observed": "G_t = 0 identically for all lossless operators in current implementation",
+      "reason": "Z_t = sum(active stalks) is a trivial linear combination of W_basis columns (coeff=all-ones vector). Therefore Pi_{W_t}(Z_t) = Z_t and G_t = 0 is mathematically exact for any sequence of lossless Phi/Psi. Confirmed by run_trajectory_test.py: ||G||<1e-15 at all 4 steps. Lossless: Phi conservation law sum(children)=parent; Psi with normalized weights may change stalk magnitudes but v_new is a column of new W, so Z_new stays in span(W_new).",
+      "non_zero_sources": [
+        "path coherence defect: stalk(P1(v)) - stalk(P2(v)) for unresolved 2-morphism convergences (ENGINE_AXIOMS §5.4) -- not yet wired into G()",
+        "lossy stalk compression: explicit stalk quantization or noise injection not present in current operators",
+        "path-divergent Phi: partitioning the same claim under two distinct partition_keys produces distinct stalks; if these converge without a registered 2-morphism the difference enters G"
+      ],
+      "status": "OPEN",
+      "proposed_fix": "Augment G() with path-coherence residual: G_t += sum_{unresolved v}(stalk(P1(v)) - stalk(P2(v))). Requires ConfluenceRegistry to track stalk-valued path residuals per claim. Implement before backreaction tests at non-zero S.",
       "date": "2026-06-13"
     }
   ]
