@@ -198,7 +198,7 @@ def apply_phi(
     if k_children > k_limit:
         raise PartitionError(
             f"INFORMATION_OVERFLOW: Σ K(children)={k_children:.1f} > "
-            f"K(parent)+c·log(N)={k_limit:.2f}"
+            f"K(parent)+c*log(N)={k_limit:.2f}"
         )
 
     # Backreaction cost
@@ -673,7 +673,7 @@ def apply_gamma(
     if k_children > k_limit:
         raise PartitionError(
             f"INFORMATION_OVERFLOW: Σ K(children)={k_children:.1f} > "
-            f"K(parent)+c·log(N)={k_limit:.2f}"
+            f"K(parent)+c*log(N)={k_limit:.2f}"
         )
 
     # Backreaction cost
@@ -749,6 +749,357 @@ def apply_gamma(
         raise PartitionError(
             "SPATIAL_CONTAINMENT_ERROR: bbox(child) ⊄ bbox(parent) after Γ. "
             "Geometric channel invariant violated. Reverting."
+        )
+
+    return new_state, cost
+
+
+# ===========================================================================
+# EXP-304 — Φ_B (Sector B barycentric partition) + Γ_304 (dual-sector Gamma)
+# ===========================================================================
+
+SECTOR_A_DIMS = (0, 1, 2, 3)   # [mass, r, g, b]  sum-conserved
+SECTOR_B_DIMS = (4, 5, 6, 7)   # [x, y, z, w]     barycentric, w=1
+
+
+def apply_phi_b(
+    mu,
+    claim_id:   str,
+    N:          int,
+    payloads:   list,
+    beta:       float,
+    budget:     float,
+    spent:      float,
+    weights:    list = None,
+) -> tuple:
+    """
+    Φ_B — Sector B barycentric partition (EXP-304).
+
+    Algebraic:
+      stalk_B(child_i) = [centroid_x(bbox_i), centroid_y(bbox_i), centroid_z(bbox_i), 1.0]
+      Σᵢ ωᵢ · stalk_B(child_i) = stalk_B(parent)  iff ωᵢ = vol(bbox_i)/vol(parent)
+      or uniformly ωᵢ = 1/N when all bboxes are equal.
+
+    Preconditions:
+      - claim is in mu.active (not retired)
+      - claim.bbox is not None (bbox required for centroid assignment)
+      - N >= 2
+      - K-bound: Σᵢ K(payload_i) ≤ K(parent) + C_KBOUND·log(N)
+
+    Sector A (dims 0–3) is NOT touched by Φ_B; it remains on the parent.
+    Φ_B is called from apply_gamma_304 after Sector A is decomposed by Φ_A.
+
+    Returns: (new_mu, cost)
+    """
+    from engine.validity import is_valid_b, is_spatially_valid, is_valid
+    import math
+
+    if claim_id not in mu.active:
+        raise PartitionError(f"PHI_B_ERROR: claim {claim_id} not in active set.")
+
+    parent = mu.claims[claim_id]
+    if parent.bbox is None:
+        raise PartitionError(f"PHI_B_ERROR: claim {claim_id} has no bbox; Sector B centroid undefined.")
+
+    d = parent.stalk.shape[0]
+    if d <= SECTOR_B_DIMS[-1]:
+        raise PartitionError(f"PHI_B_ERROR: stalk dim={d} < {SECTOR_B_DIMS[-1]+1}; Sector B inaccessible.")
+
+    if len(payloads) != N:
+        raise PartitionError(f"PHI_B_ERROR: expected {N} payloads, got {len(payloads)}.")
+
+    # K-bound
+    k_children = sum(len(zlib.compress(p.encode("utf-8"), level=9)) for p in payloads)
+    k_limit = parent.K_bound + C_KBOUND * math.log(N)
+    if k_children > k_limit:
+        raise PartitionError(
+            f"PHI_B_INFORMATION_OVERFLOW: Σ K(children)={k_children:.1f} > "
+            f"K(parent)+c*log(N)={k_limit:.2f}"
+        )
+
+    # Normalise weights
+    if weights is None:
+        omegas = [1.0 / N] * N
+    else:
+        total = sum(weights)
+        omegas = [w / total for w in weights]
+    assert all(o > 0 for o in omegas), "PHI_B_ERROR: all weights must be positive."
+
+    # Backreaction cost
+    cost = _cost(C0=1.0, beta=beta, S=mu.S)
+    if spent + cost > budget:
+        raise PartitionError(
+            f"PHI_B_BUDGET: spent={spent:.4f} + cost={cost:.4f} > B0={budget}"
+        )
+
+    # Build child claims — Sector B centroid from bbox
+    t_new = mu.t + 1
+    lo, hi = parent.bbox
+    mid = (lo + hi) / 2.0
+
+    # Child bboxes: axis_bisect_x used if N=2, else uniform bbox (caller must
+    # have already run _compute_child_bboxes via apply_gamma_304)
+    # For standalone Φ_B (no spatial key), assign parent bbox to all children.
+    child_bboxes = [parent.bbox] * N  # default: inherit parent bbox
+
+    new_claims = dict(mu.claims)
+    new_entailments = dict(mu.entailments)
+    child_ids = []
+
+    b0, b1 = SECTOR_B_DIMS[0], SECTOR_B_DIMS[-1] + 1  # slice [4:8]
+
+    for i, (payload, omega) in enumerate(zip(payloads, omegas)):
+        # Sector B stalk: centroid of child bbox + w=1
+        c_lo, c_hi = child_bboxes[i]
+        centroid = (c_lo + c_hi) / 2.0  # ℝ^3
+
+        child_stalk = parent.stalk.copy()
+        child_stalk[b0:b0+3] = centroid
+        child_stalk[SECTOR_B_DIMS[-1]] = 1.0   # w = 1.0
+
+        prov = Provenance(
+            parent_ids=(claim_id,),
+            operator_id=f"PhiB:{i}",
+            timestamp=now_iso(),
+        )
+        child = Claim(provenance=prov, payload=payload, stalk=child_stalk,
+                      t=t_new, bbox=child_bboxes[i])
+        child_ids.append(child.id)
+        new_claims[child.id] = child
+
+        # Restriction map: project parent Sector B → child Sector B
+        F = np.zeros((d, d))
+        # Sector A: pass-through (identity block dims 0–3)
+        for j in SECTOR_A_DIMS:
+            F[j, j] = 1.0
+        # Sector B: omega · I on [x,y,z]; 1.0 on w
+        for j in SECTOR_B_DIMS[:3]:
+            F[j, j] = omega
+        F[SECTOR_B_DIMS[-1], SECTOR_B_DIMS[-1]] = 1.0
+
+        # Sector B restriction: outer(stalk_B_child, stalk_B_parent) / ||stalk_B_parent||^2
+        stalk_B_parent = parent.stalk[b0:b1]
+        stalk_B_norm_sq = float(np.dot(stalk_B_parent, stalk_B_parent))
+        if stalk_B_norm_sq > 1e-30:
+            F[b0:b1, b0:b1] = np.outer(child_stalk[b0:b1], stalk_B_parent) / stalk_B_norm_sq
+
+        det_sign_val = float(np.linalg.det(F[b0:b1, b0:b1]))
+        det_sign = int(np.sign(det_sign_val)) if abs(det_sign_val) > 1e-30 else 1
+
+        ent = Entailment(
+            source_id=claim_id,
+            target_id=child.id,
+            etype=EntailmentType.PARTITION,
+            restriction=F,
+            predicate_hash=hashlib.sha256(F.tobytes()).hexdigest()[:16],
+            omega=omega,
+            det_sign=det_sign,
+        )
+        new_entailments[(claim_id, child.id)] = ent
+
+    new_active = (mu.active - {claim_id}) | frozenset(child_ids)
+
+    new_state = MuState(
+        t=t_new,
+        claims=new_claims,
+        entailments=new_entailments,
+        active=new_active,
+        S=mu.next_S(),
+        alpha=mu.alpha,
+    )
+    new_state.seal()
+
+    if not is_valid_b(new_state):
+        raise PartitionError(
+            "PHI_B_CONSISTENCY_ERROR: is_valid_b failed — "
+            "barycentric constraint or w=1 invariant violated."
+        )
+
+    return new_state, cost
+
+
+def apply_gamma_304(
+    mu,
+    claim_id:      str,
+    partition_key: str,
+    payloads:      list,
+    beta:          float,
+    budget:        float,
+    spent:         float,
+    weights:       list = None,
+) -> tuple:
+    """
+    Γ_304 — Dual-sector spatial partition (EXP-304).
+
+    Two independent channels applied in sequence:
+
+      Channel 1 — Geometric: _compute_child_bboxes(bbox_parent, key) → child bboxes
+      Channel 2A — Algebraic Sector A: _orthogonal_decompose on stalk[0:4] (sum conservation)
+      Channel 2B — Algebraic Sector B: centroid(child_bbox) → stalk[4:7], w=1.0
+
+    Barycentric weights ωᵢ = vol(child_bbox_i) / vol(parent_bbox)
+    (= 1/N for uniform subdivision, e.g. axis_bisect and octree_split).
+
+    Validity: is_valid_A ∧ is_valid_B ∧ is_spatially_valid.
+
+    Returns: (new_mu, cost)
+    """
+    from engine.validity import is_valid, is_valid_b, is_spatially_valid
+    import math
+
+    if claim_id not in mu.active:
+        raise PartitionError(f"GAMMA304_ERROR: claim {claim_id} not in active set.")
+
+    parent = mu.claims[claim_id]
+    if parent.bbox is None:
+        raise PartitionError(f"GAMMA304_ERROR: claim {claim_id} has no bbox.")
+
+    d = parent.stalk.shape[0]
+    if d != 8:
+        raise PartitionError(f"GAMMA304_ERROR: EXP-304 requires d=8, got d={d}.")
+
+    if partition_key not in SPATIAL_KEYS:
+        raise PartitionError(
+            f"GAMMA304_UNKNOWN_KEY: '{partition_key}' not in {list(SPATIAL_KEYS.keys())}."
+        )
+    N = SPATIAL_KEYS[partition_key]
+
+    if len(payloads) != N:
+        raise PartitionError(f"GAMMA304_ERROR: expected {N} payloads, got {len(payloads)}.")
+
+    # K-bound
+    k_children = sum(len(zlib.compress(p.encode("utf-8"), level=9)) for p in payloads)
+    k_limit = parent.K_bound + C_KBOUND * math.log(N)
+    if k_children > k_limit:
+        raise PartitionError(
+            f"GAMMA304_INFORMATION_OVERFLOW: Σ K(children)={k_children:.1f} > "
+            f"K(parent)+c*log(N)={k_limit:.2f}"
+        )
+
+    # Backreaction cost
+    cost = _cost(C0=1.0, beta=beta, S=mu.S)
+    if spent + cost > budget:
+        raise PartitionError(
+            f"GAMMA304_BUDGET: spent={spent:.4f} + cost={cost:.4f} > B0={budget}"
+        )
+
+    # --- Geometric channel: child bboxes ---
+    child_bboxes = _compute_child_bboxes(parent.bbox, partition_key)
+
+    # --- Barycentric weights from bbox volumes ---
+    p_lo, p_hi = parent.bbox
+    parent_vol = float(np.prod(p_hi - p_lo))
+    if parent_vol < 1e-30:
+        omegas = [1.0 / N] * N   # degenerate bbox: uniform
+    else:
+        vols = [float(np.prod(cb[1] - cb[0])) for cb in child_bboxes]
+        total_vol = sum(vols)
+        omegas = [v / total_vol for v in vols]
+
+    if weights is not None:
+        total = sum(weights)
+        omegas = [w / total for w in weights]
+
+    # --- Sector A: orthogonal decompose ---
+    # If N <= d_A (4), decompose Sector A slice only.
+    # If N > d_A (e.g. octree N=8), decompose full d=8 stalk so d >= N,
+    # then Sector A conservation holds from the sum property: Σ child[0:4] = parent[0:4].
+    stalk_A = parent.stalk[SECTOR_A_DIMS[0]:SECTOR_A_DIMS[-1]+1]   # ℝ^4
+    d_A = len(SECTOR_A_DIMS)
+    if N <= d_A:
+        stalk_A_children = _orthogonal_decompose(stalk_A, N)        # list of ℝ^4
+    else:
+        # Decompose full stalk; take Sector A slice of each child
+        full_children = _orthogonal_decompose(parent.stalk, N)      # list of ℝ^8
+        stalk_A_children = [c[SECTOR_A_DIMS[0]:SECTOR_A_DIMS[-1]+1] for c in full_children]
+
+    # --- Build child claims ---
+    t_new = mu.t + 1
+    new_claims = dict(mu.claims)
+    new_entailments = dict(mu.entailments)
+    child_ids = []
+
+    b0A, b1A = SECTOR_A_DIMS[0], SECTOR_A_DIMS[-1] + 1   # [0:4]
+    b0B, b1B = SECTOR_B_DIMS[0], SECTOR_B_DIMS[-1] + 1   # [4:8]
+
+    for i, (payload, omega, stalk_A_i, (c_lo, c_hi)) in enumerate(
+            zip(payloads, omegas, stalk_A_children, child_bboxes)):
+
+        centroid_B = (c_lo + c_hi) / 2.0  # ℝ^3 centroid of child bbox
+
+        child_stalk = np.empty(d)
+        child_stalk[b0A:b1A] = stalk_A_i          # Sector A: orthogonal split
+        child_stalk[b0B:b0B+3] = centroid_B        # Sector B xyz: bbox centroid
+        child_stalk[SECTOR_B_DIMS[-1]] = 1.0       # Sector B w: homogeneous = 1
+
+        prov = Provenance(
+            parent_ids=(claim_id,),
+            operator_id=f"Gamma304:{partition_key}:{i}",
+            timestamp=now_iso(),
+        )
+        child = Claim(provenance=prov, payload=payload, stalk=child_stalk,
+                      t=t_new, bbox=(c_lo, c_hi))
+        child_ids.append(child.id)
+        new_claims[child.id] = child
+
+        # Restriction map (full d=8):
+        #   Sector A: outer(stalk_A_i, stalk_A_parent) / ||stalk_A_parent||²
+        #   Sector B: omega·I on [x,y,z]; 1.0 on w
+        F = np.zeros((d, d))
+        stalk_A_norm_sq = float(np.dot(stalk_A, stalk_A))
+        if stalk_A_norm_sq > 1e-30:
+            F[b0A:b1A, b0A:b1A] = np.outer(stalk_A_i, stalk_A) / stalk_A_norm_sq
+        else:
+            F[b0A:b1A, b0A:b1A] = np.zeros((4, 4))
+        for j in range(3):
+            F[b0B+j, b0B+j] = omega
+        F[SECTOR_B_DIMS[-1], SECTOR_B_DIMS[-1]] = 1.0
+
+        # Sector B restriction: outer(stalk_B_child, stalk_B_parent) / ||stalk_B_parent||^2
+        # Satisfies: F_B @ stalk_B_parent = stalk_B_child  (exact, by construction)
+        stalk_B_parent = parent.stalk[b0B:b1B]
+        stalk_B_norm_sq = float(np.dot(stalk_B_parent, stalk_B_parent))
+        if stalk_B_norm_sq > 1e-30:
+            F[b0B:b1B, b0B:b1B] = np.outer(child_stalk[b0B:b1B], stalk_B_parent) / stalk_B_norm_sq
+        # else: zero block (degenerate)
+
+        det_B = float(np.linalg.det(F[b0B:b1B, b0B:b1B]))
+        det_sign = int(np.sign(det_B)) if abs(det_B) > 1e-30 else 1
+
+        ent_spatial = Entailment(
+            source_id=claim_id,
+            target_id=child.id,
+            etype=EntailmentType.SPATIAL,
+            restriction=F,
+            predicate_hash=hashlib.sha256(F.tobytes()).hexdigest()[:16],
+            omega=omega,
+            det_sign=det_sign,
+        )
+        new_entailments[(claim_id, child.id)] = ent_spatial
+
+    new_active = (mu.active - {claim_id}) | frozenset(child_ids)
+
+    new_state = MuState(
+        t=t_new,
+        claims=new_claims,
+        entailments=new_entailments,
+        active=new_active,
+        S=mu.next_S(),
+        alpha=mu.alpha,
+    )
+    new_state.seal()
+
+    if not is_valid(new_state):
+        raise PartitionError(
+            "GAMMA304_CONSISTENCY_ERROR: is_valid (Sector A) failed. Reverting."
+        )
+    if not is_valid_b(new_state):
+        raise PartitionError(
+            "GAMMA304_CONSISTENCY_ERROR: is_valid_b (Sector B) failed. Reverting."
+        )
+    if not is_spatially_valid(new_state):
+        raise PartitionError(
+            "GAMMA304_SPATIAL_ERROR: bbox containment violated. Reverting."
         )
 
     return new_state, cost

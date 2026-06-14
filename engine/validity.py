@@ -1,22 +1,20 @@
 """
-validity.py -- Validity predicate for EXP-301 (E-301-003 corrected form).
+validity.py -- Validity predicates for EXP-301 through EXP-304.
 
-CORRECTION (E-301-003):
-  The original predicate lambda_min(L_F) > 0 is incorrect for our directed DAG.
-  For a connected consistent sheaf, lambda_min(L_F) = 0 always (the zero mode
-  is the constant global section, which IS the valid case). Strict positivity
-  would reject every valid connected state.
+E-301-003 (corrected):
+  Original predicate lambda_min(L_F) > 0 is incorrect for directed DAGs.
+  For a connected consistent sheaf, lambda_min(L_F) = 0 always (zero mode =
+  constant global section = the valid case). Strict positivity rejects every
+  valid connected state.
 
-CORRECTED PREDICATE -- Forward Entailment Consistency:
+CORRECTED PREDICATE -- Forward Entailment Consistency (is_valid):
   is_valid(mu_t) iff for every edge (u->v) in E_t:
     - Single-source (PARTITION): F(u->v)(stalk_u) ~= stalk_v
     - Multi-source  (SYNTHESIS): sum_i F(u_i->v)(stalk_{u_i}) ~= stalk_v
 
-  This checks that restriction maps are correctly calibrated to the observed stalks.
-  Violation = a claim whose stalk is inconsistent with its construction history.
-  This is the directed-DAG analogue of H^1(G, F) = 0 (no holonomy obstruction).
+EXP-303: is_spatially_valid -- bbox containment on SPATIAL edges.
 
-  lambda_min is retained as a numeric observable (not the validity gate).
+EXP-304: is_valid_b -- Sector B barycentric constraint and w=1 invariant.
 """
 from __future__ import annotations
 from collections import defaultdict
@@ -100,9 +98,6 @@ def is_valid(mu):
         ||sum_i F(u_i->v)(stalk_{u_i}) - stalk_v|| < CONSISTENCY_TOL
 
     Empty graph: trivially valid.
-    Guaranteed True by construction after apply_phi / apply_psi if restriction
-    maps are correctly set. Fails only if state is externally corrupted or
-    restriction maps are mis-calibrated.
     """
     if not mu.entailments:
         return True
@@ -129,20 +124,71 @@ def delta_lambda_min(mu_prev, mu_next):
 
 
 # ---------------------------------------------------------------------------
-# Spatial validity — EXP-303
+# Sector B validity -- EXP-304
+# ---------------------------------------------------------------------------
+
+def is_valid_b(mu, sector_B_dims=(4, 5, 6, 7), tol=1e-8) -> bool:
+    """
+    Sector B validity predicate (EXP-304).
+
+    For every claim with stalk dimension >= 8:
+      1. Homogeneous invariant: stalk[7] == 1.0  (w = 1, tol=1e-10)
+
+    For every PARTITION entailment with omega != None (Phi_B edges):
+      2. Barycentric check (per parent):
+           sum_i omega_i * stalk_B(child_i) == stalk_B(parent)  (tol)
+
+    Empty graph or no Phi_B edges: trivially valid.
+    """
+    from engine.state import EntailmentType
+    W_TOL = 1e-10
+    b0 = sector_B_dims[0]
+    b1 = sector_B_dims[-1] + 1    # slice [4:8]
+    w_dim = sector_B_dims[-1]     # dim index of homogeneous coordinate
+
+    if not mu.entailments:
+        # Still check w=1 on all claims
+        for cid, claim in mu.claims.items():
+            if claim.stalk.shape[0] > w_dim:
+                if abs(float(claim.stalk[w_dim]) - 1.0) > W_TOL:
+                    return False
+        return True
+
+    # 1. Homogeneous invariant on every claim with Sector B slice
+    for cid, claim in mu.claims.items():
+        if claim.stalk.shape[0] > w_dim:
+            w = float(claim.stalk[w_dim])
+            if abs(w - 1.0) > W_TOL:
+                return False
+
+    # 2. Barycentric: group Phi_B children by parent
+    phi_b_children = defaultdict(list)  # parent_id -> [(child_stalk_B, omega)]
+    for (src_id, tgt_id), ent in mu.entailments.items():
+        if ent.etype != EntailmentType.PARTITION or ent.omega is None:
+            continue
+        child_stalk_B = mu.claims[tgt_id].stalk[b0:b1]
+        phi_b_children[src_id].append((child_stalk_B, ent.omega))
+
+    for parent_id, children in phi_b_children.items():
+        parent_stalk_B = mu.claims[parent_id].stalk[b0:b1]
+        weighted_sum = sum(omega * stalk_B for stalk_B, omega in children)
+        if np.linalg.norm(weighted_sum - parent_stalk_B) > tol:
+            return False
+
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Spatial validity -- EXP-303
 # ---------------------------------------------------------------------------
 
 def is_spatially_valid(mu) -> bool:
     """
     Spatial bounding-box containment check (EXP-303).
-    For every SPATIAL entailment (src → tgt):
-      bbox(tgt) ⊆ bbox(src)  i.e. lo_src ≤ lo_tgt and hi_tgt ≤ hi_src
-      (component-wise, with tolerance 1e-10)
-
-    Returns True if:
-      - no SPATIAL entailments exist (trivially valid), OR
-      - all SPATIAL edges satisfy bbox containment.
-    Returns False if any child bbox violates containment.
+    For every SPATIAL entailment (src -> tgt):
+      bbox(tgt) subset bbox(src): lo_src <= lo_tgt and hi_tgt <= hi_src
+      (component-wise, tolerance 1e-10)
+    Returns True if no SPATIAL entailments exist or all satisfy containment.
     Skips edges where either endpoint has bbox=None.
     """
     from engine.state import EntailmentType

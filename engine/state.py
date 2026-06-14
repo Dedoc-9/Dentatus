@@ -102,12 +102,18 @@ class Entailment:
     """
     Directed edge (source → target).
     restriction: linear map F(source) → F(target), shape (d_tgt, d_src)
+
+    EXP-304 fields (optional metadata — NOT included in H_t hash):
+      omega:    barycentric weight ωᵢ for Sector B (Φ_B edges); default None
+      det_sign: sign(det(F_B)) ∈ {-1, +1}; +1 for non-reflective affine maps; default None
     """
     source_id:      str
     target_id:      str
     etype:          EntailmentType
     restriction:    np.ndarray      # (d_tgt, d_src)
     predicate_hash: str
+    omega:          Optional[float] = None   # barycentric weight (EXP-304 Φ_B)
+    det_sign:       Optional[int]   = None   # chirality flag (EXP-304 Φ_B)
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +285,7 @@ class MuState:
 
     def subtree_stalk_matrix(self, cid: str) -> np.ndarray:
         """Shape (d, n): stalk matrix for all nodes in subtree(cid)."""
-        ids    = self.subtree_ids(cid)
+        ids = self.subtree_ids(cid)
         stalks = [self.claims[i].stalk for i in ids if i in self.claims]
         if not stalks:
             return np.zeros((1, 1))
