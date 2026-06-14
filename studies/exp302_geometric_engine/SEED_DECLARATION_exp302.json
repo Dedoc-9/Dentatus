@@ -1,0 +1,58 @@
+{
+  "study": "EXP-302",
+  "seed_id": "Seed_0_geo",
+  "seed_payload": "Seed_0_geo: initial geometric axiom -- a unit cube region [0,1]^3 with uniform white color [1,1,1], constituting the minimal spatial claim whose position and color are simultaneously non-degenerate.",
+  "seed_stalk": [
+    0.5,
+    0.5,
+    0.5,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "stalk_schema": {
+    "dims": [
+      "x",
+      "y",
+      "z",
+      "r",
+      "g",
+      "b"
+    ],
+    "position_dims": [
+      0,
+      1,
+      2
+    ],
+    "feature_dims": [
+      3,
+      4,
+      5
+    ]
+  },
+  "d": 6,
+  "alpha": 0.85,
+  "beta": 0.4,
+  "B0": 100.0,
+  "partition_schema": {
+    "axis_bisect_x": "bisect along x-axis: child_0 covers [x_lo, x_mid], child_1 covers [x_mid, x_hi]",
+    "axis_bisect_y": "bisect along y-axis",
+    "axis_bisect_z": "bisect along z-axis",
+    "octree_split": "8-way split: bisect all three axes simultaneously (N=8)"
+  },
+  "synthesis_schema": {
+    "spatial_blend": "weighted centroid of position dims; weighted average of feature dims"
+  },
+  "spatial_consistency": "boundary_stalk_compatibility: for adjacent claims u->v sharing a face, ||F(u->v)(stalk_u) - stalk_v|| < 1e-8 (same forward entailment predicate as EXP-301 E-301-003)",
+  "rewrite_rules": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "inherited_from": "exp301-v1",
+  "protocol_version": "exp302-v1",
+  "erratum": "",
+  "declaration_hash": "522384ef5bfa11cd5d353577fe1b3f93cf023828d75b4a77701ef774a208da96",
+  "status": "LOCKED",
+  "locked_before_first_operator": true
+}
