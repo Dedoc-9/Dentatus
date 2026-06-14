@@ -205,3 +205,57 @@ def is_spatially_valid(mu) -> bool:
         if not (np.all(c_lo >= p_lo - TOL) and np.all(c_hi <= p_hi + TOL)):
             return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# Sector C validity -- EXP-305
+# ---------------------------------------------------------------------------
+
+def is_unit_norm(mu, sector_C_dims=(8, 9, 10), tol=1e-8) -> bool:
+    """
+    Sector C unit-norm predicate (EXP-305).
+    For every claim with stalk dimension >= 11:
+      | ||stalk[8:11]||_2 - 1.0 | < tol
+    Trivially true for claims with d < 11.
+    """
+    c0 = sector_C_dims[0]
+    c1 = sector_C_dims[-1] + 1
+    for cid, claim in mu.claims.items():
+        if claim.stalk.shape[0] >= c1:
+            n = float(np.linalg.norm(claim.stalk[c0:c1]))
+            if abs(n - 1.0) > tol:
+                return False
+    return True
+
+
+def is_valid_block_diagonal(mu, tol=1e-7) -> bool:
+    """
+    Block-diagonal restriction map predicate (EXP-305).
+    For each PARTITION or SPATIAL entailment with F shape (11, 11):
+      Sector A (0:4), B (4:8), C (8:11) off-diagonal cross blocks near-zero.
+    Skips entailments with restriction shape != (11, 11).
+    Returns True if no qualifying entailments exist.
+    """
+    from engine.state import EntailmentType
+    for (src_id, tgt_id), ent in mu.entailments.items():
+        if ent.etype not in (EntailmentType.PARTITION, EntailmentType.SPATIAL):
+            continue
+        F = ent.restriction
+        if F.shape != (11, 11):
+            continue
+        if np.linalg.norm(F[0:4, 4:11]) > tol:
+            return False
+        if np.linalg.norm(F[4:8, 0:4]) > tol:
+            return False
+        if np.linalg.norm(F[4:8, 8:11]) > tol:
+            return False
+        if np.linalg.norm(F[8:11, 0:8]) > tol:
+            return False
+    return True
+ tol:
+            return False
+        if np.linalg.norm(F[4:8, 8:11]) > tol:
+            return False
+        if np.linalg.norm(F[8:11, 0:8]) > tol:
+            return False
+    return True

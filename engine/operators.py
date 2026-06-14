@@ -1103,3 +1103,246 @@ def apply_gamma_304(
         )
 
     return new_state, cost
+
+
+# ===========================================================================
+# EXP-305 -- Gamma_305 (triple-sector: Sector A + B + C with unit-norm Phi_C)
+# ===========================================================================
+
+SECTOR_C_DIMS = (8, 9, 10)   # [nx, ny, nz]  axial pseudo-vector, unit-norm
+
+
+def apply_gamma_305(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    weights=None,
+):
+    """
+    Gamma_305 -- Triple-sector spatial partition (EXP-305).
+    Channels:
+      1  Geometric:   _compute_child_bboxes(bbox_parent, key)
+      2A Sector A:    Phi_A (sum conservation, dims 0-3)
+      2B Sector B:    Phi_B (bbox centroid, w=1.0, dims 4-7)
+      2C Sector C:    Phi_C (L2-normalize child normals, dims 8-10)
+    Restriction map: block-diagonal 11x11 (F_A, F_B, F_C on-diagonal only).
+    Returns: (new_mu, cost)
+    """
+    from engine.validity import (
+        is_valid, is_valid_b, is_spatially_valid,
+        is_unit_norm, is_valid_block_diagonal,
+    )
+
+    if claim_id not in mu.active:
+        raise PartitionError(f"GAMMA305_ERROR: claim {claim_id} not in active set.")
+    parent = mu.claims[claim_id]
+    if parent.bbox is None:
+        raise PartitionError(f"GAMMA305_ERROR: claim {claim_id} has no bbox.")
+    d = parent.stalk.shape[0]
+    if d != 11:
+        raise PartitionError(f"GAMMA305_ERROR: EXP-305 requires d=11, got d={d}.")
+    if partition_key not in SPATIAL_KEYS:
+        raise PartitionError(
+            f"GAMMA305_UNKNOWN_KEY: '{partition_key}' not in {list(SPATIAL_KEYS.keys())}."
+        )
+    N = SPATIAL_KEYS[partition_key]
+    if len(payloads) != N:
+        raise PartitionError(f"GAMMA305_ERROR: expected {N} payloads, got {len(payloads)}.")
+
+    k_children = sum(len(zlib.compress(p.encode("utf-8"), level=9)) for p in payloads)
+    k_limit = parent.K_bound + C_KBOUND * math.log(N)
+    if k_children > k_limit:
+        raise PartitionError(
+            f"GAMMA305_INFORMATION_OVERFLOW: sum K(children)={k_children:.1f} > "
+            f"K(parent)+c*log(N)={k_limit:.2f}"
+        )
+
+    cost = _cost(C0=1.0, beta=beta, S=mu.S)
+    if spent + cost > budget:
+        raise PartitionError(
+            f"GAMMA305_BUDGET: spent={spent:.4f} + cost={cost:.4f} > B0={budget}"
+        )
+
+    child_bboxes = _compute_child_bboxes(parent.bbox, partition_key)
+
+    p_lo, p_hi = parent.bbox
+    parent_vol = float(np.prod(p_hi - p_lo))
+    if parent_vol < 1e-30:
+        omegas = [1.0 / N] * N
+    else:
+        vols = [float(np.prod(cb[1] - cb[0])) for cb in child_bboxes]
+        total_vol = sum(vols)
+        omegas = [v / total_vol for v in vols]
+    if weights is not None:
+        total = sum(weights)
+        omegas = [w / total for w in weights]
+
+    b0A, b1A = SECTOR_A_DIMS[0], SECTOR_A_DIMS[-1] + 1
+    b0B, b1B = SECTOR_B_DIMS[0], SECTOR_B_DIMS[-1] + 1
+    b0C, b1C = SECTOR_C_DIMS[0], SECTOR_C_DIMS[-1] + 1
+
+    stalk_A = parent.stalk[b0A:b1A]
+    d_A = len(SECTOR_A_DIMS)
+    d_C = len(SECTOR_C_DIMS)
+    full_children_cache = None
+
+    if N <= d_A:
+        stalk_A_children = _orthogonal_decompose(stalk_A, N)
+    else:
+        full_children_cache = _orthogonal_decompose(parent.stalk, N)
+        stalk_A_children = [c[b0A:b1A] for c in full_children_cache]
+
+    stalk_C_parent = parent.stalk[b0C:b1C]
+    stalk_C_norm = float(np.linalg.norm(stalk_C_parent))
+    stalk_C_unit = stalk_C_parent / stalk_C_norm if stalk_C_norm >= 1e-12 else np.array([0.0, 0.0, 1.0])
+
+    if N <= d_C:
+        raw_C_children = _orthogonal_decompose(stalk_C_parent, N)
+    else:
+        if full_children_cache is None:
+            full_children_cache = _orthogonal_decompose(parent.stalk, N)
+        raw_C_children = [c[b0C:b1C] for c in full_children_cache]
+
+    stalk_C_children = []
+    for raw_c in raw_C_children:
+        r_norm = float(np.linalg.norm(raw_c))
+        stalk_C_children.append(raw_c / r_norm if r_norm >= 1e-12 else stalk_C_unit.copy())
+
+    t_new = mu.t + 1
+    new_claims = dict(mu.claims)
+    new_entailments = dict(mu.entailments)
+    child_ids = []
+
+    stalk_A_parent = parent.stalk[b0A:b1A]
+    stalk_B_parent = parent.stalk[b0B:b1B]
+
+    stalk_A_nsq = float(np.dot(stalk_A_parent, stalk_A_parent))
+    stalk_B_nsq = float(np.dot(stalk_B_parent, stalk_B_parent))
+    stalk_C_nsq = float(np.dot(stalk_C_parent, stalk_C_parent))
+
+    for i, (payload, omega, stalk_A_i, (c_lo, c_hi), n_child) in enumerate(
+            zip(payloads, omegas, stalk_A_children, child_bboxes, stalk_C_children)):
+
+        centroid_B = (c_lo + c_hi) / 2.0
+
+        child_stalk = np.empty(d)
+        child_stalk[b0A:b1A] = stalk_A_i
+        child_stalk[b0B:b0B+3] = centroid_B
+        child_stalk[SECTOR_B_DIMS[-1]] = 1.0
+        child_stalk[b0C:b1C] = n_child
+
+        prov = Provenance(
+            parent_ids=(claim_id,),
+            operator_id=f"Gamma305:{partition_key}:{i}",
+            timestamp=now_iso(),
+        )
+        child = Claim(provenance=prov, payload=payload, stalk=child_stalk,
+                      t=t_new, bbox=(c_lo, c_hi))
+        child_ids.append(child.id)
+        new_claims[child.id] = child
+
+        F = np.zeros((d, d))
+        if stalk_A_nsq > 1e-30:
+            F[b0A:b1A, b0A:b1A] = np.outer(stalk_A_i, stalk_A_parent) / stalk_A_nsq
+        if stalk_B_nsq > 1e-30:
+            F[b0B:b1B, b0B:b1B] = np.outer(child_stalk[b0B:b1B], stalk_B_parent) / stalk_B_nsq
+        if stalk_C_nsq > 1e-30:
+            F[b0C:b1C, b0C:b1C] = np.outer(n_child, stalk_C_parent) / stalk_C_nsq
+
+        det_B = float(np.linalg.det(F[b0B:b1B, b0B:b1B]))
+        det_sign = int(np.sign(det_B)) if abs(det_B) > 1e-30 else 1
+
+        ent_spatial = Entailment(
+            source_id=claim_id,
+            target_id=child.id,
+            etype=EntailmentType.SPATIAL,
+            restriction=F,
+            predicate_hash=hashlib.sha256(F.tobytes()).hexdigest()[:16],
+            omega=omega,
+            det_sign=det_sign,
+        )
+        new_entailments[(claim_id, child.id)] = ent_spatial
+
+    new_active = (mu.active - {claim_id}) | frozenset(child_ids)
+    new_state = MuState(
+        t=t_new,
+        claims=new_claims,
+        entailments=new_entailments,
+        active=new_active,
+        S=mu.next_S(),
+        alpha=mu.alpha,
+    )
+    new_state.seal()
+
+    if not is_valid(new_state):
+        raise PartitionError("GAMMA305_CONSISTENCY_ERROR: is_valid (Sector A) failed.")
+    if not is_valid_b(new_state):
+        raise PartitionError("GAMMA305_CONSISTENCY_ERROR: is_valid_b (Sector B) failed.")
+    if not is_unit_norm(new_state):
+        raise PartitionError("GAMMA305_UNIT_NORM_ERROR: is_unit_norm (Sector C) failed.")
+    if not is_spatially_valid(new_state):
+        raise PartitionError("GAMMA305_SPATIAL_ERROR: bbox containment violated.")
+    if not is_valid_block_diagonal(new_state):
+        raise PartitionError("GAMMA305_BLOCK_DIAGONAL_ERROR: off-diagonal sector coupling detected.")
+
+    return new_state, cost
+    F[b0B:b1B, b0B:b1B] = (
+                np.outer(child_stalk[b0B:b1B], stalk_B_parent) / stalk_B_nsq
+            )
+
+        # Sector C block
+        if stalk_C_nsq > 1e-30:
+            F[b0C:b1C, b0C:b1C] = np.outer(n_child, stalk_C_parent) / stalk_C_nsq
+
+        det_B = float(np.linalg.det(F[b0B:b1B, b0B:b1B]))
+        det_sign = int(np.sign(det_B)) if abs(det_B) > 1e-30 else 1
+
+        ent_spatial = Entailment(
+            source_id=claim_id,
+            target_id=child.id,
+            etype=EntailmentType.SPATIAL,
+            restriction=F,
+            predicate_hash=hashlib.sha256(F.tobytes()).hexdigest()[:16],
+            omega=omega,
+            det_sign=det_sign,
+        )
+        new_entailments[(claim_id, child.id)] = ent_spatial
+
+    new_active = (mu.active - {claim_id}) | frozenset(child_ids)
+
+    new_state = MuState(
+        t=t_new,
+        claims=new_claims,
+        entailments=new_entailments,
+        active=new_active,
+        S=mu.next_S(),
+        alpha=mu.alpha,
+    )
+    new_state.seal()
+
+    if not is_valid(new_state):
+        raise PartitionError(
+            "GAMMA305_CONSISTENCY_ERROR: is_valid (Sector A) failed. Reverting."
+        )
+    if not is_valid_b(new_state):
+        raise PartitionError(
+            "GAMMA305_CONSISTENCY_ERROR: is_valid_b (Sector B) failed. Reverting."
+        )
+    if not is_unit_norm(new_state):
+        raise PartitionError(
+            "GAMMA305_UNIT_NORM_ERROR: is_unit_norm (Sector C) failed. Reverting."
+        )
+    if not is_spatially_valid(new_state):
+        raise PartitionError(
+            "GAMMA305_SPATIAL_ERROR: bbox containment violated. Reverting."
+        )
+    if not is_valid_block_diagonal(new_state):
+        raise PartitionError(
+            "GAMMA305_BLOCK_DIAGONAL_ERROR: off-diagonal sector coupling detected. Reverting."
+        )
+
+    return new_state, cost

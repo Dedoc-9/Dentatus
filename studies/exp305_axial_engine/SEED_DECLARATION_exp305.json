@@ -1,0 +1,143 @@
+{
+  "experiment_id": "EXP-305",
+  "protocol_version": "exp305-v1",
+  "inherits_from": "exp304-v1",
+  "d": 11,
+  "stalk_schema": {
+    "dims": [
+      "mass",
+      "r",
+      "g",
+      "b",
+      "x",
+      "y",
+      "z",
+      "w",
+      "nx",
+      "ny",
+      "nz"
+    ],
+    "sector_A": {
+      "dims": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "labels": [
+        "mass",
+        "r",
+        "g",
+        "b"
+      ],
+      "conservation": "sum"
+    },
+    "sector_B": {
+      "dims": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "labels": [
+        "x",
+        "y",
+        "z",
+        "w"
+      ],
+      "conservation": "barycentric",
+      "homogeneous_dim": 7,
+      "homogeneous_value": 1.0
+    },
+    "sector_C": {
+      "dims": [
+        8,
+        9,
+        10
+      ],
+      "labels": [
+        "nx",
+        "ny",
+        "nz"
+      ],
+      "conservation": "unit_norm",
+      "norm_constraint": "||n||_2 = 1.0 +/- 1e-8",
+      "vector_type": "axial_pseudovector"
+    }
+  },
+  "seed_stalk": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.5,
+    0.5,
+    0.5,
+    1.0,
+    0.0,
+    0.0,
+    1.0
+  ],
+  "seed_bbox_lo": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "seed_bbox_hi": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "mirror_operator": {
+    "name": "P_yz",
+    "description": "Reflection in the yz-plane: x -> -x",
+    "polar_flip_dims": [
+      4
+    ],
+    "axial_flip_dims": [
+      8
+    ],
+    "invariant_dims": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      9,
+      10
+    ],
+    "note": "nx flips under P_yz because nx is the component orthogonal to the yz-plane (axial vector, single-axis reflection rule)"
+  },
+  "partition_schema": {
+    "phi_A": "Sector A: _orthogonal_decompose(stalk_A, N) \u2014 sum conservation unchanged",
+    "phi_B": "Sector B: affine outer-product restriction maps \u2014 barycentric w=1 unchanged",
+    "phi_C": "Sector C: _orthogonal_decompose slice then L2-normalize; F_C = outer(n_child, stalk_C_parent)/||stalk_C_parent||^2"
+  },
+  "new_operators": [
+    "Phi_C",
+    "apply_gamma_305"
+  ],
+  "new_validity_predicates": [
+    "is_unit_norm(mu, tol=1e-8): ||stalk[8:11]|| = 1.0 for all active claims",
+    "is_valid_block_diagonal(mu, tol=1e-7): ||F[off-diagonal sector blocks]|| < tol for all PARTITION/SPATIAL edges"
+  ],
+  "p_invariance_test": {
+    "mirror": "P_yz",
+    "assertion": "det_sign(Phi_B(mu0)) == det_sign(Phi_B(mirror(mu0)))",
+    "test_file": "run_p_invariance_exp305.py"
+  },
+  "ghost_channel": "G_t = Z_t - Pi_W(Z_t) over full d=11; EMA S_t unchanged; B(t) = ||S||/(||Z||+eps)",
+  "backreaction": "C(Op,t) = C0 * exp(beta * ||S_t||)",
+  "forbidden_procedures": [
+    "ghost_direct_control",
+    "stalk_collapse",
+    "retroactive_confluence_cert",
+    "budget_retroactive_adjustment",
+    "validity_predicate_shift",
+    "post_hoc_rewrite_rule_addition"
+  ],
+  "status": "LOCKED",
+  "declaration_hash": "2a05be65524a8ce244ea9597917a5a3f771094a2bc25fd33f801ad1c6cc99e64"
+}
