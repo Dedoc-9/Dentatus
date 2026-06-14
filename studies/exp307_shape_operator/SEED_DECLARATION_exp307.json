@@ -1,0 +1,65 @@
+{
+  "experiment": "EXP-307",
+  "protocol_version": "exp307-v1",
+  "title": "Shape Operator Engine",
+  "inherits_from": "exp306-v1",
+  "d": 12,
+  "stalk_schema": {
+    "dims": ["mass","r","g","b","x","y","z","w","nx","ny","nz","kappa"],
+    "sectors": {
+      "A": {"dims": [0,1,2,3], "labels": ["mass","r","g","b"], "conservation": "additive_sum"},
+      "B": {"dims": [4,5,6,7], "labels": ["x","y","z","w"], "conservation": "barycentric", "w_invariant": 1.0},
+      "C": {
+        "dims": [8,9,10,11],
+        "labels": ["nx","ny","nz","kappa"],
+        "normal_dims": [8,9,10],
+        "normal_conservation": "unit_norm",
+        "normal_convention": "centroid_outward",
+        "kappa_dim": 11,
+        "kappa_semantics": "geometric",
+        "kappa_formula": "tr(H_bbox) = sum_i(2 / extent_i)",
+        "kappa_conservation": "none",
+        "kappa_restriction": "F[11,11] = kappa_child / kappa_parent"
+      }
+    }
+  },
+  "seed_stalk": [1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 1.0, 0.0, 0.0, 1.0, 6.0],
+  "seed_bbox_lo": [0.0, 0.0, 0.0],
+  "seed_bbox_hi": [1.0, 1.0, 1.0],
+  "seed_kappa_derivation": "tr(H) = 2/1 + 2/1 + 2/1 = 6.0 for unit cube",
+  "validity_predicates": [
+    "is_valid",
+    "is_valid_b",
+    "is_unit_norm",
+    "is_spatially_valid",
+    "is_valid_block_diagonal_306",
+    "is_valid_kappa"
+  ],
+  "ghost_dual": {
+    "S_A_dims": [0,1,2,3,4,5,6,7],
+    "S_C_dims": [8,9,10,11],
+    "alpha": 0.85,
+    "projection": "per_sector_W_basis"
+  },
+  "recursive_gamma": {
+    "lambda": 0.6931471805599453,
+    "K_MIN_PARTITION": 16,
+    "K_budget_0": 256,
+    "depth_max": 4,
+    "payload_generation": "auto",
+    "payload_formula": "SHA256(parent_id + partition_key + depth + index)[:16]"
+  },
+  "mirror_operator": {
+    "P_yz": {
+      "polar_flip_dims": [4],
+      "axial_flip_dims": [8],
+      "kappa_invariant": true,
+      "kappa_invariance_proof": "P_yz preserves bbox extents; kappa = f(extents) only"
+    }
+  },
+  "beta": 0.1,
+  "B0": 100.0,
+  "alpha": 0.85,
+  "declaration_hash": "8e288c601093e1dd786ee112c1451f0fa60a2b1cb898ea17a91f63b4a5c89060",
+  "status": "LOCKED"
+}

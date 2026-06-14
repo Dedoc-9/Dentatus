@@ -288,3 +288,49 @@ def is_valid_block_diagonal_306(mu, tol=1e-7) -> bool:
                 return False
         # else: skip non-matching shapes
     return True
+
+
+# ---------------------------------------------------------------------------
+# kappa geometric validity -- EXP-307
+# ---------------------------------------------------------------------------
+
+KAPPA_MAX = 1e9   # clamp for degenerate (zero-extent) bbox dims
+
+def kappa_from_bbox(bbox, kappa_max=KAPPA_MAX):
+    """
+    kappa = tr(H_bbox) = sum_i (2 / extent_i)
+    extent_i = hi[i] - lo[i]
+    Degenerate: extent < 1e-12 -> contribute kappa_max to sum.
+    """
+    lo, hi = bbox
+    total = 0.0
+    for i in range(len(lo)):
+        e = float(hi[i] - lo[i])
+        if e < 1e-12:
+            total += kappa_max
+        else:
+            total += 2.0 / e
+    return total
+
+
+def is_valid_kappa(mu, kappa_dim=11, tol=1e-8) -> bool:
+    """
+    Shape operator trace predicate (EXP-307).
+
+    For every claim with stalk.shape[0] > kappa_dim AND bbox not None:
+      kappa_geom = kappa_from_bbox(claim.bbox)
+      | stalk[kappa_dim] - kappa_geom | < tol
+
+    Claims without bbox or with stalk dim <= kappa_dim: skipped.
+    Empty graph: trivially valid.
+    """
+    for cid, claim in mu.claims.items():
+        if claim.stalk.shape[0] <= kappa_dim:
+            continue
+        if claim.bbox is None:
+            continue
+        kappa_geom = kappa_from_bbox(claim.bbox)
+        kappa_stalk = float(claim.stalk[kappa_dim])
+        if abs(kappa_stalk - kappa_geom) > tol:
+            return False
+    return True
