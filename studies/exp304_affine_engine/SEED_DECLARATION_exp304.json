@@ -1,0 +1,100 @@
+{
+  "experiment_id": "EXP-304",
+  "protocol_version": "exp304-v1",
+  "inherits_from": "exp303-v1",
+  "d": 8,
+  "stalk_schema": {
+    "dims": [
+      "mass",
+      "r",
+      "g",
+      "b",
+      "x",
+      "y",
+      "z",
+      "w"
+    ],
+    "sector_A": {
+      "dims": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "labels": [
+        "mass",
+        "r",
+        "g",
+        "b"
+      ],
+      "conservation": "sum"
+    },
+    "sector_B": {
+      "dims": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "labels": [
+        "x",
+        "y",
+        "z",
+        "w"
+      ],
+      "conservation": "barycentric",
+      "homogeneous_dim": 7,
+      "homogeneous_value": 1.0
+    }
+  },
+  "seed_stalk": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.5,
+    0.5,
+    0.5,
+    1.0
+  ],
+  "seed_bbox_lo": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "seed_bbox_hi": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "partition_schema": {
+    "phi_A": "Sector A: _orthogonal_decompose(stalk_A, N) \u2014 sum conservation unchanged",
+    "phi_B": "Sector B: affine restriction maps F_B in GL(4); barycentric weights omega_i stored in Entailment; Sigma omega_i = 1 enforced via w=1 homogeneous constraint",
+    "gamma": "inherited from EXP-303: bbox split via _compute_child_bboxes; omega_i = vol(child_i)/vol(parent) for uniform subdivision"
+  },
+  "new_operators": [
+    "Phi_B",
+    "is_valid_B"
+  ],
+  "new_entailment_fields": [
+    "omega: float (barycentric weight)",
+    "det_sign: int in {-1, +1} (chirality of F_B)"
+  ],
+  "validity_predicates": [
+    "is_valid_A (sum, inherited)",
+    "is_valid_B (barycentric, w=1)",
+    "is_spatially_valid (inherited from EXP-303)"
+  ],
+  "ghost_channel": "G_t = Z_t - Pi_W(Z_t) over full d=8; EMA S_t unchanged; B(t) = ||S||/(||Z||+eps)",
+  "backreaction": "C(Op,t) = C0 * exp(beta * ||S_t||)",
+  "forbidden_procedures": [
+    "ghost_direct_control",
+    "stalk_collapse",
+    "retroactive_confluence_cert",
+    "budget_retroactive_adjustment",
+    "validity_predicate_shift",
+    "post_hoc_rewrite_rule_addition"
+  ],
+  "status": "LOCKED",
+  "declaration_hash": "a369ce20f55674f14476a6a56f785e4496baa35c2c8a7a72ba95577adb1c230b"
+}

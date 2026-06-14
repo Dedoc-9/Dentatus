@@ -145,10 +145,14 @@ R1, R2, R3 inherited from EXP-301 §5.5. No new laws added.
 | centroid conservation only | no bounding box tracking | EXP-303: SPATIAL_ADJACENCY edge type |
 | no face compatibility check | adjacent claims not constrained at shared faces | EXP-303: face_compatibility predicate |
 | ghost G_t = 0 for lossless ops | E-301-004: path-coherence residuals only | inherited from EXP-301 |
+| algebraic-geometric conflation | pos dims (0–2) use sum conservation (Σ pos_i = pos_parent); child positions are algebraic coordinates summing to parent, not geometric sub-centroids; negative position components are valid outputs of _orthogonal_decompose and carry no geometric violation | EXP-304: Sector B [x,y,z,w] with barycentric conservation (Σ ω_i · pos_i = pos_parent, Σ ω_i = 1) enforced via homogeneous w=1 constraint |
+| chiral decomposition basis | _orthogonal_decompose derives orthonormal basis from hash(stalk_parent, N); basis is deterministic but reflection-arbitrary: a mirror-image parent stalk does not produce mirror-image child stalks; chirality is a property of the stalk decomposition only — bbox geometry (axis_bisect_*, octree_split) is reflection-invariant by construction | EXP-304: Sector B uses affine restriction maps F_B ∈ GL(4); det(F_B) sign tracked as Entailment metadata; P-invariant predicates possible once Sector B is isolated |
 
 ---
 
 ## 8. Commitment Chain
 
 EXP-301 (Series 300 genesis, symbolic stalks ℝ^4) →
-**EXP-302 (Series 300, geometric stalks ℝ^6 = position × color)**
+**EXP-302 (Series 300, geometric stalks ℝ^6 = position × color)** →
+EXP-303 (ℝ^9 = position × color × normal; Γ operator; bbox containment) →
+EXP-304 (ℝ^8 affine split: Sector A [mass,r,g,b] sum-conserved; Sector B [x,y,z,w] barycentric; P-invariant restriction maps)
