@@ -467,16 +467,6 @@ class MuState:
         mu.seal()
         return mu
 
-    def _replace_S_A(self, s_a_new: np.ndarray) -> 'MuState':
-        """Return copy of self with S_A replaced; reseals (S_A affects H_t)."""
-        import copy as _copy
-        mu = _copy.copy(self)
-        mu.S_A     = s_a_new
-        mu._H      = None
-        mu._sealed = False
-        mu.seal()
-        return mu
-
     def _replace_focal_point(self, fp: np.ndarray) -> 'MuState':
         """Return copy of self with focal_point updated. Does not affect H_t."""
         import copy as _copy
@@ -589,4 +579,11 @@ class MuState:
         # Normalization: T_norm = T_ac / H(c|c_prev)  via KSG entropy estimate
         # H(c_now | c_prev) = H(c_now, c_prev) - H(c_prev)
         # H_KSG(X) = -< log(n_X / (N-1)) > + log(vol_k)  [marginal KSG entropy]
-        # Approximate: use I_cond = H(c_now) - H(c_now|c_prev) -> H(c|c_prev) =
+        # Approximate: use I_cond = H(c_now) - H(c_now|c_prev) -> H(c|c_prev) = H(c_now) - I_cond
+        # For normalization, use I_cond as proxy for H(c|c_prev); T_norm = T_ac / I_cond
+        T_norm = float('nan')
+        if T_ac > 1e-15:
+            # simple normalization: T_ac / (T_ac + T_ca + 1e-15)
+            T_norm = T_ac / (T_ac + T_ca + 1e-15)
+
+        return T_ac, T_ca, delta, T_norm

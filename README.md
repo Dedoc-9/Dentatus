@@ -1,4 +1,4 @@
-# Reality Engine — EXP-301 Dentatus
+# Reality Engine — Series 300 (Dentatus)
 
 Generative reality engine implementing a cellular sheaf state machine over a claim DAG.
 State evolution is governed by a fixed operator pipeline with immutable hash-indexed states,
@@ -35,12 +35,14 @@ Cross-stage mutation outside the defined mapping is forbidden.
 
 `engine/operators.py` implements:
 
-| Operator | Study | kappa rule |
-|----------|-------|------------|
-| `apply_gamma_306` / `_recursive` | EXP-306 | additive: `kappa_child = kappa_parent * ω_i` |
+| Operator | Study | Description |
+|----------|-------|-------------|
+| `apply_gamma_306` / `_recursive` | EXP-306 | kappa additive: `kappa_child = kappa_parent * ω_i` |
 | `apply_gamma_307` / `_recursive` | EXP-307 | shape operator trace: `tr(H_bbox) = Σ 2/l_i` |
-| `apply_gamma_308` / `_recursive` | EXP-308 | area-weighted integral: `2(ly·lz/lx + lx·lz/ly + lx·ly/lz) / (lx·ly + ly·lz + lx·lz)` |
-| `apply_gamma_309` / `_recursive` | EXP-309 | SPRT LOD gating on top of EXP-308; focal point update; ghost quarantine |
+| `apply_gamma_308` / `_recursive` | EXP-308 | area-weighted integral curvature; bbox-hash payload |
+| `apply_gamma_309` / `_recursive` | EXP-309 | SPRT LOD gating; focal point update; ghost quarantine |
+| `apply_gamma_311` / `_recursive` | EXP-311 | G_inject auxiliary residual; dual EMA activation |
+| `apply_gamma_312` / `_recursive` | EXP-312 | extents payload + uniform Sector A split; full P_yz symmetry |
 
 ### Stalk schema — d=12
 
@@ -77,7 +79,6 @@ S_{t+1} = α·S_t + (1−α)·G_t           EMA accumulation (α = 0.85)
 B(t)   = ‖S‖   / (‖Z‖   + ε)          global ghost ratio
 B_A(t) = ‖S_A‖ / (‖Z_A‖ + ε)          sector A+B ghost ratio
 B_C(t) = ‖S_C‖ / (‖Z_C‖ + ε)          sector C ghost ratio
-η_AC   = |λ_A · λ_C| / (‖λ_A‖·‖λ_C‖ + ε)   sector coupling (EXP-308)
 ```
 
 `G_t` is a numeric residual only — not an entity, not directly controlled.
@@ -85,89 +86,152 @@ Dual arithmetic (forward Z space vs dual S/G space) is never collapsed.
 
 ---
 
-## Study series (EXP-301 → EXP-308)
+## Study series
 
-| Study | Description | declaration_hash (first 16) |
-|-------|-------------|----------------------------|
-| EXP-301 | R⁴ symbolic generative engine | — |
-| EXP-302 | R⁶ pos×col; sum conservation | — |
-| EXP-303 | R⁹ pos×col×nrm; Gamma; bbox containment | — |
-| EXP-304 | R⁸ dual-sector; Sector B barycentric | — |
-| EXP-305 | R¹¹ triple-sector; Sector C unit-norm; P_yz; block-diagonal F | — |
-| EXP-306 | R¹² curvature engine; centroid-outward normals; kappa additive; dual ghost S_A/S_C | `5a8e1afc590d8ffb` |
-| EXP-307 | R¹² shape operator; kappa = tr(H_bbox); auto-payload recursive Gamma | `8e288c601093e1dd` |
-| EXP-308 | R¹² integral curvature; kappa = area-weighted mean curvature; η_AC; bbox-hash payload | `ad5215b859de58d5` |
+| Study | Description | declaration_hash (first 16) | Status |
+|-------|-------------|----------------------------|--------|
+| EXP-301 | R⁴ symbolic generative engine | — | closed |
+| EXP-302 | R⁶ pos×col; sum conservation | — | closed |
+| EXP-303 | R⁹ pos×col×nrm; Gamma; bbox containment | — | closed |
+| EXP-304 | R⁸ dual-sector; Sector B barycentric | — | closed |
+| EXP-305 | R¹¹ triple-sector; Sector C unit-norm; P_yz; block-diagonal F | — | closed |
+| EXP-306 | R¹² curvature engine; centroid-outward normals; kappa additive; dual ghost S_A/S_C | `5a8e1afc590d8ffb` | closed |
+| EXP-307 | R¹² shape operator; kappa = tr(H_bbox); auto-payload recursive Gamma | `8e288c601093e1dd` | closed |
+| EXP-308 | R¹² integral curvature; area-weighted mean curvature; η_AC; bbox-hash payload | `ad5215b859de58d5` | closed |
+| EXP-309 | SPRT LOD gating; focal point evolution; ghost quarantine | `c2f9b341...` | closed |
+| EXP-310 | KSG transfer entropy S_A→S_C; lag-3 coupling confirmed | — | closed |
+| EXP-311 | G_inject auxiliary residual; dual EMA activation; single-step P_yz | `10659ed4d37c027a` | closed |
+| EXP-312 | Asymmetry Debt closure; full multi-step P_yz invariance | `2e6ccdc20da7aefb` | **closed** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
 
 ---
 
+## EXP-312 — The Symmetric Budget
+
+**Goal:** close the P_yz Asymmetry Debt — full multi-step leaf-count invariance under reflection x→−x.
+
+**Root causes (both closed):**
+
+| Source | Description | Fix |
+|--------|-------------|-----|
+| Source 1 | `_bbox_hash_payload` encoded absolute x-coords → K_bound P_yz-variant | `_bbox_hash_payload_312`: f(|hi−lo|) extents only |
+| Source 2 | `_orthogonal_decompose(stalk, N)` assigned mass by algebraic index; under P_yz octant i↔i XOR 4 permutes → focal point diverges | uniform split: `stalk_A_i = stalk_A / N` |
+
+**Invariance proof (Fix 2):**
+
+```
+stalk_A_i = stalk_A/N  →  all child masses equal
+mass-weighted centroid = (1/N)·Σ centroid_i = geometric centroid of bbox
+‖P_yz(c) − P_yz(fp)‖ = ‖P_yz(c − fp)‖ = ‖c − fp‖   (isometry)
+LOD_fwd(i) = LOD_mir(i XOR 4)  →  identical gating  →  identical tree
+```
+
+**Results:**
+
+```
+fwd_leaves == mir_leaves == 36    (was 92 vs 99 in EXP-311)
+cost delta  = 7.99e-15            (machine epsilon)
+norm(S_C):  0.03915037 = 0.03915037
+norm(S_A):  1.49806877 = 1.49806877
+```
+
+Fork A (`run_seed_exp312.py`): 8/8 PASS
+Fork B (`run_p_invariance_exp312.py`): 10/10 PASS
+
+---
+
 ## Coordinate conventions
 
-- **Centroid-outward normal**: `n_child = normalize(centroid_child − centroid_parent)` — purely
-  geometric, closes E-305-002 (P_yz exact).
+- **Centroid-outward normal**: `n_child = normalize(centroid_child − centroid_parent)` —
+  purely geometric, closes E-305-002 (P_yz exact).
 - **P_yz mirror**: `x → −x` (polar dim 4), `nx → −nx` (axial dim 8), bbox x-axis reflected.
-  kappa_integral is P_yz-invariant: extents `|hi[i]−lo[i]|` are preserved under x-reflection.
-- **Bbox hash payload** (EXP-308+): `SHA256(bbox_lo_bytes ‖ bbox_hi_bytes ‖ depth_bytes ‖ index_bytes)[:16]`
-  — spatially varying K_bound as geometric signal.
+  `kappa_integral` is P_yz-invariant: extents `|hi[i]−lo[i]|` are preserved under x-reflection.
+- **Bbox hash payload (EXP-308–311)**: `SHA256(lo‖hi‖depth‖index)[:16]` — absolute coords,
+  P_yz-variant by design.
+- **Bbox hash payload (EXP-312+)**: `SHA256(ex‖ey‖ez‖depth‖index)[:16]` — extents only,
+  P_yz-invariant.
 
 ---
 
 ## Running the tests
 
-```
+```bash
 # Dependencies
 pip install numpy scipy
 
-# Fork A — seed expansion and kappa validation
-python run_seed_exp308.py
+# EXP-312 (current)
+python run_seed_exp312.py
+python run_p_invariance_exp312.py
 
-# Fork B — P_yz invariance
+# EXP-311
+python run_seed_exp311.py
+python run_p_invariance_exp311.py
+
+# EXP-308 (regression)
+python run_seed_exp308.py
 python run_p_invariance_exp308.py
 ```
 
-All prior study runners (`run_seed_exp30{6,7}.py`, `run_p_invariance_exp30{6,7}.py`) remain
-executable as regression checks.
+All prior study runners (`exp306`, `exp307`, `exp309`) remain executable as regression checks.
 
 ---
 
 ## Dev notes
 
-### Ghost non-zero signal
+### G_t = 0 structural identity
 
-For lossless centroid-outward octree partitions, `G = 0` by construction
-(children sum exactly to parent). `S_A` and `S_C` accumulate non-zero residuals only when
-the active-leaf W_basis cannot fully reconstruct `Z` via lstsq — e.g., after asymmetric splits
-or when kappa_child ≠ kappa_parent in non-additive regimes (EXP-307+).
+For all lossless centroid-outward octree partitions, `Z_t ∈ span(W_t)` by construction, so
+`G_t = Z_t − Π_{W_t}(Z_t) = 0` exactly. This is a mathematical identity, not a bug.
+`S_A` and `S_C` accumulate non-zero signal only via the `G_inject` auxiliary channel (EXP-311+).
 
-### Recursive tree asymmetry under P_yz (ghost #1)
+### G_inject auxiliary residual (EXP-311)
 
-`apply_gamma_308_recursive` uses `_cost(mu.S)` at each node to gate budget. Since `S` evolves
-differently for forward (nx=+0.6) vs mirror (nx=−0.6) seeds, the recursion trees are
-structurally non-isomorphic — leaves occupy different bbox positions. Geometric pair-matching
-is therefore inapplicable for recursive P_yz tests. The correct check is sorted kappa
-distribution equality + per-predicate validation. Equal leaf counts confirm K-budget depth
-profile symmetry.
+Per-partition auxiliary signal injected into the dual EMA, orthogonal to `G_t`:
+
+```
+G_inject_C[3] = alpha_leak * (‖Z_before[0:4]‖ / mass_ref)
+G_inject_A[7] = alpha_leak * beta_CA * (Z_before[11] / kappa_ref)
+S_C_{t+1} = alpha_ema * S_C_t + (1−alpha_ema) * G_inject_C
+S_A_{t+1} = alpha_ema * S_A_t + (1−alpha_ema) * G_inject_A
+```
+
+`G_inject` feeds only the dual EMA; it does not modify `Z_t` or any claim stalk.
+Gravitational backreaction analogy: `G_inject` is the radiation reaction force on the ghost sector —
+draining energy from the mass-curvature coupling asymmetry into the EMA accumulator without
+perturbing the geodesic (primary Z trajectory).
+
+### P_yz octant permutation (ghost #4 — EXP-312)
+
+Under P_yz (x→−x), the octree child index permutation is `i ↔ i XOR 4` (the x-bit, weight 4,
+flips). Index-based mass assignment breaks focal point covariance across this permutation.
+Uniform split is the minimal P_yz-invariant Sector A distribution. Conservation holds:
+`Σ stalk_A_i = N·(stalk_A/N) = stalk_A`.
+
+### LOD_RELAXED validity class propagation
+
+`validity_class` is set on `MuState` (not on individual `Claim` objects). The recursive guard
+checks `getattr(mu, "validity_class", "FULL_VALID")`. A `LOD_RELAXED` input blocks all further
+expansion; `FULL_VALID` recurses normally.
+
+### Focal point is not hashed
+
+`focal_point` is a dynamic attribute on `MuState`, excluded from `H_t`. It is a mutable observer
+parameter. Changing `focal_point` between calls produces different LOD values without invalidating
+the hash chain.
 
 ### EPS_REL relative floor (EXP-308 rev)
 
-`kappa_integral` uses `eps = max(lx, ly, lz) * 1e-9` as the per-axis regularization floor
-instead of an absolute `1e-6`. For all normal extents (≥ 1e-3) the two floors are identical.
-The relative floor is strictly correct for degenerate extents < 1e-7 where the absolute floor
-would over-clamp relative to bbox scale, and is scale-invariant under uniform bbox rescaling.
-
-### η_AC = 1.0 for symmetric partitions
-
-For uniform octree splits, `lstsq(W_A, Z_A)` and `lstsq(W_C, Z_C)` both return equal-weight
-coefficient vectors (all children contribute identically). Cosine similarity = 1.0 is the
-correct result. The observable becomes informative only for asymmetric splits or deep
-non-uniform recursions where Sector A and Sector C stalk geometry decouple.
+`kappa_integral` uses `eps = max(lx, ly, lz) * 1e-9` as per-axis regularization floor
+(scale-invariant under uniform bbox rescaling). For normal extents ≥ 1e-3 identical to the
+prior absolute `1e-6` floor.
 
 ### NTFS git workaround
 
-`.git/config` may disappear between sessions on NTFS. Fix: run `git init` in the repo root
-to reinitialize, then `git push --set-upstream origin main`.
+`.git/config` may be unreadable from the Linux sandbox between sessions on Windows NTFS.
+Fix: open Git Bash in the repo root and run the `commit_exp312.ps1` script (or copy the commands
+manually — see **Git Bash instructions** below).
 
 ### Forbidden operations
 
@@ -178,35 +242,13 @@ Post-execution rule addition is forbidden. All predicates must be declared and l
 
 ---
 
-## EXP-309 dev notes
+## Series-300 closure / EXP-401 gate
 
-### Ghost quarantine ghost #2
+Series-300 is **closed** as of EXP-312. The asymmetry debt is paid in full.
 
-For lossless centroid-outward operators, G_C = 0 exactly (children sum to parent in Sector C). S_C therefore accumulates zero residual regardless of quarantine case. Quarantine becomes informative only when a non-lossless operator (e.g. asymmetric stalk injection) creates persistent G_C != 0.
+EXP-401 prerequisites (anisotropic splatting / differentiable volume clusters):
 
-### LOD_RELAXED validity_class propagation
-
-validity_class is set on MuState (not on individual Claim objects). The recursive guard checks getattr(mu, "validity_class", "FULL_VALID") on the input state. A LOD_RELAXED input state blocks all further expansion of its active leaves. FULL_VALID states recurse normally.
-
-### Focal point is not hashed
-
-focal_point is a dynamic attribute on MuState, excluded from H_t. It is a mutable observer parameter, not part of the validity state. Changing focal_point between calls produces different LOD values and validity classes without invalidating the hash chain.
-
-## EXP-310 dev notes
-
-### KSG degeneracy guard (ghost #3)
-
-KSG TE is undefined when any marginal has zero variance. Constant c_t (frozen S_C under LOD_RELAXED kappa bypass) triggers this:  returns 0.0 by convention when std(c) < 1e-15. This is the correct information-theoretic result: if S_C is frozen, no information flows from S_A to S_C (T_{A->C} = 0). The degeneracy guard makes the architectural quarantine guarantee machine-checkable.
-
-### TE sign vs magnitude
-
-KSG magnitude is biased ~5-50% depending on N. With the ghost history buffer at W=32, sign(delta_T_AC) is the reliable statistic (correct 100% of trials at W=64). Magnitude becomes reliable at N~2000. The preregistered threshold is: sign(delta_T_AC) is the primary observable; magnitude is logged but not asserted.
-
-## EXP-309 open limits
-
-| limit | description |
-|-------|-------------|
-| kappa face model | inscribed curvature κ_i = 2/l_i is flat-face; actual curvature of rounded bbox requires Monte Carlo surface sampling |
-| η_AC interpretation | measures coefficient alignment, not information flow; EXP-309: directed mutual information I(S_A;S_C) across time |
-| bbox-hash K_bound | spatially varying but not yet used to gate partition depth; EXP-309: K_bound(depth) feeds recursive termination directly |
-| G_C non-zero signal | persistent G_C requires explicit non-lossless operator; EXP-309: design asymmetric partition |
+- Stalk schema extension to d=15 (add 3 Gaussian covariance dims) or d=18 (full 3×3 covariance)
+- New validity predicate: `is_valid_covariance_401` — positive-definite Σ on new dims
+- `apply_gamma_401` must extend the block-diagonal F to the new covariance block
+- P_yz must extend: covariance Σ transforms as `Σ' = R·Σ·Rᵀ` where R=diag(-1,1,1)
