@@ -587,3 +587,60 @@ def is_valid_covariance_401(stalk):
     L, Sigma = cholesky_from_stalk_401(stalk)
     eigvals = _np401.linalg.eigvalsh(Sigma)
     return bool(_np401.all(eigvals > 0))
+
+
+# ---------------------------------------------------------------------------
+# Manifold Firewall -- EXP-502 (is_manifold_501)
+# ---------------------------------------------------------------------------
+#
+# Elastic-limit gate on the inter-claim (manifold) entanglement ghost.
+# Reads the DEGREE-NORMALIZED global entanglement ratio B_ent produced by
+# phi_ent_observe(..., degree_normalize=True) (EXP-502, Ghost #22 fix).
+#
+# eps_manifold is the "unbreakable skin": the maximum admissible inter-claim
+# deformation. A state whose normalized residual exceeds eps_manifold is
+# structurally torn and is rejected; per protocol the engine reverts to the
+# last valid hashed state.
+#
+# Calibration (EXP-502 preregistration):
+#   * Un-normalized B_ent baseline (EXP-501, measured): median ~ 0.678.
+#   * Degree normalization shifts the baseline DOWN by ~1/sqrt(mean_deg);
+#     mean_deg = 2*N_edges/N_leaves ~ 2*198/71 ~ 5.58, sqrt ~ 2.36.
+#   * Preregistered limit eps_manifold = 0.8 (declared constant).
+#     NOTE: against the *normalized* baseline this is a PERMISSIVE skin
+#     (limit / normalized_baseline ~ 2.5-3x). The measured normalized median
+#     from EXP-502 Fork A is the lower bound for a tighter elastic limit;
+#     retune here, not in the operator (Ghost #21 Zusammenhang Stiffness).
+EPS_MANIFOLD_502 = 0.8
+
+
+def is_manifold_501(B_ent, eps_manifold=EPS_MANIFOLD_502):
+    """EXP-502 Manifold Firewall (global gate).
+
+    Returns True (state admissible) iff the degree-normalized global entanglement
+    ratio B_ent does not exceed the elastic limit eps_manifold.
+
+        is_manifold_501 := (B_ent <= eps_manifold)
+
+    Pure scalar predicate; no MuState mutation. Observable purity preserved.
+    """
+    return bool(float(B_ent) <= float(eps_manifold))
+
+
+def is_manifold_501_perclaim(G_ent_per_claim, Z_active_norm,
+                             eps_manifold=EPS_MANIFOLD_502, eps=1e-15):
+    """EXP-502 Manifold Firewall (per-claim gate, strict variant).
+
+    Returns (ok, worst_cid, worst_ratio). ok is True iff EVERY claim's normalized
+    residual ratio g_i / (||Z_active|| + eps) is within eps_manifold. Catches a
+    single torn claim that a global average would mask (localized tears).
+    """
+    worst_cid = None
+    worst_ratio = 0.0
+    denom = float(Z_active_norm) + eps
+    for cid, g in G_ent_per_claim.items():
+        r = float(g) / denom
+        if r > worst_ratio:
+            worst_ratio = r
+            worst_cid = cid
+    return bool(worst_ratio <= float(eps_manifold)), worst_cid, worst_ratio

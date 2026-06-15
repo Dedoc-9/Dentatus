@@ -4741,7 +4741,8 @@ def apply_F_ij_501(stalk_j, face_axis):
 
 
 def phi_ent_observe(Z_claims, bboxes, S_ent_prev,
-                    alpha_ent=_ALPHA_ENT_501, eps=_EPS_ENT_501):
+                    alpha_ent=_ALPHA_ENT_501, eps=_EPS_ENT_501,
+                    degree_normalize=False):
     """EXP-501 Manifold Observation — phi_ent_observe.
 
     Stateless operator on the full active leaf set. Computes the sheaf coboundary
@@ -4753,6 +4754,12 @@ def phi_ent_observe(Z_claims, bboxes, S_ent_prev,
         S_ent_prev:  dict[claim_id -> float]                    per-claim EMA state (caller-tracked)
         alpha_ent:   float   EMA coefficient (default 0.5)
         eps:         float   denominator floor
+        degree_normalize: bool  EXP-502 (Ghost #22). When True, the per-claim
+                          residual is degree-normalized: G_ent_i = ||sum_j G_ij|| / sqrt(deg_i).
+                          Removes the high-degree (corner-octant) accumulation bias.
+                          Default False preserves EXP-501 behaviour byte-identically.
+                          deg(i) is a graph-isomorphism invariant under P_yz, so
+                          sqrt(deg) normalization preserves Fork-B P_yz symmetry exactly.
 
     Returns:
         G_ent_per_claim: dict[claim_id -> float]   local entanglement residual norm
@@ -4794,7 +4801,22 @@ def phi_ent_observe(Z_claims, bboxes, S_ent_prev,
         G_ji = apply_F_ij_501(Z_claims[cid_i], k) - Z_claims[cid_j]
         G_sum[cid_j] += G_ji
 
-    G_ent_per_claim = {cid: float(np.linalg.norm(G_sum[cid])) for cid in ids}
+    # Per-claim degree (number of incident face-adjacent edges)
+    degrees = {cid: 0 for cid in ids}
+    for (cid_i, cid_j, _kd) in edges:
+        degrees[cid_i] += 1
+        degrees[cid_j] += 1
+
+    # Per-claim residual norm.
+    # EXP-501: G_ent_i = ||sum_j G_ij^{ent}||            (degree_normalize=False)
+    # EXP-502 (Ghost #22): G_ent_i = ||sum_j G_ij|| / sqrt(deg_i)  (degree_normalize=True)
+    G_ent_per_claim = {}
+    for cid in ids:
+        g = float(np.linalg.norm(G_sum[cid]))
+        if degree_normalize:
+            d_i = degrees[cid]
+            g = g / np.sqrt(d_i) if d_i > 0 else g
+        G_ent_per_claim[cid] = g
 
     # EMA update: S_ent_i(t+1) = alpha * S_ent_prev_i + (1-alpha) * G_ent_i
     S_ent = {}
@@ -4824,3 +4846,73 @@ def phi_ent_observe(Z_claims, bboxes, S_ent_prev,
         lambda_2 = 0.0
 
     return G_ent_per_claim, S_ent, B_ent, N_edges, lambda_2, edges
+
+
+# ============================================================
+# EXP-503 prep - Spectral (Fiedler-mode) projection of G_ent
+# Observation-only scaffold. NOT wired into beta_Z_eff (that is EXP-503 proper).
+# Projects the per-claim entanglement residual onto the k lowest non-trivial
+# eigenvectors of L_sheaf so Phi_fb_manifold can later respond to large-scale
+# (low-eigenvalue) manifold deformation - tectonic shift - rather than local
+# surface noise. The lambda=0 mode (rigid translation) is skipped.
+# ============================================================
+
+_K_FIEDLER_MODES_503 = 3   # default low-mode count (tune in EXP-503)
+
+
+def build_L_sheaf_503(edges, ids):
+    """Scalar sheaf Laplacian L_sheaf = delta^T delta (N x N) from the edge list.
+    L_sheaf[i,i] = deg(i); L_sheaf[i,j] = -1 if (i,j) in E. PSD; ker contains the
+    all-ones rigid-translation mode. Pure function of the adjacency graph.
+    """
+    N = len(ids)
+    id_to_idx = {cid: i for i, cid in enumerate(ids)}
+    if not edges or N == 0:
+        return np.zeros((max(N, 1), max(N, 1)))
+    delta = np.zeros((len(edges), N))
+    for e_idx, (cid_i, cid_j, _k) in enumerate(edges):
+        delta[e_idx, id_to_idx[cid_i]] = -1.0
+        delta[e_idx, id_to_idx[cid_j]] = +1.0
+    return delta.T @ delta
+
+
+def spectral_ent_project(G_ent_per_claim, edges, ids,
+                         Z_active_norm=None, Z_claims=None,
+                         k_modes=_K_FIEDLER_MODES_503, eps=_EPS_ENT_501):
+    """EXP-503 prep: project the per-claim entanglement residual onto the k lowest
+    non-trivial Fiedler modes of L_sheaf.
+
+    Returns:
+        B_ent_spectral:  float        ||V_k^T g|| / (||Z_active|| + eps)
+        lambda_modes:    np.ndarray   the k eigenvalues used (ascending, lambda_0 excluded)
+        fiedler_vector:  np.ndarray   eigenvector of lambda_2 (natural manifold fault line)
+        g_spectral:      np.ndarray   (k,) projection coefficients V_k^T g
+
+    Dual arithmetic: g lives in the dual entanglement space (R^N_claims); V_k are
+    primary-graph spectral modes. The bridge ||.|| -> ratio is the only primary coupling.
+    P_yz: L_sheaf is graph-isomorphic under P_yz -> identical spectrum; |projection| invariant.
+    """
+    ids = sorted(ids)
+    N = len(ids)
+    g = np.array([float(G_ent_per_claim[cid]) for cid in ids])
+
+    if Z_active_norm is None:
+        if Z_claims is not None:
+            Z_norms = np.array([np.linalg.norm(Z_claims[cid]) for cid in ids])
+            Z_active_norm = float(np.linalg.norm(Z_norms))
+        else:
+            Z_active_norm = float(np.linalg.norm(g))   # self-normalize fallback
+
+    L_sheaf = build_L_sheaf_503(edges, ids)
+    if N < 2 or not edges:
+        return 0.0, np.zeros(0), np.zeros(N), np.zeros(0)
+
+    eigvals, eigvecs = np.linalg.eigh(L_sheaf)        # ascending, orthonormal columns
+    start = 1                                          # skip lambda_0 (rigid translation)
+    k = min(k_modes, N - start)
+    V_k = eigvecs[:, start:start + k]                  # (N, k)
+    lambda_modes = eigvals[start:start + k]
+    g_spectral = V_k.T @ g                             # (k,)
+    B_ent_spectral = float(np.linalg.norm(g_spectral)) / (Z_active_norm + eps)
+    fiedler_vector = eigvecs[:, 1] if N >= 2 else np.zeros(N)
+    return B_ent_spectral, lambda_modes, fiedler_vector, g_spectral

@@ -1,0 +1,62 @@
+{
+  "protocol": "exp502-v1",
+  "series": "500",
+  "inherits": "exp501-v1",
+  "title": "Manifold Firewall -- is_manifold_501 elastic-limit gate",
+  "gate_source": "EXP-501 baseline: B_ent measured; Ghost #22 degree bias; calibrate epsilon_manifold",
+  "operator": "phi_ent_observe(degree_normalize=True) + is_manifold_501",
+  "pipeline_insertion": "Z -> [phi_ent_observe -> G_ent -> S_ent -> is_manifold_501] -> S -> W -> OBS",
+  "parameters": {
+    "alpha_ent": 0.5,
+    "eps_ent": 1e-15,
+    "degree_normalize": true,
+    "epsilon_manifold": 0.8,
+    "adjacency": "face_adjacent_6connected"
+  },
+  "ghost_22_fix": {
+    "description": "degree-normalized residual G_ent_i = ||sum_j G_ij|| / sqrt(deg_i)",
+    "rationale": "remove high-degree corner-octant accumulation bias; deg(i) is P_yz graph-invariant",
+    "p_yz": "sqrt(deg) normalization preserves Fork-B P_yz symmetry exactly"
+  },
+  "firewall": {
+    "predicate": "is_manifold_501",
+    "rule": "admissible iff B_ent_normalized <= epsilon_manifold",
+    "epsilon_manifold": 0.8,
+    "baseline_unnormalized_median": 0.678,
+    "baseline_normalized_median_estimate": 0.52,
+    "margin_note": "epsilon/normalized_baseline ~ 1.5x: mildly permissive elastic skin",
+    "revert_on_fail": "last valid hashed state (protocol-mandated)",
+    "ghost_21": "Zusammenhang Stiffness: if epsilon < normalized baseline, gate fails every step"
+  },
+  "observables": {
+    "B_ent_normalized": "||S_ent|| / (||Z_active|| + eps)  with degree_normalize=True",
+    "is_manifold_501": "bool gate at epsilon_manifold=0.8",
+    "worst_claim_ratio": "max_i g_i/(||Z_active||+eps)  (per-claim strict variant)",
+    "lambda_2": "Fiedler value (algebraic connectivity)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] degree_normalize=True lowers B_ent vs degree_normalize=False (Ghost #22 bias removed)",
+    "[3] B_ent_normalized median in (0, epsilon_manifold) (firewall admits baseline)",
+    "[4] is_manifold_501(B_ent_normalized) == True at baseline for all n",
+    "[5] is_manifold_501 rejects a synthetic over-coupled state (B_ent > epsilon_manifold)",
+    "[6] global section: B_ent_normalized == 0 and is_manifold_501 == True",
+    "[7] per-claim worst_ratio <= epsilon_manifold at baseline",
+    "[8] EXP-501 regression: degree_normalize=False path byte-identical (10/10)",
+    "[9] degree-normalization preserves global-section zero (matched neighbors -> 0)",
+    "[10] epsilon_manifold == 0.8 (preregistered constant)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] max|B_ent_norm_fwd - B_ent_norm_mir| < 1e-10 (degree-normalized P_yz invariance)",
+    "[3] max|lambda_2_fwd - lambda_2_mir| < 1e-10",
+    "[4] is_manifold_501_fwd == is_manifold_501_mir for all n",
+    "[5] max|worst_ratio_fwd - worst_ratio_mir| < 1e-10"
+  ],
+  "exp503_gate": {
+    "trigger": "is_manifold_501 stable at baseline -> introduce Phi_fb_manifold spectral feedback",
+    "target": "beta_Z_eff = f(B_A, B_D, B_ent_spectral) via spectral_ent_project low Fiedler modes",
+    "scaffold": "engine.operators.spectral_ent_project + build_L_sheaf_503 (observation-only, landed EXP-502)"
+  },
+  "declaration_hash": "0979f7f520421a28bc37a7e7aec9e8f7e946f4adb459f55b64718188ea966af8"
+}

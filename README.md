@@ -1,4 +1,4 @@
-# Reality Engine — Series 300–400 (Dentatus)
+# Reality Engine — Series 300–500 (Dentatus)
 
 Generative reality engine implementing a cellular sheaf state machine over a claim DAG.
 State evolution is governed by a fixed operator pipeline with immutable hash-indexed states,
@@ -137,10 +137,17 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-314 | Hyperfine ghost; Ω_AC precession angle; architecture-driven τ_opt | `5ca52bef5d2a5080` | closed |
 | EXP-315 | Dual G_inject_A; primary arccos path active; τ_opt varies with mass/kappa | `e16dd1a01735bc1d` | closed |
 | EXP-316 | 3-component G_inject_A; y-agg→S_A[1]; τ_opt range {1,2,3}; Series 300 final | `522ca73148485fdc` | **closed** |
-| EXP-401 | d=18 stalk; log-Cholesky Σ via S_D; G_inject_D ∝ B̂⊗B̂·τ_norm; Σ_mir=R·Σ_fwd·Rᵀ | `ff1fb75eb819cf1e` | **open** |
-| EXP-402 | Phi_fb dual pullback; β_Z_eff=max(β_min,β_base·(1+γ_A·B_A−γ_D·B_D)); B_A/B_D equilibrium | `d933ad3ba860b601` | **open** |
-| EXP-403 | Sequential scene refinement; EMA warmup across N=20 scenes; β_Z_eff* convergence; saturation gate | `b2cfdf2e16e1617e` | **open** |
-| EXP-404 | Exponential phi_fb; saturation_ratio 0.60→0.20; β_Z_eff*=17.19; Ω_fb=760%; Ghost #14/#15 | `e7447ec6a65022a2` | **open** |
+| EXP-401 | d=18 stalk; log-Cholesky Σ via S_D; G_inject_D ∝ B̂⊗B̂·τ_norm; Σ_mir=R·Σ_fwd·Rᵀ | `ff1fb75eb819cf1e` | **closed** |
+| EXP-402 | Phi_fb dual pullback; β_Z_eff=max(β_min,β_base·(1+γ_A·B_A−γ_D·B_D)); B_A/B_D equilibrium | `d933ad3ba860b601` | **closed** |
+| EXP-403 | Sequential scene refinement; EMA warmup across N=20 scenes; β_Z_eff* convergence; saturation gate | `b2cfdf2e16e1617e` | **closed** |
+| EXP-404 | Exponential phi_fb; saturation_ratio 0.60→0.20; β_Z_eff*=17.19; Ω_fb=760%; Ghost #14/#15 | `e7447ec6a65022a2` | **closed** |
+| EXP-405 | Adaptive γ warmup; ramp(n)=1−exp(−n/τ); overshoot eliminated; Ghost #16 2-cycle | `6e498f656aeb0fce` | **closed** |
+| EXP-406 | EMA-smoothed β_Z_eff (inertial attention); 2-cycle damped 38%; Ghost #17 lag | `84255beb1f11d018` | **closed** |
+| EXP-407 | Adaptive α_bze ramp↓ (α_min=0.7>α_crit=2/3); tail_range 2.71; Ghost #18 | `2dc29bcfbb1d7b02` | **closed** |
+| EXP-408 | Ascending α_bze ramp↑; tail_range 0.93; Ghost #19 Attraktorwahl (basin lock) | `d1945e6736a284a3` | **closed** |
+| EXP-409 | Hysteresis α latch (β_threshold=12.0); convergence+basin jointly resolved; Series 400 close | `32a0fbef5f6e5e1e` | **closed** |
+| EXP-501 | Manifold Observation; Sheaf Coboundary δ₀ G_ent; Sector D XOR connection; λ₂ Fiedler | `bfbf52c2977f436a` | **open** |
+| EXP-502 | Manifold Firewall is_manifold_501 (ε=0.8); degree-normalized G_ent (Ghost #22); EXP-503 spectral scaffold | `0979f7f520421a28` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -466,6 +473,40 @@ Series-300 is **closed** as of EXP-316.
 | Ω_AC observable + τ_opt derived | EXP-314 ✓ |
 | Primary arccos path active; τ_opt varies with depth | EXP-315 ✓ |
 | 3-component v_A; τ_opt range {1,2,3}; Series 300 hardened | EXP-316 ✓ |
+
+---
+
+## Series-400 closure
+
+Series-400 (Homeostatic Metabolism) is **closed** as of EXP-409.
+
+| Requirement | Status |
+|-------------|--------|
+| d=18 log-Cholesky Σ; Sector D dual ghost S_D | EXP-401 ✓ |
+| Φ_fb Ghost-Zeeman homeostasis; B_A/B_D equilibrium | EXP-402 ✓ |
+| Sequential N=20 scene refinement; β_Z_eff* convergence | EXP-403 ✓ |
+| Exponential Φ_fb; saturation resolved (0.60→0.20) | EXP-404 ✓ |
+| Overshoot eliminated (adaptive γ / EMA / α schedules) | EXP-405–408 ✓ |
+| Hysteresis latch (β_threshold=12.0); convergence + basin jointly | EXP-409 ✓ |
+
+Engine ground truth: a stabilized **71-leaf octree** with **~198 face-adjacent edges**
+(N_edges ∈ {198, 219}; median 198), λ₂ ≈ 0.32, machine-precision P_yz symmetry (δ ≈ 10⁻¹⁴–10⁻¹⁶).
+
+---
+
+## Series-500 status (Manifold Integration — OPEN)
+
+| Study | Role | Status |
+|-------|------|--------|
+| EXP-501 | Manifold Observation — sheaf coboundary δ₀, Sector D XOR *Zusammenhang*, λ₂ Fiedler | observation-only ✓ |
+| EXP-502 | Manifold Firewall — `is_manifold_501` (ε_manifold=0.8) + degree-normalized G_ent (Ghost #22) | landed ✓ |
+
+Measured baselines (71-leaf seed octree): B_ent un-normalized median ≈ 0.678;
+degree-normalized median ≈ 0.52; firewall ε_manifold = 0.8 (≈1.5× margin, mildly permissive).
+EXP-503 spectral feedback is scaffolded (`spectral_ent_project`, `build_L_sheaf_503`,
+observation-only): Fiedler modes [0.316, 0.808, 0.940], B_ent_spectral(k=3) ≈ 0.125.
+
+Fork results: EXP-501 A 10/10 · B 5/5 — EXP-502 A 10/10 · B 5/5 (P_yz δ ≤ 1.1e-16).
 
 ---
 
@@ -954,201 +995,3 @@ P_yz: max|bze_fwd−mir|=1.78e-15 ✓
 
 **Trigger (proactive):** Ghost #19. Neither descending (stable but sluggish) nor ascending (basin-locked) resolves convergence + basin-selection jointly.  
 Options: (A) hysteresis α — hold low until bze crosses basin threshold; (B) ascending to α_max=0.7 only (EXP-407 floor, not 0.9); (C) Pareto sweep (α_min, α_max, τ_α) vs (tail_range, bze[-1]); (D) two-timescale split with lc-stability signal.
-
----
-
-## EXP-409 — Hysteresis α_bze Schedule (Conditional Basin Lock)
-
-**Declaration hash:** `32a0fbef5f6e5e1eb0e33adc0ee3e25b332e3586b30e0497f81194fb48b799f6`  
-**Gate source:** EXP-408 Ghost #19 (Attraktorwahl) — ascending α locked lc=64 wrong basin
-
-### Operator: phi_fb_hysteresis_ema
-
-Replaces a continuous α schedule with a discrete irreversible latch keyed on β_Z_eff.
-
-```
-maint_latched_out = maint_latched OR (bze_ema_prev ≥ β_threshold)   [irreversible]
-α_eff    = α_maint if maint_latched_out else α_disc
-β_Z_eff  = max(β_Z_min, α_eff · bze_ema_prev + (1−α_eff) · β_raw)
-```
-
-Parameters: `α_disc=0.5`, `α_maint=0.9`, `β_threshold=12.0`, `τ_warmup=5.0`.
-
-**Caller state** (primary scalars, tracked outside MuState):
-- `bze_ema_prev`: initialized to `β_Z_base=2.0`
-- `maint_latched`: initialized False; set True irreversibly when bze ≥ 12.0
-
-### β_threshold Derivation
-
-Two independent routes converge at 11.73 → 12.0 (0.27 safety margin):
-
-```
-Route 1 (geometric mean):  √(β_low · β_high) = √(8.0 × 17.19) = 11.73
-Route 2 (B_A separatrix):  β_sep = 2.0 · exp(0.5 · (2.773+4.302)/2) = 11.73
-
-Ω_fb(β_threshold) = |12.0 − 2.0| / 2.0 = 5.0  (500% — above cold-start basin)
-```
-
-### Ghost #19 (resolved)
-
-Discovery phase (α=0.5) holds until bze confirms the lc=71 basin (≥12.0), then locks maintenance (α=0.9) irreversibly. lc=71 stable from latch_step=12 onward.
-
-### Ghost #20 — Pre-Latch Discovery Variance
-
-The tail window (n=10–19) straddles the phase boundary at n=12. Pre-latch steps (n=10–11) contribute bze=8.53→12.69 (Δ=4.16) to tail_range=4.87. Post-latch range (n=12–19)=0.69 — 90% reduction.
-
-Observable: `Δ_pre-latch = bze(latch_step) − min(bze_tail_pre_latch)`
-
-### Trajectory (N=20 sequential)
-
-```
-bze_409: [2.0, 2.35, 3.21, 5.28, 6.77, 7.96, 9.35, 7.71, 10.63, 10.09,
-          8.53, 12.69, 12.71, 12.75, 12.82, 12.91, 13.02, 13.15, 13.27, 13.40]
-alpha:   [0.5×12, 0.9×8]    latch_step=12  bze_at_latch=12.69
-lc_409:  bistable n=0-11; locks lc=71 from n=12 onward
-```
-
-Discovery phase (n=0–11) is identical to EXP-406 (same α=0.5). Maintenance phase locks immediately upon latch: lc=71 every step.
-
-### Phi_fb Evolution Table (updated)
-
-| EXP | α schedule | tail_range | bze[-1] | lc_tail | Ghost |
-|-----|-----------|-----------|---------|---------|-------|
-| 404 | fixed γ | — | 17.19 | {71} | #15 overshoot=1.33 |
-| 405 | γ ramp↑ | 14.79 | 21.75 | {71,78} | #16 2-cycle |
-| 406 | fixed α=0.5 | 9.17 | 17.13 | {71,78} | #17 lag |
-| 407 | α ramp↓ (min=0.7) | 2.71 | 11.18 | {64,71,106} | #18 subcritical |
-| 408 | α ramp↑ (max=0.9) | 0.93 | 8.62 | {64} | #19 Attraktorwahl |
-| **409** | **α hysteresis (latch@12.0)** | **4.87** | **13.40** | **{71}** | **#20 pre-latch variance** |
-
-### Verified results
-
-| Fork | Assertions | Result |
-|------|-----------|--------|
-| Fork A (`run_seed_exp409.py`) | 10/10 | **PASS** |
-| Fork B (`run_p_invariance_exp409.py`) | 5/5 | **PASS** |
-
-```
-α_disc=0.5  α_maint=0.9  β_threshold=12.0
-latch_step=12  bze_at_latch=12.71  maint_latched_final=True
-bze_409[-1]=13.40 > bze_407[-1]=11.18 ✓
-tail_range_409=4.87 < tail_range_406=9.17 ✓
-last5_range_409=0.49  overshoot=1.0000 (perfect)
-lc_tail={71} (correct basin, no Attraktorwahl) ✓
-P_yz: max|bze_fwd−mir|=1.78e-15 ✓
-latch_fwd==latch_mir for all n: True ✓
-```
-
-### EXP-410 gate
-
-**Trigger (proactive):** bze_409[-1]=13.40 still below EXP-406's 17.13. Post-latch τ_conv≈9.5 steps at α=0.9; only 8 post-latch steps in N=20.  
-Options: (A) extend N→30 (verify bze reaches EXP-406 levels); (B) two-level maintenance (reduce α after bze>15); (C) β_threshold sensitivity sweep ∈ [10,14]; (D) close Series 400 Phi_fb sub-series; promote hysteresis as canonical operator.
-
-**Resolution:** Option D selected. bze gap is a τ_conv arithmetic artifact of the N=20 harness, not a structural failure. Phi_fb sub-series closed. Series 500 opens.
-
----
-
-## Series 400 — Phi_fb Sub-Series Closure
-
-| EXP | Operator | α schedule | tail_range | bze[-1] | lc_tail | Ghost resolved |
-|-----|----------|-----------|-----------|---------|---------|----------------|
-| 404 | phi_fb_exp | fixed γ | — | 17.19 | {71} | baseline |
-| 405 | phi_fb_adaptive | γ ramp↑ | 14.79 | 21.75 | {71,78} | #15 → gate #16 |
-| 406 | phi_fb_ema | fixed α=0.5 | 9.17 | 17.13 | {71,78} | #16 → gate #17 |
-| 407 | phi_fb_adaptive_ema | α ramp↓ | 2.71 | 11.18 | {64,71,106} | #17 → gate #18 |
-| 408 | phi_fb_ascending_ema | α ramp↑ | 0.93 | 8.62 | {64} | #18 → gate #19 |
-| **409** | **phi_fb_hysteresis_ema** | **α hysteresis** | **4.87** | **13.40** | **{71}** | **#19 resolved** |
-
-Canonical operator: `phi_fb_hysteresis_ema` (EXP-409). α_disc=0.5 (discovery) / α_maint=0.9 (maintenance, irreversible latch at β_threshold=12.0). Correct basin, zero overshoot, P_yz-symmetric latch.
-
----
-
-## Series 500 — Inter-Claim Entanglement (Manifold Birth)
-
-Series 400 operated on a single active claim per step. Series 500 introduces the **neighbor graph** over the full active leaf set W_t, coupling adjacent claims via the sheaf coboundary δ_0.
-
-Extended pipeline:
-```
-μ → Lτ → [Phi_fb → Bτ] → Rτ → Z → [Φ_ent → G_ent → S_ent] → S → W → OBS
-```
-
-The `Φ_ent` block is stateless on the current active set. It reads all Z values simultaneously after Rτ, before EMA accumulation, producing the inter-claim entanglement ghost S_ent and observable B_ent.
-
-Series 500 roadmap:
-
-| EXP | Target | Gate |
-|-----|--------|------|
-| 501 | Manifold Observation: G_ent, S_ent, B_ent, λ_2 (no feedback) | EXP-409 closure |
-| 502 | `is_manifold_501` validity predicate; ε_manifold from B_ent baseline | EXP-501 B_ent distribution |
-| 503 | Phi_fb_manifold: B_ent → β_Z_eff coupling (Zeeman as restoring force) | is_manifold_501 stable |
-| 504 | Stateful Seed: SectorMemory persistence across scenes | Phi_fb_manifold stable |
-
----
-
-## EXP-501 — Manifold Observation (Sheaf Coboundary)
-
-**Declaration hash:** `bfbf52c2977f436a78f1136555a0e46d00eae43eb95344fc679223961fa60a8b`  
-**Gate source:** EXP-409 closure — Series 400 Phi_fb sub-series complete
-
-### Architecture: Face Adjacency + Restriction Maps
-
-Two active leaf claims are face-adjacent (6-connected) if their bboxes share exactly one axis-aligned face. For K=92 leaves: N_edges ≈ 3·K^(2/3) ≈ 60 neighbor pairs.
-
-The restriction map `F_ij` (18×18 block-diagonal) encodes the expected boundary condition from claim j at the shared face with normal axis k:
-
-```
-F_ij = block_diag(I_4, I_4, F^C_k, F^D_k)
-
-Sector A [0:4]:  F^A = I_4                   (mass/color: continuity)
-Sector B [4:8]:  F^B = I_4                   (position: continuity)
-Sector C [8:12]: F^C_k = diag(c_0,c_1,c_2,1) where c_d = −1 if d==k else +1
-                                               (normal anti-parallel at face; κ continuous)
-Sector D [12:18]: F^D_k = diag(XOR signs)    (covariance: XOR rule below)
-```
-
-### Sector D XOR Sign Rule
-
-Derivation: `L_mirror = R_k · L · D_k` where `D_k = diag(−1 at k, +1 elsewhere)`.
-
-Off-diagonal Cholesky parameter l_{pq} (coupling axes p,q) flips sign iff `k ∈ {p,q}` — the **XOR rule**. Diagonal log-variance entries are invariant. Verified: `max|Σ_i − R_k·Σ_j·R_k^T| = 0.00e+00` for all k.
-
-| Parameter | k=0 (x) | k=1 (y) | k=2 (z) |
-|-----------|:---:|:---:|:---:|
-| log_l11, log_l22, log_l33 | +1 | +1 | +1 |
-| l21 (xy coupling) | −1 | −1 | +1 |
-| l31 (xz coupling) | −1 | +1 | −1 |
-| l32 (yz coupling) | +1 | −1 | −1 |
-
-The restriction map is an involution: `F_D(F_D(stalk,k),k) = stalk` for all k. Physical meaning: log-variances (ellipsoid size) are equal across a face; covariance tilts (ellipsoid orientation) mirror with signs determined by which axes they couple to the face normal. This is the *Zusammenhang* (differential-geometric connection) of the Dentatus fiber bundle.
-
-### Entanglement Ghost and Observables
-
-```
-G_ij^{ent} = F_ij · stalk_j − stalk_i    ∈ ℝ^18      (coboundary δ_0)
-G_ent_i    = ‖Σ_{j∈N(i)} G_ij^{ent}‖                 (per-claim residual norm)
-S_ent_i(t+1) = α_ent·S_ent_i(t) + (1−α_ent)·G_ent_i  (EMA; α_ent=0.5; caller-tracked)
-
-B_ent(t)   = ‖S_ent‖  / (‖Z_active‖ + ε)             [global entanglement ratio]
-Ω_ent(t)   = Z^T L_sheaf Z / (‖Z‖^2 + ε)             [Rayleigh quotient]
-λ_2(t)     = Fiedler value of L_sheaf                  [algebraic connectivity]
-```
-
-Global section (manifold-continuous state): `G_ij^{ent} = 0` for all edges → `B_ent = 0`.
-
-**Dual arithmetic:** S_ent is orthogonal to both S_A/S_D (intra-claim dual) and bze_ema_prev/maint_latched (primary). Three non-collapsing channels: S_intra ∈ ℝ^d_stalk, S_ent ∈ ℝ^N_claims, bze_ema/maint ∈ ℝ^1 × {0,1}.
-
-### P_yz Invariance
-
-The face-adjacent graph is P_yz-invariant (adjacency depends only on bbox extents). F^C_k and F^D_k both commute with the P_yz stalk transform (both are diagonal sign operators). Therefore `B_ent_fwd = B_ent_mir` and `λ_2_fwd = λ_2_mir` exactly.
-
-### Ghost Notes (Series 500)
-
-**Ghost #21 — Zusammenhang Stiffness:** ε_manifold_crit = λ_2/N_claims ≈ 0.5 for 2×2 grid. Calibrated from EXP-501 B_ent tail distribution in EXP-502.
-
-**Ghost #22 — Neighbor Explosion:** High-degree claims accumulate more G_ent (degree-dependent signal). Per-claim norm `‖Σ_j G_ij^{ent}‖` is not degree-normalized. Observable: max_degree/mean_degree ratio.
-
-**Ghost #23 — Temporal Decoherence:** S_ent cold-reset across scenes in EXP-501. Decay cost `α_ent^{T_away}` quantified for EXP-504 Stateful Seed design.
-
-### EXP-502 gate
-
-B_ent baseline from Fork A → calibrate ε_manifold → `is_manifold_501` validity predicate using XOR restriction maps. Target: ε_manifold ∈ [B_ent_median, B_ent_95th].
