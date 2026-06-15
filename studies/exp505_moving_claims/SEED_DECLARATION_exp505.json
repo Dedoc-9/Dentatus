@@ -1,0 +1,51 @@
+{
+  "protocol": "exp505-v1",
+  "series": "500",
+  "inherits": "exp504-v1",
+  "title": "Persistent World-State across Moving Claims",
+  "gate_source": "EXP-504 Ghost #28: spatial-key drift loses localized manifold memory under motion",
+  "operator": "track_correspondence_505 + world_frame_key_505 + estimate_global_motion_505 + track_dag_hash_505",
+  "pipeline_insertion": "[observe] -> estimate_global_motion -> world_frame_key -> track_correspondence -> persist_scene_504(track-keyed) -> next scene",
+  "parameters": {
+    "r_gate": 0.25,
+    "grid_cell": 0.5,
+    "world_ndigits": 6,
+    "alpha_persist": 0.5
+  },
+  "mechanism": {
+    "problem": "S_ent keyed by absolute position; under motion keys drift, every claim looks new, localized memory lost (Ghost #28)",
+    "solution": "re-reference claims to a motion-compensated WORLD FRAME; inter-scene motion estimated from centroid-of-centroids shift; cumulative motion tracked; S_ent keyed by world-frame position (stable track id)",
+    "dag": "hash-indexed correspondence DAG links prior tracks to current claims (matched/new edges)",
+    "motion_estimate": "delta = mean(curr_centroids) - mean(prev_centroids); exact for rigid world motion"
+  },
+  "observables": {
+    "track_continuity": "fraction of current claims matched to a prior track",
+    "localized_memory": "per-track S_ent EMA buildup (survives motion)",
+    "healing_under_motion": "localized tear on a moving track decays ~alpha_persist per scene",
+    "H_dag": "P_yz-invariant structural index over the correspondence DAG (counts + size-multiset)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] estimate_global_motion_505 recovers rigid V (err < 1e-12)",
+    "[3] world_frame_key_505 stable: same leaf -> same world-frame key across scenes under motion",
+    "[4] RAW504 raw-key continuity ~0 under motion (mean < 0.05) -- Ghost #28",
+    "[5] TRACK505 continuity ~1 under motion (mean > 0.95) -- resolved",
+    "[6] localized memory: TRACK505 per-track S_ent monotone EMA buildup; RAW504 flat (no buildup)",
+    "[7] healing under motion: localized tear on a moving track decays geometrically, ratio ~ alpha_persist",
+    "[8] DAG hash reproducible across re-run",
+    "[9] gate is_manifold_501 admissible all scenes",
+    "[10] track count == leaf count (one track per claim; no track explosion; bounded)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] track_continuity_fwd == track_continuity_mir for all scenes",
+    "[3] sorted S_ent values fwd == mir (per-track G_ent norms P_yz-invariant) < 1e-10",
+    "[4] B_ent_spectral_fwd == mir and healing-under-motion curve fwd == mir < 1e-10",
+    "[5] H_dag_fwd == H_dag_mir (size+count index P_yz-invariant); gate_fwd == gate_mir"
+  ],
+  "exp506_gate": {
+    "trigger": "independent per-claim motion (non-rigid): centroid-shift estimate insufficient",
+    "target": "nearest-neighbor association in compensated frame within r_gate (spatial-hash buckets); per-track velocity (Kalman-style) prediction"
+  },
+  "declaration_hash": "6885720d383ca77565ad5bf9091f38da27a678574617c35edb7bdeffd07d873a"
+}

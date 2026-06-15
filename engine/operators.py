@@ -5201,3 +5201,98 @@ def persist_scene_504(memory, S_A_new, S_C_new, S_D_new,
     new["B_ent_spectral"] = (alpha_persist * float(memory.get("B_ent_spectral", 0.0))
                              + (1.0 - alpha_persist) * float(B_ent_spectral_obs))
     return new
+
+
+# ============================================================
+# EXP-505 - Persistent World-State across Moving Claims (Ghost #28)
+# Protocol: exp505-v1
+# Spatial keying (EXP-504) assumes a claim at the same ABSOLUTE location across
+# scenes corresponds. Under motion the keys drift and per-claim S_ent memory is
+# lost. EXP-505 re-references claims to a motion-compensated WORLD FRAME: the
+# inter-scene global motion is estimated from the centroid shift, cumulative
+# motion is tracked, and S_ent is keyed by world-frame position (a stable track
+# id). A hash-indexed correspondence DAG links prior tracks to current claims.
+# Stateless operators; SeedMemory gains cumulative_motion + prev_centroid_mean.
+# ============================================================
+
+_R_GATE_505 = 0.25      # association gate radius (bounded motion budget; reserved for EXP-506)
+_GRID_505   = 0.5       # coarse spatial-hash cell (reserved for EXP-506 NN association)
+
+
+def estimate_global_motion_505(prev_centroids, curr_centroids):
+    """Estimate the inter-scene global translation from the centroid-of-centroids shift.
+    Exact for rigid world motion; robust (mean) to per-claim noise. Returns (3,)."""
+    import numpy as np
+    pc = np.asarray(list(prev_centroids), float)
+    cc = np.asarray(list(curr_centroids), float)
+    if pc.size == 0 or cc.size == 0:
+        return np.zeros(3)
+    return np.mean(cc, axis=0) - np.mean(pc, axis=0)
+
+
+def world_frame_key_505(bbox, cumulative_motion, ndigits=6):
+    """Spatial key in the motion-compensated WORLD FRAME: subtract cumulative motion,
+    then key on (round(center), round(size)) exactly like spatial_key_504. Under rigid
+    world motion the world-frame key is invariant across scenes -> a stable track id."""
+    import numpy as np
+    lo, hi = bbox
+    M = np.asarray(cumulative_motion, float)
+    lo = np.asarray(lo, float) - M
+    hi = np.asarray(hi, float) - M
+    center = tuple(round(float(x), ndigits) for x in (lo + hi) / 2.0)
+    size   = tuple(round(float(x), ndigits) for x in (hi - lo))
+    return (center, size)
+
+
+def track_correspondence_505(prev_track_keys, curr_bboxes_by_claim, cumulative_motion, ndigits=6):
+    """Link current claims to persistent tracks via world-frame keys.
+
+    Inputs:
+        prev_track_keys:      set of world-frame keys present in memory (prior tracks)
+        curr_bboxes_by_claim: dict[claim_id -> bbox]   current scene claims
+        cumulative_motion:    (3,) total world displacement up to this scene
+        ndigits:              world-frame rounding
+
+    Returns:
+        claim_to_track: dict[claim_id -> world_frame_key]   persistent track id per claim
+        dag_edges:      list[(prev_key_or_None, track_key, claim_repr)]   correspondence DAG
+        n_matched:      int   claims whose track existed before (memory continuity)
+        n_new:          int   claims with no prior track (births)
+
+    P_yz: world-frame keys are built from (center, |hi-lo|); under x->-x both reflect
+    consistently with the reflected motion, so matched/new counts and size-multiset are
+    P_yz-invariant (see track_dag_hash_505).
+    """
+    claim_to_track = {}
+    dag_edges = []
+    n_matched = 0
+    n_new = 0
+    prev = set(prev_track_keys)
+    for ci in sorted(curr_bboxes_by_claim.keys()):
+        wfk = world_frame_key_505(curr_bboxes_by_claim[ci], cumulative_motion, ndigits)
+        claim_to_track[ci] = wfk
+        if wfk in prev:
+            n_matched += 1
+            dag_edges.append((wfk, wfk, repr(ci)))
+        else:
+            n_new += 1
+            dag_edges.append((None, wfk, repr(ci)))
+    return claim_to_track, dag_edges, n_matched, n_new
+
+
+def track_dag_hash_505(dag_edges, n_matched, n_new, protocol_version="exp505-v1", ndigits=6):
+    """P_yz-invariant structural index over the correspondence DAG.
+    Built from edge counts and the sorted multiset of world-frame SIZES (|hi-lo|, x-extent
+    P_yz-invariant). Track-key CENTERS carry a signed x and are excluded so the index is
+    P_yz-invariant (consistent with Ghost #27 norm-based hashing)."""
+    import hashlib
+    sizes = []
+    for (_prev, track_key, _ci) in dag_edges:
+        # track_key = (center, size); size is P_yz-invariant
+        size = track_key[1]
+        sizes.append("|".join(f"{round(float(x), ndigits):.{ndigits}f}" for x in size))
+    sizes.sort()
+    parts = [f"matched={int(n_matched)}", f"new={int(n_new)}",
+             f"edges={len(dag_edges)}", "sizes=" + ";".join(sizes),
+             f"pv={protocol_version}"]
+    return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()
