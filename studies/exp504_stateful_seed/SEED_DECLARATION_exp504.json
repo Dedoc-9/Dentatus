@@ -1,0 +1,67 @@
+{
+  "protocol": "exp504-v1",
+  "series": "500",
+  "inherits": "exp503-v1",
+  "title": "Stateful Seed -- temporal manifold smoothing",
+  "gate_source": "EXP-503 Ghost #26 equilibrium stiffness: reflex without memory cannot heal across scene resets",
+  "operator": "persist_scene_504 + SeedMemory (seed_memory_init_504 / seed_memory_hash_504)",
+  "pipeline_insertion": "[apply_gamma_503 -> phi_ent_observe -> spectral_ent_project] -> persist_scene_504 -> SeedMemory -(retarded)-> next scene",
+  "parameters": {
+    "alpha_persist": 0.5,
+    "decay_away": 0.5,
+    "prune_eps": 1e-06,
+    "spatial_ndigits": 6,
+    "hash_ndigits": 6
+  },
+  "seed_memory": {
+    "fields": "S_A, S_C, S_D, S_ent(spatial-keyed), bze_ema_prev, maint_latched, B_ent_spectral, scene_count",
+    "structural_hash": "H_seed = HASH(||S_A|| # ||S_C|| # ||S_D|| # S_ent_by_key # bze_ema # maint # B_ent_spectral # protocol)",
+    "hash_role": "structural index only; never semantic. Norm-based intra-claim terms + spatial-keyed S_ent -> P_yz-invariant and reproducible at 1e-6 resolution"
+  },
+  "ghost_27": {
+    "name": "Claim-id-order nondeterminism",
+    "observation": "the landed gamma recursion sums child contributions in claim-id (timestamp-seeded) order; carried S_A/S_C/S_D components vary ~1e-14 run-to-run",
+    "impact": "raw-component hashing at fine resolution hits rounding boundaries -> non-reproducible index",
+    "resolution": "hash intra-claim sectors by NORM (stable to ~1e-14, P_yz-invariant); S_ent is bit-identical across runs. Index reproducible and P_yz-invariant at 1e-6"
+  },
+  "update_law": {
+    "active_key": "S_ent[k] <- alpha*S_ent_mem[k] + (1-alpha)*S_ent_obs[k]",
+    "away_key": "S_ent[k] <- decay_away*S_ent_mem[k]; prune if |.| < prune_eps  (Ghost #23 temporal decoherence)",
+    "spectral": "B_ent_spectral <- alpha*B_ent_spectral_mem + (1-alpha)*B_ent_spectral_obs  [temporal smoothing]",
+    "spatial_key": "(round(center,6), round(size,6)) -> octant correspondence across scenes despite changing claim_ids"
+  },
+  "healing": {
+    "definition": "persisted B_ent_spectral decays geometrically toward baseline after a tectonic tear, ratio ~ alpha_persist per scene",
+    "contrast": "alpha_persist=0 (memoryless): tear forgotten in one scene (delta spike, no smoothing)",
+    "resolves": "Ghost #26: memory lets the EXP-503 restoring force act across scenes (temporal, not just instantaneous)"
+  },
+  "observables": {
+    "B_ent_spectral_persisted": "smoothed manifold stress (feeds next-scene phi_fb_manifold)",
+    "healing_decay_ratio": "post-tear excess[n+1]/excess[n] ~ alpha_persist",
+    "H_seed": "P_yz-invariant structural index over persisted state tuple"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] cold start: S_A/S_C/S_D zero, S_ent empty, not latched, scene_count 0, B_ent_spectral 0",
+    "[3] hash deterministic on identical state AND sensitive to state change",
+    "[4] EMA persistence (unit): repeated obs {k:1.0} -> S_ent[k] = 1 - alpha^n exactly",
+    "[5] away-key decay+prune (unit): present then absent -> decay_away applied; prunes below prune_eps",
+    "[6] temporal healing: post-tear persisted B_ent_spectral excess strictly decreasing for >=3 scenes",
+    "[7] healing decay ratio ~ alpha_persist (within tol)",
+    "[8] amnesiac contrast: alpha_persist=0 -> post-tear excess ~0 next scene (no smoothing)",
+    "[9] gate is_manifold_501 admissible throughout tear+heal; persisted B_ent_spectral bounded",
+    "[10] hash continuity: reproducible distinct structural indices across the loop (re-run identical)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] max|B_ent_spectral_persisted_fwd - mir| < 1e-10 across scenes",
+    "[3] max|S_ent_persisted_fwd[k] - S_ent_persisted_mir[k]| < 1e-10 (per-key norm P_yz-invariant)",
+    "[4] healing curve (post-tear trajectory) fwd == mir < 1e-10",
+    "[5] H_seed_fwd == H_seed_mir for all scenes (norm-based structural index P_yz-invariant); gate_fwd==gate_mir"
+  ],
+  "exp505_gate": {
+    "trigger": "stateful seed stable -> multi-scene manifold with moving claims; spatial-key drift handling",
+    "target": "persistent world-state across genuinely distinct scenes (galactic-scale streaming); spatial-hash DAG linkage"
+  },
+  "declaration_hash": "93201baeac72aac92183da7bdf5c1d9da7fb144abeea66d3b1cca38ecf47530c"
+}

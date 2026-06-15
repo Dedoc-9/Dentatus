@@ -149,6 +149,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-501 | Manifold Observation; Sheaf Coboundary δ₀ G_ent; Sector D XOR connection; λ₂ Fiedler | `bfbf52c2977f436a` | **open** |
 | EXP-502 | Manifold Firewall is_manifold_501 (ε=0.8); degree-normalized G_ent (Ghost #22); EXP-503 spectral scaffold | `0979f7f520421a28` | **open** |
 | EXP-503 | Spectral manifold feedback Phi_fb_manifold; β_Z_eff=f(B_A,B_D,B_ent_spectral); bounded Ω_ent_sp; Ghost #25 | `16f3e47232a3a84e` | **open** |
+| EXP-504 | Stateful Seed; temporal manifold smoothing; persist_scene_504; S_ent/B_ent_spectral memory; healing curve; Ghost #26/#27 | `93201baeac72aac9` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -502,15 +503,16 @@ Engine ground truth: a stabilized **71-leaf octree** with **~198 face-adjacent e
 | EXP-501 | Manifold Observation — sheaf coboundary δ₀, Sector D XOR *Zusammenhang*, λ₂ Fiedler | observation-only ✓ |
 | EXP-502 | Manifold Firewall — `is_manifold_501` (ε_manifold=0.8) + degree-normalized G_ent (Ghost #22) | landed ✓ |
 | EXP-503 | Spectral Manifold Feedback — `phi_fb_manifold` β_Z_eff=f(B_A,B_D,B_ent_spectral); bounded restoring force, maintenance-gated | landed ✓ |
+| EXP-504 | Stateful Seed — `persist_scene_504` cross-scene memory (S_ent, B_ent_spectral); temporal healing of tectonic tears; P_yz-invariant H_seed | landed ✓ |
 
 Measured baselines (71-leaf seed octree): B_ent un-normalized median ≈ 0.678;
 degree-normalized median ≈ 0.52; firewall ε_manifold = 0.8 (≈1.5× margin, mildly permissive).
 EXP-503 spectral feedback is scaffolded (`spectral_ent_project`, `build_L_sheaf_503`,
 observation-only): Fiedler modes [0.316, 0.808, 0.940], B_ent_spectral(k=3) ≈ 0.125.
 
-Fork results: EXP-501 A 10/10 · B 5/5 — EXP-502 A 10/10 · B 5/5 — EXP-503 A 10/10 · B 5/5 (P_yz δ ≤ 8.9e-15).
+Fork results: EXP-501 A 10/10 · B 5/5 — EXP-502 A 10/10 · B 5/5 — EXP-503 A 10/10 · B 5/5 — EXP-504 A 10/10 · B 5/5 (P_yz δ ≤ 8.9e-15).
 
-EXP-503 wires the spectral scaffold into the Zeeman field: `β_Z_eff = f(B_A, B_D, B_ent_spectral)` with a bounded restoring term `Ω_ent_sp = B_ent_spectral/(1+B_ent_spectral) ∈ [0,1)`, gated to the maintenance phase so the EXP-409 discovery latch stays byte-identical (Ghost #25 — manifold-induced latch evasion). EXP-504 target: Stateful Seed for cross-scene tectonic-tear damping (Ghost #26 equilibrium stiffness).
+EXP-503 wires the spectral scaffold into the Zeeman field: `β_Z_eff = f(B_A, B_D, B_ent_spectral)` with a bounded restoring term `Ω_ent_sp = B_ent_spectral/(1+B_ent_spectral) ∈ [0,1)`, gated to the maintenance phase so the EXP-409 discovery latch stays byte-identical (Ghost #25 — manifold-induced latch evasion). EXP-504 lands the Stateful Seed: `SeedMemory` persists `{S_A,S_C,S_D, S_ent(spatial-keyed), bze_ema, maint_latched, B_ent_spectral}` across scene resets via the stateless `persist_scene_504`. A tectonic tear now **heals** on a geometric curve (excess decays ∝ α_persist=0.5 per scene) instead of being forgotten — temporal manifold smoothing (Ghost #26 lifted). The structural index `H_seed` is norm-based (Ghost #27: claim-id-order fp noise) and P_yz-invariant. EXP-505 target: persistent world-state across moving claims / streaming worlds (Ghost #28 spatial-key drift).
 
 ---
 

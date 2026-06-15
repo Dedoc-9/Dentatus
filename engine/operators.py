@@ -5066,3 +5066,138 @@ def apply_gamma_503_recursive(mu, claim_id,
 
     return (mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D,
             g_A, g_D, g_ent, Omega_ent_sp, alpha_eff, maint_latched_out)
+
+
+# ============================================================
+# EXP-504 - Stateful Seed (temporal manifold smoothing)
+# Protocol: exp504-v1
+# Persists the full state vector across scene resets so the EXP-503 manifold
+# restoring force has MEMORY: manifold stress (S_ent, B_ent_spectral) is
+# EMA-carried across scenes and exponentially decayed for sectors that go
+# inactive (Ghost #23 temporal decoherence). This lets a tectonic tear HEAL
+# over scenes instead of being forgotten at each reset (Ghost #26 lift).
+#
+# persist_scene_504 is a STATELESS pure function: (memory_in, observations)
+# -> memory_out. SeedMemory is caller-tracked primary state (like bze_ema_prev,
+# maint_latched), not part of the MuState dual hash.
+# ============================================================
+
+_ALPHA_PERSIST_504 = 0.5     # cross-scene EMA weight on memory (smoothing/healing constant)
+_DECAY_AWAY_504    = 0.5     # exp decay per scene for inactive (away) S_ent sectors
+_PRUNE_EPS_504     = 1e-6    # prune S_ent memory below this magnitude
+_SPATIAL_NDIGITS_504 = 6     # bbox rounding for spatial keys (octant correspondence)
+
+
+def spatial_key_504(bbox, ndigits=_SPATIAL_NDIGITS_504):
+    """Deterministic spatial signature for a claim bbox: (rounded center, rounded size).
+    Octants at the same spatial location across scenes share a key, so per-claim S_ent
+    memory transfers across scene resets even though claim_ids differ.
+    """
+    import numpy as np
+    lo, hi = bbox
+    lo = np.asarray(lo, float); hi = np.asarray(hi, float)
+    center = tuple(round(float(x), ndigits) for x in (lo + hi) / 2.0)
+    size   = tuple(round(float(x), ndigits) for x in (hi - lo))
+    return (center, size)
+
+
+def seed_memory_init_504():
+    """Cold-start SeedMemory. All sectors zero; not latched; scene_count 0."""
+    import numpy as np
+    return {
+        "S_A": np.zeros(8), "S_C": np.zeros(4), "S_D": np.zeros(6),
+        "S_ent": {},                  # spatial_key -> float (persisted inter-claim ghost)
+        "bze_ema_prev": float(_BETA_Z_313),
+        "maint_latched": False,
+        "B_ent_spectral": 0.0,        # persisted (smoothed) spectral manifold stress
+        "scene_count": 0,
+    }
+
+
+def seed_memory_hash_504(memory, protocol_version="exp504-v1", ndigits=6):
+    """Structural index over the persisted state tuple:
+        H_seed = HASH(S_A ⊕ S_C ⊕ S_D ⊕ S_ent ⊕ bze_ema ⊕ maint ⊕ B_ent_spectral ⊕ protocol)
+    Hash is a structural index only — never a semantic interpretation. Floats are rounded
+    to `ndigits`=6 decimals: the gamma recursion carries claim-id-order fp noise (~3e-14,
+    Ghost #27) into S_A; 6-decimal granularity (1e-6) sits 8 orders above that noise, so the
+    index is stable and reproducible while remaining a high-resolution structural key.
+    """
+    import numpy as np, hashlib
+    def r(x): return f"{round(float(x), ndigits):.{ndigits}f}"
+    parts = []
+    # Intra-claim sectors hashed by NORM (Ghost #27): the gamma recursion carries
+    # claim-id-order fp noise (~1e-14) into individual S_A/S_C/S_D components, which
+    # would hit rounding boundaries. Norms are stable to ~1e-14 and P_yz-invariant, so
+    # the structural index is reproducible. S_ent (spatial-keyed) is bit-identical across
+    # runs and is hashed per key for full inter-claim resolution.
+    parts.append("A=" + r(np.linalg.norm(np.asarray(memory["S_A"]).ravel())))
+    parts.append("C=" + r(np.linalg.norm(np.asarray(memory["S_C"]).ravel())))
+    parts.append("D=" + r(np.linalg.norm(np.asarray(memory["S_D"]).ravel())))
+    sent_items = sorted(memory["S_ent"].items(), key=lambda kv: repr(kv[0]))
+    parts.append("|".join(f"{repr(k)}={r(v)}" for k, v in sent_items))
+    parts.append("bze=" + r(memory["bze_ema_prev"]))
+    parts.append("m=" + ("1" if memory["maint_latched"] else "0"))
+    parts.append("Bsp=" + r(memory["B_ent_spectral"]))
+    parts.append("pv=" + str(protocol_version))
+    payload = "\x1f".join(parts).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def persist_scene_504(memory, S_A_new, S_C_new, S_D_new,
+                      S_ent_obs_by_key, B_ent_spectral_obs,
+                      bze_ema, maint_latched,
+                      alpha_persist=_ALPHA_PERSIST_504,
+                      decay_away=_DECAY_AWAY_504,
+                      prune_eps=_PRUNE_EPS_504):
+    """EXP-504 stateless scene-transition update. Returns a NEW SeedMemory.
+
+    Inputs:
+        memory:            prior SeedMemory (dict from seed_memory_init_504 / prior call)
+        S_A_new,S_C_new,S_D_new:   intra-claim dual ghosts at scene end (carried)
+        S_ent_obs_by_key:  dict[spatial_key -> float]  observed inter-claim ghost this scene
+        B_ent_spectral_obs: float   observed spectral manifold stress this scene
+        bze_ema, maint_latched:     EXP-409/503 primary scalars at scene end
+        alpha_persist:     cross-scene EMA weight on memory (healing/smoothing constant)
+        decay_away:        exp decay per scene for keys present in memory but not observed
+        prune_eps:         drop S_ent entries below this magnitude
+
+    Update law:
+        active key k:   S_ent[k] <- alpha*S_ent_mem[k] + (1-alpha)*S_ent_obs[k]
+        away   key k:   S_ent[k] <- decay_away * S_ent_mem[k]   (prune if < prune_eps)
+        B_ent_spectral  <- alpha*B_ent_spectral_mem + (1-alpha)*B_ent_spectral_obs   [temporal smoothing]
+
+    The persisted B_ent_spectral is what feeds the NEXT scene's phi_fb_manifold, so a
+    tectonic tear decays geometrically (heals) across scenes rather than resetting.
+
+    Dual arithmetic preserved: S_ent (dual, R^N) persisted orthogonally to S_A/S_D (dual,
+    intra-claim) and bze_ema/B_ent_spectral (primary). No collapse.
+    P_yz: spatial keys are built from |hi-lo| and centers (P_yz maps x->-x; center_x->-center_x,
+    size invariant). Norm/EMA over keys is P_yz-equivariant -> persisted scalars P_yz-invariant.
+    """
+    import numpy as np
+    new = {
+        "S_A": np.asarray(S_A_new, float).copy(),
+        "S_C": np.asarray(S_C_new, float).copy(),
+        "S_D": np.asarray(S_D_new, float).copy(),
+        "S_ent": {},
+        "bze_ema_prev": float(bze_ema),
+        "maint_latched": bool(maint_latched),
+        "scene_count": int(memory.get("scene_count", 0)) + 1,
+    }
+    mem_sent = dict(memory.get("S_ent", {}))
+    obs = dict(S_ent_obs_by_key)
+    # active keys: EMA blend memory with observation
+    for k, v in obs.items():
+        prev = float(mem_sent.get(k, 0.0))
+        new["S_ent"][k] = alpha_persist * prev + (1.0 - alpha_persist) * float(v)
+    # away keys: decay and prune (temporal decoherence)
+    for k, prev in mem_sent.items():
+        if k in obs:
+            continue
+        decayed = decay_away * float(prev)
+        if abs(decayed) >= prune_eps:
+            new["S_ent"][k] = decayed
+    # temporal smoothing of spectral manifold stress
+    new["B_ent_spectral"] = (alpha_persist * float(memory.get("B_ent_spectral", 0.0))
+                             + (1.0 - alpha_persist) * float(B_ent_spectral_obs))
+    return new
