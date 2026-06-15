@@ -1,0 +1,52 @@
+{
+  "protocol": "exp604-v1",
+  "series": "600",
+  "inherits": "exp603-v1",
+  "title": "MCL Observability Dashboard \u2014 content-addressed telemetry",
+  "gate_source": "EXP-603 agency loop stable -> real-time observable telemetry",
+  "operator": "dentatus.api.observe(telemetry=True) + game.observability.export_bundle + mcl_dashboard.html",
+  "location": "game/observability/ (decoupled); dashboard renders L1 telemetry via dentatus.api only",
+  "data_stream": {
+    "decision": "content-addressed telemetry, NOT naive polling or raw socket",
+    "rationale": "polling re-runs the engine each tick (O(N^3) Fiedler dominates); push is better but still recomputes",
+    "pioneering": "every frame keyed by H_state (EXP-601/602 bit-perfect); Fiedler decomposition computed once per UNIQUE reality and cached; repeats render from cache",
+    "transport": "replay bundle (offline, deterministic) + SSE push stub (live); SSE sends full telemetry on first H_state, a reference on repeats",
+    "equilibrium": "lc-transitions rare at EMA equilibrium (EXP-409) -> live stream cycles few addresses -> near-zero recompute/bandwidth"
+  },
+  "telemetry": {
+    "per_leaf": "center, size, fiedler (v2 eigenvector), g_ent",
+    "scalars": "B_ent, B_ent_spectral, lambda_2, worst_ratio, epsilon, n_leaves, n_edges, beta_Z_eff, H_state",
+    "fault": "Fiedler vector sign bisects the manifold; the basin boundary is the fault line"
+  },
+  "panels": [
+    "Fiedler fault (3D WebGL / 2D fault map)",
+    "Manifold Firewall gauge (B_ent vs eps=0.8)",
+    "tectonic-stress agency descent curve",
+    "selected-realization stats",
+    "content-address cache transport"
+  ],
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] telemetry block present: per-leaf center/size/fiedler/g_ent + fiedler_lambda",
+    "[3] Fiedler bisection: vector splits +/- (the fault line; ~balanced sign split)",
+    "[4] content-addressed: identical world -> identical telemetry (cache key valid)",
+    "[5] bundle determinism: export_bundle bit-stable across runs (PYTHONHASHSEED=0)",
+    "[6] content-address dedup: unique_states <= frames_total with >=1 cache hit",
+    "[7] witness purity: telemetry/frames carry no verdict-shaped field",
+    "[8] firewall numeric: admissibility derivable from worst_ratio vs epsilon (no boolean verdict in telemetry)",
+    "[9] committed reality: bundle.committed_H_verified == agency loop committed H_verified",
+    "[10] dashboard self-contained: mcl_dashboard.html embeds the bundle; external refs only from cdnjs"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] telemetry lambda_2 fwd == mir (P_yz-invariant)",
+    "[3] sorted |fiedler| multiset fwd == mir (fault structure P_yz-invariant up to eigenvector sign)",
+    "[4] n_leaves fwd == mir",
+    "[5] telemetry H_state fwd == mir (realized world P_yz-invariant under seed x-stalk flip)"
+  ],
+  "exp605_gate": {
+    "trigger": "dashboard live -> WebXR; multi-velocity tracking (EXP-506) + streaming world-sections (EXP-507) for galactic scale",
+    "target": "per-section local Fiedler (O(N^3) avoided at scale); SSE live deployment"
+  },
+  "declaration_hash": "f1f9c1a4438c3c23aa6cfa6850837615a9c1de9958780098ca6f53aef934e707"
+}

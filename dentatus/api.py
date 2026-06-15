@@ -122,6 +122,24 @@ def observe(request):
     # EXP-602: H_state is the bit-stable content address of the REALIZED world (W,Z,S).
     H_state = state_hash(mu)
     resp["H_state"] = H_state
+
+    # EXP-604: optional telemetry block — per-leaf geometry + Fiedler eigenvector + g_ent for
+    # the MCL dashboard. Content-addressed by H_state: identical worlds -> identical telemetry,
+    # so the expensive Fiedler decomposition is computed once per unique reality and cacheable.
+    if request.get("telemetry"):
+        ids_sorted = sorted(mu.active)
+        fv = list(fied) if len(fied) == len(ids_sorted) else [0.0] * len(ids_sorted)
+        leaves = []
+        for i, cid in enumerate(ids_sorted):
+            lo, hi = mu.claims[cid].bbox
+            leaves.append({
+                "center": [round(float((lo[k] + hi[k]) / 2.0), 6) for k in range(3)],
+                "size": [round(float(hi[k] - lo[k]), 6) for k in range(3)],
+                "fiedler": round(float(fv[i]), 6),
+                "g_ent": round(float(g[cid]), 6),
+            })
+        resp["telemetry"] = {"H_state": H_state, "leaves": leaves,
+                             "fiedler_lambda": round(float(lam2), 9), "n_leaves": len(leaves)}
     # FIREWALL = HANDSHAKE: a VERIFIED reality address is issued only when the manifold is
     # admissible. The address is the realized-state hash (a permanent, unique reality id),
     # not merely the recipe hash H_decl.

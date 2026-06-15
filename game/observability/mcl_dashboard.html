@@ -1,0 +1,235 @@
+<!doctype html>
+<!-- MCL (Mission Control Layer) Observability Dashboard — EXP-604.
+     Renders a content-addressed telemetry bundle (replay) from the Dentatus L1 API:
+     Fiedler fault line (3D), Firewall gauge, tectonic-stress curve, agency audit scrubber.
+     Standalone: open in any browser. Live mode: point loadTelemetry() at an SSE endpoint. -->
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Dentatus MCL — Observability</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#111722; --panel2:#0d131c; --line:#1e2a3a;
+    --txt:#cdd9e5; --muted:#7d8ca0; --accent:#4ea1ff; --ok:#39d98a; --warn:#ffb547; --bad:#ff5c6c;
+    --pos:#ff5c6c; --neg:#4ea1ff; --fault:#e8eef5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+  #app{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+  header{display:flex;align-items:center;gap:18px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
+  header h1{font-size:14px;font-weight:600;margin:0;letter-spacing:.5px;color:#fff}
+  header .tag{color:var(--muted);font-size:11px}
+  header .addr{margin-left:auto;font-size:11px;color:var(--ok);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  main{display:grid;grid-template-columns:1fr 320px;min-height:0}
+  #view{position:relative;min-height:0;background:radial-gradient(circle at 50% 40%,#0d1420,#070a0f)}
+  #view canvas{display:block;width:100%;height:100%}
+  #view .overlay{position:absolute;left:12px;top:10px;font-size:11px;color:var(--muted);pointer-events:none;line-height:1.6}
+  #view .legend{position:absolute;right:12px;bottom:12px;font-size:11px;color:var(--muted);text-align:right;line-height:1.7}
+  .swatch{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-left:6px}
+  aside{border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:12px;display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .card h2{font-size:11px;font-weight:600;letter-spacing:.8px;color:var(--muted);margin:0 0 8px;text-transform:uppercase}
+  .gaugewrap{display:flex;align-items:center;gap:12px}
+  .big{font-size:24px;font-weight:600;color:#fff}
+  .unit{font-size:11px;color:var(--muted)}
+  .kv{display:flex;justify-content:space-between;padding:2px 0;color:var(--txt)}
+  .kv span:first-child{color:var(--muted)}
+  footer{border-top:1px solid var(--line);background:var(--panel2);padding:8px 12px}
+  .scrub{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .frame{cursor:pointer;border:1px solid var(--line);background:#0c1119;color:var(--muted);
+    border-radius:6px;padding:5px 9px;font-size:11px;min-width:64px;text-align:center}
+  .frame.acc{border-color:var(--ok);color:var(--ok)}
+  .frame.sel{outline:2px solid var(--accent);color:#fff}
+  .frame .b{display:block;font-size:10px;color:var(--muted)}
+  .pill{font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid var(--line)}
+  .pill.ok{color:var(--ok);border-color:var(--ok)} .pill.bad{color:var(--bad);border-color:var(--bad)}
+  canvas.flat{width:100%;display:block}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>DENTATUS · MCL</h1>
+    <span class="tag" id="meta">mission control layer</span>
+    <span class="addr" id="addr">H_verified —</span>
+  </header>
+  <main>
+    <div id="view">
+      <canvas id="gl"></canvas>
+      <div class="overlay" id="ov"></div>
+      <div class="legend">
+        Fiedler v₂ (manifold bisection)<br>
+        basin A <span class="swatch" style="background:#4ea1ff"></span>
+        fault <span class="swatch" style="background:#e8eef5"></span>
+        basin B <span class="swatch" style="background:#ff5c6c"></span>
+      </div>
+    </div>
+    <aside>
+      <div class="card">
+        <h2>Manifold Firewall (ε = 0.8)</h2>
+        <div class="gaugewrap">
+          <canvas id="gauge" class="flat" width="120" height="74" style="width:120px;height:74px"></canvas>
+          <div>
+            <div class="big"><span id="bent">—</span></div>
+            <div class="unit">B_ent · <span id="fwpill" class="pill">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Tectonic stress — agency descent</h2>
+        <canvas id="curve" class="flat" width="296" height="92" style="width:100%;height:92px"></canvas>
+        <div class="kv"><span>stress reduction</span><span id="red">—</span></div>
+      </div>
+      <div class="card">
+        <h2>Selected realization</h2>
+        <div class="kv"><span>K_budget</span><span id="kb">—</span></div>
+        <div class="kv"><span>leaves / edges</span><span id="ne">—</span></div>
+        <div class="kv"><span>λ₂ (Fiedler)</span><span id="l2">—</span></div>
+        <div class="kv"><span>B_ent_spectral</span><span id="bsp">—</span></div>
+        <div class="kv"><span>β_Z_eff</span><span id="bz">—</span></div>
+        <div class="kv"><span>worst_ratio</span><span id="wr">—</span></div>
+        <div class="kv"><span>H_state</span><span id="hs">—</span></div>
+      </div>
+      <div class="card">
+        <h2>Telemetry transport</h2>
+        <div class="kv"><span>frames</span><span id="ft">—</span></div>
+        <div class="kv"><span>unique states</span><span id="us">—</span></div>
+        <div class="kv"><span>content-addr cache hits</span><span id="ch">—</span></div>
+        <div class="unit" style="margin-top:6px">Fiedler decomposition computed once per unique H_state; repeats render from cache.</div>
+      </div>
+    </aside>
+  </main>
+  <footer>
+    <div class="scrub" id="scrub"></div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---- telemetry bundle (replay). For LIVE mode, replace with loadTelemetry(sseUrl). ---- */
+const BUNDLE = {"protocol":"mcl-telemetry-v1","engine_protocol":"exp505-v1","title":"imperial_docking_bay","pythonhashseed":"0","firewall_epsilon":0.8,"stress_trajectory":[0.17003412,0.139406503,0.057400879],"stress_reduction":0.112633241,"committed_H_verified":"71796909893dd8eed010da06821f12e9f97a701601b443e57f8e5fefd4161c17","committed_K_budget":128,"unique_states":5,"frames_total":6,"cache_hits":1,"frames":[{"K_budget":1024,"B_ent":0.17003412,"B_ent_spectral":0.0,"lambda_2":0.739018904,"worst_ratio":0.148095087,"epsilon":0.8,"n_leaves":36,"n_edges":84,"beta_Z_eff":4.016771,"accepted":1,"H_state":"85295201c9d300266221fafa6e66119300d0457da4d74756f6838b41df2e5365","telemetry":{"H_state":"85295201c9d300266221fafa6e66119300d0457da4d74756f6838b41df2e5365","leaves":[{"center":[0.625,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.262594,"g_ent":0.176777},{"center":[0.625,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.14494,"g_ent":1.942298},{"center":[0.625,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.051157,"g_ent":1.828977},{"center":[0.625,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.222511,"g_ent":1.942298},{"center":[0.875,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.262952,"g_ent":2.10085},{"center":[0.375,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.128728,"g_ent":1.828977},{"center":[0.875,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.125939,"g_ent":0.25},{"center":[0.375,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.262594,"g_ent":0.176777},{"center":[0.875,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.104499,"g_ent":2.10085},{"center":[0.625,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.128728,"g_ent":1.828977},{"center":[0.125,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.169169,"g_ent":1.942298},{"center":[0.375,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.180247,"g_ent":0.176777},{"center":[0.75,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.1489,"g_ent":6.96581},{"center":[0.375,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.054308,"g_ent":0.111803},{"center":[0.875,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.316902,"g_ent":0.25},{"center":[0.125,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.0,"g_ent":0.176777},{"center":[0.125,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.316902,"g_ent":0.25},{"center":[0.625,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.054308,"g_ent":0.111803},{"center":[0.125,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.010716,"g_ent":1.942298},{"center":[0.625,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.136655,"g_ent":0.111803},{"center":[0.375,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.222511,"g_ent":1.942298},{"center":[0.125,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.190963,"g_ent":0.176777},{"center":[0.875,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.169169,"g_ent":1.942298},{"center":[0.875,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.0,"g_ent":0.176777},{"center":[0.375,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.14494,"g_ent":1.942298},{"center":[0.125,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.262952,"g_ent":2.10085},{"center":[0.125,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.125939,"g_ent":0.25},{"center":[0.875,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.190963,"g_ent":0.176777},{"center":[0.75,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.059174,"g_ent":6.96581},{"center":[0.25,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.1489,"g_ent":6.96581},{"center":[0.875,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.010716,"g_ent":1.942298},{"center":[0.125,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.104499,"g_ent":2.10085},{"center":[0.25,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.059174,"g_ent":6.96581},{"center":[0.625,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.180247,"g_ent":0.176777},{"center":[0.375,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.051157,"g_ent":1.828977},{"center":[0.375,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.136655,"g_ent":0.111803}],"fiedler_lambda":0.739018904,"n_leaves":36}},{"K_budget":2048,"B_ent":0.139406503,"B_ent_spectral":0.0,"lambda_2":0.240043458,"worst_ratio":0.058776378,"epsilon":0.8,"n_leaves":148,"n_edges":396,"beta_Z_eff":36.834454,"accepted":1,"H_state":"5b830c64782532a353cb854cc361ba963c186b2f97e718d65224740cd416ca29","telemetry":{"H_state":"5b830c64782532a353cb854cc361ba963c186b2f97e718d65224740cd416ca29","leaves":[{"center":[0.8125,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.0,"g_ent":3.366801},{"center":[0.6875,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.015918,"g_ent":0.055902},{"center":[0.9375,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.033589,"g_ent":4.043758},{"center":[0.1875,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.046672,"g_ent":0.088388},{"center":[0.4375,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.067058,"g_ent":3.333636},{"center":[0.8125,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.144385,"g_ent":0.055902},{"center":[0.8125,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.031729,"g_ent":0.055902},{"center":[0.3125,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.140481,"g_ent":0.088388},{"center":[0.1875,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.144385,"g_ent":0.055902},{"center":[0.0625,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.037147,"g_ent":3.615983},{"center":[0.4375,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.1076,"g_ent":3.615983},{"center":[0.3125,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.048115,"g_ent":3.366801},{"center":[0.6875,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.010841,"g_ent":3.333636},{"center":[0.5625,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.116793,"g_ent":0.088388},{"center":[0.125,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.119433,"g_ent":10.878733},{"center":[0.4375,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.036865,"g_ent":3.300137},{"center":[0.0625,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.082113,"g_ent":3.615983},{"center":[0.625,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.054699,"g_ent":9.669604},{"center":[0.375,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.01202,"g_ent":9.669604},{"center":[0.625,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.0515,"g_ent":10.216222},{"center":[0.3125,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.055807,"g_ent":3.333636},{"center":[0.3125,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.059894,"g_ent":3.652671},{"center":[0.6875,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.018771,"g_ent":3.366801},{"center":[0.4375,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.00777,"g_ent":0.055902},{"center":[0.8125,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.159328,"g_ent":0.088388},{"center":[0.3125,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.010841,"g_ent":3.333636},{"center":[0.0625,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.007293,"g_ent":0.088388},{"center":[0.8125,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.074578,"g_ent":3.333636},{"center":[0.8125,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.145314,"g_ent":3.652671},{"center":[0.0625,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.153944,"g_ent":0.088388},{"center":[0.5625,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.10185,"g_ent":0.055902},{"center":[0.1875,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.145314,"g_ent":3.652671},{"center":[0.8125,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.046672,"g_ent":0.088388},{"center":[0.0625,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.111725,"g_ent":3.652671},{"center":[0.9375,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.111725,"g_ent":3.652671},{"center":[0.6875,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.114764,"g_ent":3.366801},{"center":[0.6875,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.096074,"g_ent":0.055902},{"center":[0.4375,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.072387,"g_ent":0.055902},{"center":[0.0625,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.14107,"g_ent":3.652671},{"center":[0.4375,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.066477,"g_ent":3.333636},{"center":[0.8125,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.10419,"g_ent":3.366801},{"center":[0.6875,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.048115,"g_ent":3.366801},{"center":[0.3125,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.059044,"g_ent":0.055902},{"center":[0.0625,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.152848,"g_ent":4.043758},{"center":[0.8125,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.029612,"g_ent":3.333636},{"center":[0.125,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":0.013234,"g_ent":10.216222},{"center":[0.9375,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.02217,"g_ent":0.088388},{"center":[0.0625,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.168887,"g_ent":0.125},{"center":[0.1875,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.077891,"g_ent":0.055902},{"center":[0.9375,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.007293,"g_ent":0.088388},{"center":[0.4375,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.089206,"g_ent":0.088388},{"center":[0.5625,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.035357,"g_ent":0.055902},{"center":[0.75,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.013287,"g_ent":6.96581},{"center":[0.3125,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.126543,"g_ent":3.652671},{"center":[0.1875,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.031729,"g_ent":0.055902},{"center":[0.9375,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.12448,"g_ent":0.088388},{"center":[0.5625,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.067058,"g_ent":3.333636},{"center":[0.1875,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.10419,"g_ent":3.366801},{"center":[0.1875,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.114921,"g_ent":0.055902},{"center":[0.4375,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.095822,"g_ent":3.333636},{"center":[0.0625,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.08745,"g_ent":0.088388},{"center":[0.5625,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.089206,"g_ent":0.088388},{"center":[0.6875,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.126543,"g_ent":3.652671},{"center":[0.8125,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.077891,"g_ent":0.055902},{"center":[0.9375,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.037113,"g_ent":0.125},{"center":[0.4375,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.0448,"g_ent":0.055902},{"center":[0.8125,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.002265,"g_ent":0.055902},{"center":[0.5625,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.0448,"g_ent":0.055902},{"center":[0.0625,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.12448,"g_ent":0.088388},{"center":[0.1875,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.133535,"g_ent":3.366801},{"center":[0.8125,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.114921,"g_ent":0.055902},{"center":[0.5625,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.008101,"g_ent":3.300137},{"center":[0.0625,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.044324,"g_ent":0.088388},{"center":[0.0625,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.02217,"g_ent":0.088388},{"center":[0.9375,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.02181,"g_ent":3.652671},{"center":[0.1875,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.0,"g_ent":3.366801},{"center":[0.3125,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.065519,"g_ent":0.088388},{"center":[0.8125,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.133535,"g_ent":3.366801},{"center":[0.5625,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.00777,"g_ent":0.055902},{"center":[0.9375,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.044324,"g_ent":0.088388},{"center":[0.6875,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.059044,"g_ent":0.055902},{"center":[0.1875,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.034765,"g_ent":0.055902},{"center":[0.9375,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.153944,"g_ent":0.088388},{"center":[0.375,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.0515,"g_ent":10.216222},{"center":[0.3125,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.096074,"g_ent":0.055902},{"center":[0.625,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.01202,"g_ent":9.669604},{"center":[0.1875,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.002265,"g_ent":0.055902},{"center":[0.1875,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.029344,"g_ent":3.366801},{"center":[0.5625,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.078836,"g_ent":3.615983},{"center":[0.5625,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.1076,"g_ent":3.615983},{"center":[0.9375,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.14107,"g_ent":3.652671},{"center":[0.875,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.079954,"g_ent":10.216222},{"center":[0.4375,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.10185,"g_ent":0.055902},{"center":[0.5625,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.036865,"g_ent":3.300137},{"center":[0.9375,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.168887,"g_ent":0.125},{"center":[0.5625,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.037713,"g_ent":3.333636},{"center":[0.6875,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.065519,"g_ent":0.088388},{"center":[0.4375,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.078836,"g_ent":3.615983},{"center":[0.6875,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.085419,"g_ent":3.366801},{"center":[0.4375,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.116793,"g_ent":0.088388},{"center":[0.5625,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.095822,"g_ent":3.333636},{"center":[0.3125,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.050576,"g_ent":0.055902},{"center":[0.625,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.094179,"g_ent":10.216222},{"center":[0.6875,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.140481,"g_ent":0.088388},{"center":[0.6875,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.125538,"g_ent":0.055902},{"center":[0.0625,0.9375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.037113,"g_ent":0.125},{"center":[0.0625,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.033589,"g_ent":4.043758},{"center":[0.6875,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.055807,"g_ent":3.333636},{"center":[0.125,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.079954,"g_ent":10.216222},{"center":[0.4375,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.035357,"g_ent":0.055902},{"center":[0.1875,0.0625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.159328,"g_ent":0.088388},{"center":[0.125,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.026246,"g_ent":10.878733},{"center":[0.875,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.013234,"g_ent":10.216222},{"center":[0.3125,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.021112,"g_ent":0.055902},{"center":[0.4375,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.008101,"g_ent":3.300137},{"center":[0.8125,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.041123,"g_ent":3.652671},{"center":[0.3125,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.114764,"g_ent":3.366801},{"center":[0.375,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.094179,"g_ent":10.216222},{"center":[0.5625,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.066477,"g_ent":3.333636},{"center":[0.0625,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.007535,"g_ent":3.652671},{"center":[0.1875,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.029612,"g_ent":3.333636},{"center":[0.875,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.026246,"g_ent":10.878733},{"center":[0.9375,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.007535,"g_ent":3.652671},{"center":[0.75,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.060463,"g_ent":6.96581},{"center":[0.1875,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.041123,"g_ent":3.652671},{"center":[0.8125,0.1875,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.029344,"g_ent":3.366801},{"center":[0.9375,0.9375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.152848,"g_ent":4.043758},{"center":[0.4375,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.037713,"g_ent":3.333636},{"center":[0.3125,0.3125,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.085419,"g_ent":3.366801},{"center":[0.6875,0.0625,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.059894,"g_ent":3.652671},{"center":[0.25,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.013287,"g_ent":6.96581},{"center":[0.375,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.054699,"g_ent":9.669604},{"center":[0.4375,0.8125,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.074263,"g_ent":0.055902},{"center":[0.8125,0.4375,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.034765,"g_ent":0.055902},{"center":[0.0625,0.8125,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.02181,"g_ent":3.652671},{"center":[0.1875,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":0.074578,"g_ent":3.333636},{"center":[0.9375,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.08745,"g_ent":0.088388},{"center":[0.25,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.060463,"g_ent":6.96581},{"center":[0.9375,0.4375,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.037147,"g_ent":3.615983},{"center":[0.875,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.119433,"g_ent":10.878733},{"center":[0.3125,0.6875,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.018771,"g_ent":3.366801},{"center":[0.3125,0.5625,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.015918,"g_ent":0.055902},{"center":[0.3125,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.125538,"g_ent":0.055902},{"center":[0.9375,0.5625,0.1875],"size":[0.125,0.125,0.125],"fiedler":-0.082113,"g_ent":3.615983},{"center":[0.5625,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.074263,"g_ent":0.055902},{"center":[0.6875,0.3125,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.021112,"g_ent":0.055902},{"center":[0.6875,0.1875,0.0625],"size":[0.125,0.125,0.125],"fiedler":0.050576,"g_ent":0.055902},{"center":[0.5625,0.6875,0.0625],"size":[0.125,0.125,0.125],"fiedler":-0.072387,"g_ent":0.055902}],"fiedler_lambda":0.240043458,"n_leaves":148}},{"K_budget":512,"B_ent":0.17003412,"B_ent_spectral":0.0,"lambda_2":0.739018904,"worst_ratio":0.148095087,"epsilon":0.8,"n_leaves":36,"n_edges":84,"beta_Z_eff":2.702615,"accepted":0,"H_state":"2b674227ed85fbddb1c4c706632788d58455e706da6373ddd7d54a8e98328622","telemetry":{"H_state":"2b674227ed85fbddb1c4c706632788d58455e706da6373ddd7d54a8e98328622","leaves":[{"center":[0.625,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.262594,"g_ent":0.176777},{"center":[0.625,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.14494,"g_ent":1.942298},{"center":[0.625,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.051157,"g_ent":1.828977},{"center":[0.625,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.222511,"g_ent":1.942298},{"center":[0.875,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.262952,"g_ent":2.10085},{"center":[0.375,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.128728,"g_ent":1.828977},{"center":[0.875,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.125939,"g_ent":0.25},{"center":[0.375,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.262594,"g_ent":0.176777},{"center":[0.875,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.104499,"g_ent":2.10085},{"center":[0.625,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.128728,"g_ent":1.828977},{"center":[0.125,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.169169,"g_ent":1.942298},{"center":[0.375,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.180247,"g_ent":0.176777},{"center":[0.75,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.1489,"g_ent":6.96581},{"center":[0.375,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.054308,"g_ent":0.111803},{"center":[0.875,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.316902,"g_ent":0.25},{"center":[0.125,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.0,"g_ent":0.176777},{"center":[0.125,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.316902,"g_ent":0.25},{"center":[0.625,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.054308,"g_ent":0.111803},{"center":[0.125,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.010716,"g_ent":1.942298},{"center":[0.625,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.136655,"g_ent":0.111803},{"center":[0.375,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.222511,"g_ent":1.942298},{"center":[0.125,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.190963,"g_ent":0.176777},{"center":[0.875,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.169169,"g_ent":1.942298},{"center":[0.875,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.0,"g_ent":0.176777},{"center":[0.375,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.14494,"g_ent":1.942298},{"center":[0.125,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.262952,"g_ent":2.10085},{"center":[0.125,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.125939,"g_ent":0.25},{"center":[0.875,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.190963,"g_ent":0.176777},{"center":[0.75,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.059174,"g_ent":6.96581},{"center":[0.25,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.1489,"g_ent":6.96581},{"center":[0.875,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.010716,"g_ent":1.942298},{"center":[0.125,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.104499,"g_ent":2.10085},{"center":[0.25,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.059174,"g_ent":6.96581},{"center":[0.625,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.180247,"g_ent":0.176777},{"center":[0.375,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.051157,"g_ent":1.828977},{"center":[0.375,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.136655,"g_ent":0.111803}],"fiedler_lambda":0.739018904,"n_leaves":36}},{"K_budget":256,"B_ent":0.17003412,"B_ent_spectral":0.0,"lambda_2":0.739018904,"worst_ratio":0.148095087,"epsilon":0.8,"n_leaves":36,"n_edges":84,"beta_Z_eff":2.685327,"accepted":0,"H_state":"b3428eaf6125a3a709d436e729115449249e263f4830e1d9c5cadcbc983a11a0","telemetry":{"H_state":"b3428eaf6125a3a709d436e729115449249e263f4830e1d9c5cadcbc983a11a0","leaves":[{"center":[0.625,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.262594,"g_ent":0.176777},{"center":[0.625,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.14494,"g_ent":1.942298},{"center":[0.625,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.051157,"g_ent":1.828977},{"center":[0.625,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.222511,"g_ent":1.942298},{"center":[0.875,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.262952,"g_ent":2.10085},{"center":[0.375,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.128728,"g_ent":1.828977},{"center":[0.875,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.125939,"g_ent":0.25},{"center":[0.375,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.262594,"g_ent":0.176777},{"center":[0.875,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.104499,"g_ent":2.10085},{"center":[0.625,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.128728,"g_ent":1.828977},{"center":[0.125,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.169169,"g_ent":1.942298},{"center":[0.375,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.180247,"g_ent":0.176777},{"center":[0.75,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.1489,"g_ent":6.96581},{"center":[0.375,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.054308,"g_ent":0.111803},{"center":[0.875,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.316902,"g_ent":0.25},{"center":[0.125,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.0,"g_ent":0.176777},{"center":[0.125,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.316902,"g_ent":0.25},{"center":[0.625,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.054308,"g_ent":0.111803},{"center":[0.125,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.010716,"g_ent":1.942298},{"center":[0.625,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.136655,"g_ent":0.111803},{"center":[0.375,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.222511,"g_ent":1.942298},{"center":[0.125,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.190963,"g_ent":0.176777},{"center":[0.875,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.169169,"g_ent":1.942298},{"center":[0.875,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.0,"g_ent":0.176777},{"center":[0.375,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.14494,"g_ent":1.942298},{"center":[0.125,0.875,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.262952,"g_ent":2.10085},{"center":[0.125,0.125,0.125],"size":[0.25,0.25,0.25],"fiedler":0.125939,"g_ent":0.25},{"center":[0.875,0.375,0.125],"size":[0.25,0.25,0.25],"fiedler":0.190963,"g_ent":0.176777},{"center":[0.75,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.059174,"g_ent":6.96581},{"center":[0.25,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.1489,"g_ent":6.96581},{"center":[0.875,0.625,0.375],"size":[0.25,0.25,0.25],"fiedler":-0.010716,"g_ent":1.942298},{"center":[0.125,0.125,0.375],"size":[0.25,0.25,0.25],"fiedler":0.104499,"g_ent":2.10085},{"center":[0.25,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":0.059174,"g_ent":6.96581},{"center":[0.625,0.875,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.180247,"g_ent":0.176777},{"center":[0.375,0.375,0.375],"size":[0.25,0.25,0.25],"fiedler":0.051157,"g_ent":1.828977},{"center":[0.375,0.625,0.125],"size":[0.25,0.25,0.25],"fiedler":-0.136655,"g_ent":0.111803}],"fiedler_lambda":0.739018904,"n_leaves":36}},{"K_budget":128,"B_ent":0.057400879,"B_ent_spectral":0.0,"lambda_2":2.0,"worst_ratio":0.040588551,"epsilon":0.8,"n_leaves":8,"n_edges":12,"beta_Z_eff":2.020685,"accepted":1,"H_state":"71796909893dd8eed010da06821f12e9f97a701601b443e57f8e5fefd4161c17","telemetry":{"H_state":"71796909893dd8eed010da06821f12e9f97a701601b443e57f8e5fefd4161c17","leaves":[{"center":[0.75,0.25,0.25],"size":[0.5,0.5,0.5],"fiedler":-0.108189,"g_ent":0.5},{"center":[0.25,0.75,0.25],"size":[0.5,0.5,0.5],"fiedler":0.592346,"g_ent":0.5},{"center":[0.75,0.75,0.25],"size":[0.5,0.5,0.5],"fiedler":0.141538,"g_ent":0.5},{"center":[0.75,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.592346,"g_ent":0.5},{"center":[0.25,0.25,0.25],"size":[0.5,0.5,0.5],"fiedler":0.34262,"g_ent":0.5},{"center":[0.75,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.34262,"g_ent":0.5},{"center":[0.25,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":0.108189,"g_ent":0.5},{"center":[0.25,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.141538,"g_ent":0.5}],"fiedler_lambda":2.0,"n_leaves":8}},{"K_budget":64,"B_ent":0.057400879,"B_ent_spectral":0.0,"lambda_2":2.0,"worst_ratio":0.040588551,"epsilon":0.8,"n_leaves":8,"n_edges":12,"beta_Z_eff":2.020685,"accepted":0,"H_state":"71796909893dd8eed010da06821f12e9f97a701601b443e57f8e5fefd4161c17","telemetry":{"H_state":"71796909893dd8eed010da06821f12e9f97a701601b443e57f8e5fefd4161c17","leaves":[{"center":[0.75,0.25,0.25],"size":[0.5,0.5,0.5],"fiedler":-0.108189,"g_ent":0.5},{"center":[0.25,0.75,0.25],"size":[0.5,0.5,0.5],"fiedler":0.592346,"g_ent":0.5},{"center":[0.75,0.75,0.25],"size":[0.5,0.5,0.5],"fiedler":0.141538,"g_ent":0.5},{"center":[0.75,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.592346,"g_ent":0.5},{"center":[0.25,0.25,0.25],"size":[0.5,0.5,0.5],"fiedler":0.34262,"g_ent":0.5},{"center":[0.75,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.34262,"g_ent":0.5},{"center":[0.25,0.75,0.75],"size":[0.5,0.5,0.5],"fiedler":0.108189,"g_ent":0.5},{"center":[0.25,0.25,0.75],"size":[0.5,0.5,0.5],"fiedler":-0.141538,"g_ent":0.5}],"fiedler_lambda":2.0,"n_leaves":8}}]};
+
+/* ---- header / transport meta ---- */
+document.getElementById('meta').textContent = BUNDLE.title + " · " + BUNDLE.engine_protocol + " · seed=" + BUNDLE.pythonhashseed;
+document.getElementById('addr').textContent = "H_verified " + (BUNDLE.committed_H_verified ? BUNDLE.committed_H_verified.slice(0,32)+"…" : "—");
+document.getElementById('ft').textContent = BUNDLE.frames_total;
+document.getElementById('us').textContent = BUNDLE.unique_states;
+document.getElementById('ch').textContent = BUNDLE.cache_hits;
+document.getElementById('red').textContent = (BUNDLE.stress_reduction||0).toFixed(4);
+
+/* ---- Three.js scene ---- */
+const view = document.getElementById('view'), cv = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
+const group = new THREE.Group(); scene.add(group);
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const dl = new THREE.DirectionalLight(0xffffff,0.6); dl.position.set(2,3,4); scene.add(dl);
+function resize(){const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+
+function fiedlerColor(f, fmax){
+  const t = fmax>1e-9 ? f/fmax : 0;               // -1..1
+  const c = new THREE.Color();
+  if(t>=0) c.setRGB(0.91*t+0.09, 0.36+0.0*t, 0.42-0.0*t).lerp(new THREE.Color(0xff5c6c), t);
+  // simpler robust map: blue (neg) -> white (0) -> red (pos)
+  const a = (t+1)/2;
+  const blue=new THREE.Color(0x4ea1ff), white=new THREE.Color(0xe8eef5), red=new THREE.Color(0xff5c6c);
+  return a<0.5 ? blue.clone().lerp(white, a*2) : white.clone().lerp(red, (a-0.5)*2);
+}
+function buildFrame(fr){
+  while(group.children.length) group.remove(group.children[0]);
+  const leaves = fr.telemetry.leaves;
+  let fmax=1e-9; leaves.forEach(l=>fmax=Math.max(fmax,Math.abs(l.fiedler)));
+  leaves.forEach(l=>{
+    const g=new THREE.BoxGeometry(l.size[0]*0.92,l.size[1]*0.92,l.size[2]*0.92);
+    const m=new THREE.MeshLambertMaterial({color:fiedlerColor(l.fiedler,fmax),transparent:true,opacity:0.92});
+    const box=new THREE.Mesh(g,m);
+    box.position.set(l.center[0]-0.5,l.center[1]-0.5,l.center[2]-0.5);  // center the unit cube
+    group.add(box);
+    const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:0.25}));
+    e.position.copy(box.position); group.add(e);
+  });
+  document.getElementById('ov').innerHTML =
+    "leaves "+leaves.length+" · λ₂ "+fr.lambda_2.toFixed(4)+"<br>fault: sign(v₂) bisection";
+}
+
+/* ---- 2D gauge + curve ---- */
+function drawGauge(bent, eps){
+  const c=document.getElementById('gauge'), x=c.getContext('2d'); const W=120,H=74;
+  x.clearRect(0,0,W,H); const cx=60,cy=66,r=46;
+  x.lineWidth=10; x.lineCap='round';
+  x.strokeStyle='#1e2a3a'; x.beginPath(); x.arc(cx,cy,r,Math.PI,2*Math.PI); x.stroke();
+  const frac=Math.max(0,Math.min(1,bent/1.0));            // 0..1 over [0, 1.0]; eps marker at 0.8
+  const ang=Math.PI+frac*Math.PI;
+  const col = bent<=eps ? '#39d98a' : '#ff5c6c';
+  x.strokeStyle=col; x.beginPath(); x.arc(cx,cy,r,Math.PI,ang); x.stroke();
+  // eps tick
+  const ea=Math.PI+eps*Math.PI; x.strokeStyle='#ffb547'; x.lineWidth=2;
+  x.beginPath(); x.moveTo(cx+(r-8)*Math.cos(ea),cy+(r-8)*Math.sin(ea)); x.lineTo(cx+(r+6)*Math.cos(ea),cy+(r+6)*Math.sin(ea)); x.stroke();
+}
+function drawCurve(sel){
+  const c=document.getElementById('curve'), x=c.getContext('2d'); const W=296,H=92,pad=18;
+  x.clearRect(0,0,W,H);
+  const fr=BUNDLE.frames, ys=fr.map(f=>f.B_ent); const ymax=Math.max(...ys,0.2), ymin=0;
+  const X=i=>pad+(W-2*pad)*(fr.length<2?0.5:i/(fr.length-1));
+  const Y=v=>H-pad-(H-2*pad)*((v-ymin)/(ymax-ymin||1));
+  // eps line
+  x.strokeStyle='#3a2e16'; x.setLineDash([4,3]); x.beginPath(); x.moveTo(pad,Y(0.8)); x.lineTo(W-pad,Y(0.8)); x.stroke(); x.setLineDash([]);
+  // all probes
+  x.strokeStyle='#2a3a4f'; x.lineWidth=1.5; x.beginPath(); fr.forEach((f,i)=>{const xx=X(i),yy=Y(f.B_ent); i?x.lineTo(xx,yy):x.moveTo(xx,yy);}); x.stroke();
+  // accepted (monotone) overlay
+  x.strokeStyle='#39d98a'; x.lineWidth=2; let started=false;
+  fr.forEach((f,i)=>{ if(f.accepted){const xx=X(i),yy=Y(f.B_ent); started?x.lineTo(xx,yy):x.moveTo(xx,yy); started=true;}});
+  x.stroke();
+  fr.forEach((f,i)=>{const xx=X(i),yy=Y(f.B_ent);
+    x.fillStyle=f.accepted?'#39d98a':'#54637a'; x.beginPath(); x.arc(xx,yy,i===sel?4.5:3,0,7); x.fill();
+    if(i===sel){x.strokeStyle='#4ea1ff';x.lineWidth=1.5;x.beginPath();x.arc(xx,yy,6.5,0,7);x.stroke();}});
+}
+
+/* ---- panels + scrubber ---- */
+let sel=0;
+function select(i){
+  sel=i; const fr=BUNDLE.frames[i];
+  buildFrame(fr);
+  document.getElementById('bent').textContent=fr.B_ent.toFixed(4);
+  const ok=fr.B_ent<=fr.epsilon && fr.worst_ratio<=fr.epsilon;
+  const p=document.getElementById('fwpill'); p.textContent=ok?'ADMITTED':'TORN'; p.className='pill '+(ok?'ok':'bad');
+  document.getElementById('kb').textContent=fr.K_budget;
+  document.getElementById('ne').textContent=fr.n_leaves+" / "+fr.n_edges;
+  document.getElementById('l2').textContent=fr.lambda_2.toFixed(4);
+  document.getElementById('bsp').textContent=fr.B_ent_spectral.toFixed(4);
+  document.getElementById('bz').textContent=fr.beta_Z_eff.toFixed(3);
+  document.getElementById('wr').textContent=fr.worst_ratio.toFixed(4);
+  document.getElementById('hs').textContent=fr.H_state.slice(0,12)+"…";
+  drawGauge(fr.B_ent, fr.epsilon); drawCurve(i);
+  [...document.querySelectorAll('.frame')].forEach((el,k)=>el.classList.toggle('sel',k===i));
+}
+const scrub=document.getElementById('scrub');
+BUNDLE.frames.forEach((f,i)=>{
+  const d=document.createElement('div'); d.className='frame'+(f.accepted?' acc':'');
+  d.innerHTML="K="+f.K_budget+"<span class='b'>B_ent "+f.B_ent.toFixed(3)+"</span>";
+  d.onclick=()=>select(i); scrub.appendChild(d);
+});
+
+/* ---- camera + animate ---- */
+let drag=false,px=0,py=0,rx=0.5,ry=0.7,dist=2.4;
+view.addEventListener('mousedown',e=>{drag=true;px=e.clientX;py=e.clientY;});
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('mousemove',e=>{if(!drag)return;ry+=(e.clientX-px)*0.01;rx+=(e.clientY-py)*0.01;px=e.clientX;py=e.clientY;});
+view.addEventListener('wheel',e=>{dist=Math.max(1.4,Math.min(5,dist+e.deltaY*0.001));e.preventDefault();},{passive:false});
+function animate(){requestAnimationFrame(animate);ry+=0.0016;
+  camera.position.set(dist*Math.cos(rx)*Math.sin(ry),dist*Math.sin(rx),dist*Math.cos(rx)*Math.cos(ry));
+  camera.lookAt(0,0,0);renderer.render(scene,camera);}
+resize(); select(BUNDLE.frames.findIndex(f=>f.accepted)>=0?BUNDLE.frames.map(f=>f.B_ent).indexOf(Math.min(...BUNDLE.frames.filter(f=>f.accepted).map(f=>f.B_ent))):0); animate();
+
+/* ---- LIVE mode contract (SSE; content-addressed). Stub: wire to dentatus_service. ----
+   const cache={}; const es=new EventSource(sseUrl);
+   es.addEventListener('frame',ev=>{const f=JSON.parse(ev.data);
+     if(f.ref){ render(cache[f.H_state]); } else { cache[f.H_state]=f; render(f); }});
+   es.addEventListener('commit',ev=>{ markVerified(JSON.parse(ev.data).H_verified); });          */
+</script>
+</body>
+</html>
