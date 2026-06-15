@@ -4069,3 +4069,107 @@ def apply_gamma_404_recursive(mu, claim_id, partition_key, beta, budget, spent, 
             pass
 
     return mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D
+
+
+# =============================================================================
+# EXP-405 — Adaptive gamma Warmup Schedule (Transient Overshoot Reduction)
+# Ghost #15 source: EXP-404 overshoot_ratio=1.33 at n=4.
+# gamma_eff(n) = gamma_inf * (1 - exp(-n / tau_warmup))
+# scene_n: explicit declared input (NOT in MuState); tracks sequential scene count.
+# Reduces to phi_fb_exp (EXP-404) as n -> inf.
+# declaration_hash: 6e498f656aeb0fce5b7bfb588642ebef935e6df154b3d5195f907213a07ca889
+# =============================================================================
+
+_GAMMA_INF_A_405  = 0.5
+_GAMMA_INF_D_405  = 0.5
+_TAU_WARMUP_405   = 5.0   # scenes to 63% of gamma_inf
+_BETA_Z_MIN_405   = 0.1   # same as EXP-404
+_EPS_FB_405       = 1e-15
+
+
+def phi_fb_adaptive(S_A, Z_A, S_D, scene_n,
+                    beta_Z_base=_BETA_Z_313,
+                    gamma_inf_A=_GAMMA_INF_A_405,
+                    gamma_inf_D=_GAMMA_INF_D_405,
+                    tau_warmup=_TAU_WARMUP_405,
+                    beta_Z_min=_BETA_Z_MIN_405,
+                    eps=_EPS_FB_405):
+    """EXP-405: Adaptive gamma warmup schedule for exponential Phi_fb.
+
+    gamma_eff_A(n) = gamma_inf_A * (1 - exp(-n / tau_warmup))
+    gamma_eff_D(n) = gamma_inf_D * (1 - exp(-n / tau_warmup))
+    beta_Z_eff = max(beta_Z_min, beta_Z_base * exp(gamma_eff_A*B_A - gamma_eff_D*B_D))
+
+    scene_n=0: gamma_eff=0 -> beta_Z_eff=beta_Z_base (same as EXP-401 cold start)
+    scene_n->inf: gamma_eff->gamma_inf -> reduces to phi_fb_exp (EXP-404)
+
+    scene_n is a DECLARED INPUT, not stored in MuState (stateless over this parameter).
+    EXP-406 gate: if scene_n needed in production -> add to MuState.
+
+    Returns: (beta_Z_eff, B_A, B_D, gamma_eff_A, gamma_eff_D)
+    """
+    import numpy as _np405
+    import math as _math405
+    S_A_arr = _np405.asarray(S_A, dtype=float)
+    Z_A_arr = _np405.asarray(Z_A, dtype=float)
+    S_D_arr = _np405.asarray(S_D, dtype=float) if S_D is not None else _np405.zeros(6)
+    norm_Z_A = float(_np405.linalg.norm(Z_A_arr))
+    B_A = float(_np405.linalg.norm(S_A_arr)) / (norm_Z_A + eps)
+    B_D = float(_np405.linalg.norm(S_D_arr)) / (norm_Z_A + eps)
+    n = max(0, int(scene_n))
+    ramp   = 1.0 - _math405.exp(-n / float(tau_warmup)) if n > 0 else 0.0
+    g_A    = float(gamma_inf_A) * ramp
+    g_D    = float(gamma_inf_D) * ramp
+    beta_raw = float(beta_Z_base) * _math405.exp(g_A * B_A - g_D * B_D)
+    return float(max(float(beta_Z_min), beta_raw)), B_A, B_D, g_A, g_D
+
+
+def apply_gamma_405_recursive(mu, claim_id, partition_key, beta, budget, spent, K_budget,
+        depth=0, focal_point=None, B=None, beta_Z_base=_BETA_Z_313, J_AC=None,
+        W_max=_W_MAX_314, thresholds=None, alpha_leak=_ALPHA_LEAK_311, beta_CA=_BETA_CA_311,
+        mass_ref=_MASS_REF_311, kappa_ref=_KAPPA_REF_311, y_ref=_Y_REF_316_,
+        alpha_D=_ALPHA_D_401,
+        gamma_inf_A=_GAMMA_INF_A_405, gamma_inf_D=_GAMMA_INF_D_405,
+        tau_warmup=_TAU_WARMUP_405, beta_Z_min=_BETA_Z_MIN_405,
+        scene_n=0):
+    """EXP-405: wrap apply_gamma_401_recursive with adaptive-gamma exponential Phi_fb.
+
+    scene_n: integer scene count passed from sequential loop.
+             Determines gamma_eff ramp. NOT stored in mu.
+
+    Returns: (mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D, gamma_eff_A, gamma_eff_D)
+    """
+    import numpy as _np405r
+    S_A_prev = mu.S_A if (hasattr(mu, 'S_A') and mu.S_A is not None) else _np405r.zeros(8)
+    S_D_prev = mu.S_D if (hasattr(mu, 'S_D') and mu.S_D is not None) else _np405r.zeros(6)
+    Z_prev   = mu.Z()
+    Z_A_prev = Z_prev[0:4] if len(Z_prev) >= 4 else _np405r.zeros(4)
+
+    beta_Z_eff, B_A, B_D, g_A, g_D = phi_fb_adaptive(
+        S_A=S_A_prev, Z_A=Z_A_prev, S_D=S_D_prev, scene_n=scene_n,
+        beta_Z_base=beta_Z_base,
+        gamma_inf_A=gamma_inf_A, gamma_inf_D=gamma_inf_D,
+        tau_warmup=tau_warmup, beta_Z_min=beta_Z_min,
+    )
+
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu, claim_id=claim_id,
+        partition_key=partition_key, beta=beta,
+        budget=budget, spent=spent, K_budget=K_budget,
+        depth=depth, focal_point=focal_point, B=B,
+        beta_Z=beta_Z_eff, J_AC=J_AC, W_max=W_max,
+        thresholds=thresholds, alpha_leak=alpha_leak, beta_CA=beta_CA,
+        mass_ref=mass_ref, kappa_ref=kappa_ref, y_ref=y_ref, alpha_D=alpha_D,
+    )
+
+    # Annotate ghost_history 4-tuple -> 7-tuple (beta_Z_eff, B_A, B_D)
+    gh = list(getattr(mu_next, 'ghost_history', None) or [])
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D, g_A, g_D

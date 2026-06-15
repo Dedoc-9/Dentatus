@@ -675,3 +675,78 @@ P_yz: max|bze_fwd−mir|=2.13e-14 ✓
 
 Trigger: `overshoot_ratio = max(β_Z_eff) / β_Z_eff* > 1.5` (currently 1.33, inactive).
 Options: damped exponential, adaptive γ schedule, or second-order EMA smoothing of β_Z_eff.
+
+---
+
+## EXP-405 — Adaptive Gamma Warmup Schedule
+
+**Gate:** EXP-404 Ghost #15 (proactive; overshoot_ratio=1.33, threshold=1.5).  
+**Declaration hash:** `6e498f656aeb0fce5b7bfb588642ebef935e6df154b3d5195f907213a07ca889`  
+**Files:** `studies/exp405_adaptive_gamma/`  
+**Author:** Daniel J. Dillberg — bigdilly95@gmail.com
+
+### Operator: phi_fb_adaptive
+
+```
+ramp(n) = 1 − exp(−n / τ)        (τ=5; ramp(0)=0)
+γ_eff_A = γ_∞_A · ramp(n)
+γ_eff_D = γ_∞_D · ramp(n)
+β_Z_eff = max(β_Z_min, β_Z_base · exp(γ_eff_A · B_A − γ_eff_D · B_D))
+```
+
+Parameters: `γ_∞_A=γ_∞_D=0.5`, `τ=5.0`, `β_Z_min=0.1`.  
+At n=0: γ_eff=0 → cold start (no feedback).  
+As n→∞: γ_eff→γ_∞ → reduces to `phi_fb_exp` (EXP-404).
+
+### Transient comparison (N=20)
+
+```
+bze_404: [2.00, 10.43, 12.64, 15.13, 22.88, 17.38, 17.19, ...]  overshoot_ratio=1.33
+bze_405: [2.00,  2.70,  4.77,  6.87,  7.53,  9.15,  5.59, ...]  overshoot_ratio=1.00
+```
+
+Overshoot eliminated (spike suppressed 3.9×). However, slow ramp induces Ghost #16.
+
+### Ghost #16 — 2-Period Leaf Count Oscillation
+
+Adaptive ramp traverses bistable region (β_Z_eff≈14–20) slowly. EMA memory (α=0.1, ≈10 steps) couples to ramp timescale (τ=5) → parametric 2-cycle.
+
+```
+lc_405 tail (n≥11): oscillates {71, 78}   (2-cycle)
+lc_404 tail (n≥5):  stable     {71}       (single attractor)
+```
+
+bze_405 at n=20: 21.75 (not converged; EXP-404 settled at 17.19 by n=7).  
+Ω_fb(405)[n=20] = |21.75−2.0|/2.0 = 988% (transient; exceeds settled EXP-404 value of 760%).
+
+### Saturation comparison
+
+| Operator | sat_ratio | Ghost | Status |
+|---|---|---|---|
+| EXP-402 linear | 0.60 | — | gate source |
+| EXP-404 exp | 0.20 | #15 overshoot | resolved ✓ |
+| EXP-405 adaptive | 0.00 | #16 2-cycle | EXP-406 gate |
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp405.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp405.py`) | 5/5 | **PASS** |
+
+```
+phi_fb_adaptive cold (n=0):  β_Z_eff=2.000 = β_Z_base ✓
+phi_fb_adaptive n=1:         bze_405=2.018 < bze_404=2.103 (γ_eff < γ_inf) ✓
+phi_fb_adaptive n→∞:         converges to phi_fb_exp (diff < 0.1) ✓
+overshoot_ratio_405=1.0000 < 1.33 ✓  saturation_ratio=0.0000 ✓
+Ghost #16: lc 2-cycle {71,78}; bze range=16.15 at N=20 (not converged)
+P_yz: max|bze_fwd−mir|=1.78e-14 ✓
+```
+
+### EXP-406 gate
+
+**Trigger:** Ghost #16 (2-cycle instability; β_Z_eff not converged at N=20).  
+Options:
+- A: EMA smoothing of β_Z_eff (second-order damping breaks 2-cycle)
+- B: Larger τ_warmup (avoid bistable crossing during ramp)
+- C: Non-monotone ramp (fast to 0.3·γ_∞, plateau, then slower rise to γ_∞)

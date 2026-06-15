@@ -1,0 +1,89 @@
+{
+  "experiment": "EXP-405",
+  "title": "Adaptive gamma Warmup Schedule \u2014 Exponential Phi_fb Transient Reduction",
+  "protocol_version": "exp405-v1",
+  "inherits": [
+    "exp404-v1",
+    "exp403-v1",
+    "exp402-v1",
+    "exp401-v1"
+  ],
+  "author": "Daniel J. Dillberg \u2014 bigdilly95@gmail.com",
+  "date": "2026-06-14",
+  "gate_condition": "Ghost #15 (EXP-404): overshoot_ratio = max(bze)/bze* = 1.33; gate threshold 1.5 inactive",
+  "gate_source": "EXP-404 ENGINE_AXIOMS Ghost #15; EXP-405 implemented proactively as gamma ramp architecture",
+  "operator": {
+    "name": "phi_fb_adaptive",
+    "formula": "beta_Z_eff = max(beta_Z_min, beta_Z_base * exp(gamma_eff_A(n)*B_A - gamma_eff_D(n)*B_D))",
+    "gamma_schedule": "gamma_eff(n) = gamma_inf * (1 - exp(-n / tau_warmup))",
+    "B_A": "norm(S_A) / (norm(Z_A) + eps)",
+    "B_D": "norm(S_D) / (norm(Z_A) + eps)",
+    "scene_n_source": "external sequential loop counter; NOT stored in MuState; declared input to operator",
+    "properties": [
+      "scene_n=0: gamma_eff=0 -> beta_Z_eff=beta_Z_base (cold, no feedback)",
+      "scene_n->inf: gamma_eff->gamma_inf -> reduces to phi_fb_exp (EXP-404)",
+      "overshoot suppressed: gamma ramps slowly during B_A accumulation phase",
+      "equilibrium preserved: gamma_eff(inf)=gamma_inf so bze*(405)->bze*(404)",
+      "stateless: scene_n is declared external input; operator has no hidden state"
+    ]
+  },
+  "parameters": {
+    "gamma_inf_A": 0.5,
+    "gamma_inf_D": 0.5,
+    "tau_warmup": 5.0,
+    "beta_Z_min": 0.1,
+    "beta_Z_base": 2.0,
+    "eps": 1e-15
+  },
+  "gamma_schedule_analysis": {
+    "n=0": "gamma_eff=0.000 (no feedback)",
+    "n=1": "gamma_eff=0.0906 (gentle onset)",
+    "n=5": "gamma_eff=0.3161 (half-strength)",
+    "n=10": "gamma_eff=0.4323 (near-full)",
+    "n=20": "gamma_eff=0.490842 (convergence to gamma_inf=0.5)"
+  },
+  "overshoot_suppression": {
+    "EXP404_overshoot_ratio": 1.33,
+    "mechanism": "step n=1: gamma_eff=0.0906 vs gamma=0.5 -> bze~2.70 vs 10.43 (74% lower)",
+    "expectation": "overshoot_ratio_405 < overshoot_ratio_404 = 1.33",
+    "equilibrium_preservation": "at n=20: gamma_eff=0.4966~0.5 -> bze*(405) ~ bze*(404)=17.19"
+  },
+  "dual_arithmetic": {
+    "note": "gamma_eff(n) is a primary-space operator parameter, NOT a dual-space accumulator",
+    "scene_n": "primary space counter; not a ghost residual; not stored in dual channels",
+    "separation_preserved": "S_A/S_D remain in dual space; gamma_eff is primary scalar"
+  },
+  "assertions": {
+    "fork_A_count": 10,
+    "fork_A": [
+      "declaration_hash verified",
+      "phi_fb_adaptive(scene_n=0) == beta_Z_base (no feedback at cold start)",
+      "phi_fb_adaptive(scene_n=1, B_A>0) < phi_fb_exp(B_A>0) (gamma ramp < full gamma)",
+      "phi_fb_adaptive(scene_n=large) ~ phi_fb_exp (converges to EXP-404)",
+      "overshoot_ratio_405 < overshoot_ratio_404 = 1.33 (transient reduced)",
+      "EXP-401 regression: leaf_count(n=0) == 92",
+      "equilibrium: |bze*(405) - bze*(404)| < 0.5 at n=20 (gamma_eff ~ gamma_inf)",
+      "leaf_count* stable after n=3 (regression across all steps)",
+      "saturation_ratio < 0.5 (standard params, EXP-406 gate inactive)",
+      "gradient monotone: phi_fb_adaptive increasing B_A, decreasing B_D"
+    ],
+    "fork_B_count": 5,
+    "fork_B": [
+      "declaration_hash verified",
+      "bze_fwd(n) == bze_mir(n) for all n (phi_fb_adaptive P_yz-invariant)",
+      "B_A_fwd(n) == B_A_mir(n) for all n",
+      "B_D_fwd(n) == B_D_mir(n) for all n",
+      "leaf_count_fwd(n) == leaf_count_mir(n) for all n"
+    ]
+  },
+  "exp406_gate": "if scene_n required in MuState for production deployment -> add scene_n field to state.py",
+  "forbidden_operators": [
+    "ghost_direct_control",
+    "stalk_collapse",
+    "retroactive_confluence_cert",
+    "budget_retroactive_adjustment",
+    "validity_predicate_shift",
+    "post_hoc_rewrite_rule_addition"
+  ],
+  "declaration_hash": "6e498f656aeb0fce5b7bfb588642ebef935e6df154b3d5195f907213a07ca889"
+}
