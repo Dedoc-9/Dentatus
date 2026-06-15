@@ -4540,3 +4540,138 @@ def apply_gamma_408_recursive(mu, claim_id,
             pass
 
     return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXP-409 — Hysteresis α_bze Schedule: Conditional Basin Lock
+# phi_fb_hysteresis_ema + apply_gamma_409_recursive
+# alpha_disc=0.5 until bze >= beta_threshold=12.0, then alpha_maint=0.9 (latched)
+# beta_threshold = sqrt(beta_low * beta_high) = sqrt(8.0 * 17.19) = 11.73 -> 12.0
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_ALPHA_DISC_409      = 0.5    # discovery: same as EXP-406 fixed alpha (proven lc=71 path)
+_ALPHA_MAINT_409     = 0.9    # maintenance: tightest damping (2-cycle ratio=5.3%)
+_BETA_THRESHOLD_409  = 12.0   # separatrix: sqrt(8.0*17.19)=11.73, rounded up
+_GAMMA_INF_A_409     = 0.5
+_GAMMA_INF_D_409     = 0.5
+_TAU_WARMUP_409      = 5.0
+_BETA_Z_MIN_409      = 0.1
+_EPS_FB_409          = 1e-15
+
+
+def phi_fb_hysteresis_ema(S_A, Z_A, S_D, scene_n, bze_ema_prev,
+                          maint_latched=False,
+                          beta_Z_base=_BETA_Z_313,
+                          gamma_inf_A=_GAMMA_INF_A_409, gamma_inf_D=_GAMMA_INF_D_409,
+                          tau_warmup=_TAU_WARMUP_409,
+                          alpha_disc=_ALPHA_DISC_409, alpha_maint=_ALPHA_MAINT_409,
+                          beta_threshold=_BETA_THRESHOLD_409,
+                          beta_Z_min=_BETA_Z_MIN_409, eps=_EPS_FB_409):
+    """
+    EXP-409: Hysteresis alpha schedule — conditional basin lock.
+
+    Discovery mode (maint_latched=False AND bze_ema_prev < beta_threshold):
+      alpha_eff = alpha_disc = 0.5   [matches EXP-406: proven lc=71 trajectory]
+
+    Maintenance mode (maint_latched=True OR bze_ema_prev >= beta_threshold):
+      alpha_eff = alpha_maint = 0.9  [tightest 2-cycle suppression]
+      maint_latched_out = True       [irreversible: no reversion to discovery]
+
+    beta_threshold = 12.0 = sqrt(8.0 * 17.19):
+      lc=64 basin equilibrium beta_raw ≈ 8.0  (EXP-408 tail)
+      lc=71 basin equilibrium beta_raw ≈ 17.19 (EXP-404 settled)
+      separatrix: geometric mean in beta_Z_eff space = 11.73, rounded to 12.0
+
+    Caller maintains: bze_ema_prev (float) + maint_latched (bool) — both primary scalars.
+    Returns: (beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff, maint_latched_out)
+
+    Ghost #20 candidate: if bze_ema_prev briefly drops below threshold before latching,
+    reversion to discovery mode re-enables lc=64 basin risk.
+    Latch makes this irreversible once triggered.
+
+    Dual arithmetic: B_A, B_D from dual norms; alpha_eff, bze_ema_prev, maint_latched
+    all in primary space.
+    """
+    import numpy as np, math
+    n = scene_n
+    # Norms — P_yz-invariant
+    norm_SA = np.linalg.norm(S_A)
+    norm_ZA = np.linalg.norm(Z_A)
+    norm_SD = np.linalg.norm(S_D)
+    B_A = norm_SA / (norm_ZA + eps)
+    B_D = norm_SD / (norm_ZA + eps)
+    # Gamma ramp UP (inherits EXP-405)
+    ramp = (1.0 - math.exp(-n / tau_warmup)) if n > 0 else 0.0
+    g_A  = gamma_inf_A * ramp
+    g_D  = gamma_inf_D * ramp
+    # Raw signal (primary)
+    beta_raw = max(beta_Z_min, beta_Z_base * math.exp(g_A * B_A - g_D * B_D))
+    # Hysteresis latch
+    maint_latched_out = maint_latched or (bze_ema_prev >= beta_threshold)
+    alpha_eff = alpha_maint if maint_latched_out else alpha_disc
+    # EMA
+    beta_Z_eff = max(beta_Z_min, alpha_eff * bze_ema_prev + (1.0 - alpha_eff) * beta_raw)
+    return beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff, maint_latched_out
+
+
+def apply_gamma_409_recursive(mu, claim_id,
+                              partition_key="octree_split",
+                              beta=1.0, budget=1e9, spent=0.0,
+                              K_budget=2048, depth=0,
+                              focal_point=None,
+                              B=None, J_AC=None, W_max=8,
+                              beta_Z_base=_BETA_Z_313,
+                              gamma_inf_A=_GAMMA_INF_A_409, gamma_inf_D=_GAMMA_INF_D_409,
+                              tau_warmup=_TAU_WARMUP_409,
+                              alpha_disc=_ALPHA_DISC_409, alpha_maint=_ALPHA_MAINT_409,
+                              beta_threshold=_BETA_THRESHOLD_409,
+                              beta_Z_min=_BETA_Z_MIN_409,
+                              scene_n=0, bze_ema_prev=None, maint_latched=False):
+    """
+    EXP-409 recursive operator. Hysteresis latch: caller tracks bze_ema_prev + maint_latched.
+    Returns: (mu_next, cost, K, bze, raw, B_A, B_D, g_A, g_D, alpha_eff, maint_latched_out)
+    """
+    import numpy as np
+    if bze_ema_prev is None:
+        bze_ema_prev = beta_Z_base
+
+    Z_prev = mu.Z()
+    Z_A = Z_prev[:4] if len(Z_prev) >= 4 else Z_prev
+    S_A = np.array(mu.S_A) if hasattr(mu, 'S_A') else np.zeros(8)
+    S_D = np.array(mu.S_D) if hasattr(mu, 'S_D') else np.zeros(6)
+
+    beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff, maint_latched_out = \
+        phi_fb_hysteresis_ema(
+            S_A, Z_A, S_D, scene_n, bze_ema_prev,
+            maint_latched=maint_latched,
+            beta_Z_base=beta_Z_base,
+            gamma_inf_A=gamma_inf_A, gamma_inf_D=gamma_inf_D,
+            tau_warmup=tau_warmup,
+            alpha_disc=alpha_disc, alpha_maint=alpha_maint,
+            beta_threshold=beta_threshold,
+            beta_Z_min=beta_Z_min,
+        )
+
+    # Forward pass — NO alpha_leak kwarg
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu, claim_id=claim_id,
+        partition_key=partition_key,
+        beta=beta, budget=budget, spent=spent,
+        K_budget=K_budget, depth=depth,
+        focal_point=focal_point,
+        B=B, J_AC=J_AC, W_max=W_max,
+        beta_Z=beta_Z_eff,
+    )
+
+    try:
+        gh = list(getattr(mu_next, 'ghost_history', []) or [])
+    except Exception:
+        gh = []
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff, maint_latched_out

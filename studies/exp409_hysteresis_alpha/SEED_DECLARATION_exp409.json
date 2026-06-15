@@ -1,0 +1,40 @@
+{
+  "experiment_id": "EXP-409",
+  "protocol_version": "exp409-v1",
+  "parent_protocol": "exp408-v1",
+  "title": "Hysteresis \u03b1_bze Schedule \u2014 Conditional Basin Lock",
+  "gate_source": "EXP-408 Ghost #19 (Attraktorwahl): ascending alpha locked lc=64 basin; neither descending nor ascending schedule resolves convergence+basin-selection jointly",
+  "hypothesis": "Hysteresis latch: alpha_disc=0.5 during discovery (bze<threshold), alpha_maint=0.9 once bze>=beta_threshold=12.0 (latched). Discovery phase matches EXP-406 trajectory to lc=71 basin; maintenance phase suppresses 2-cycle. Expected: bze_409[-1] > bze_407[-1]=11.18 AND tail_range_409 < tail_range_406=9.17.",
+  "operator": "phi_fb_hysteresis_ema",
+  "parameters": {
+    "alpha_disc": 0.5,
+    "alpha_maint": 0.9,
+    "beta_threshold": 12.0,
+    "gamma_inf_A": 0.5,
+    "gamma_inf_D": 0.5,
+    "tau_warmup": 5.0,
+    "beta_Z_base": 2.0,
+    "beta_Z_min": 0.1,
+    "eps": 1e-15
+  },
+  "threshold_derivation": {
+    "beta_low_lc64": 8.0,
+    "beta_high_lc71": 17.19,
+    "geometric_mean": 11.7269,
+    "B_A_sep": 3.5375,
+    "formula": "beta_threshold = sqrt(beta_low * beta_high) = beta_Z_base * exp(gamma_inf * B_A_sep)",
+    "chosen": 12.0,
+    "safety_margin": 0.2731
+  },
+  "latch_protocol": {
+    "caller_var": "maint_latched (bool, primary scalar)",
+    "init": "False",
+    "trigger": "bze_ema_prev >= beta_threshold OR maint_latched==True",
+    "revert": "never (irreversible latch)",
+    "ghost_20_candidate": "Latch reversion if raw drops below threshold before latch engages"
+  },
+  "ghost_candidates": {
+    "Ghost_20": "Latch reversion: if bze_ema_prev < beta_threshold after brief excursion, maint_latched prevents re-entry to discovery. If NOT latched and raw drops, discovery mode resumes \u2014 risk of re-entering lc=64 basin if bze drops below bistable threshold."
+  },
+  "declaration_hash": "32a0fbef5f6e5e1eb0e33adc0ee3e25b332e3586b30e0497f81194fb48b799f6"
+}

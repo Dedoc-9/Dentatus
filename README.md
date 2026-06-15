@@ -954,3 +954,92 @@ P_yz: max|bze_fwd−mir|=1.78e-15 ✓
 
 **Trigger (proactive):** Ghost #19. Neither descending (stable but sluggish) nor ascending (basin-locked) resolves convergence + basin-selection jointly.  
 Options: (A) hysteresis α — hold low until bze crosses basin threshold; (B) ascending to α_max=0.7 only (EXP-407 floor, not 0.9); (C) Pareto sweep (α_min, α_max, τ_α) vs (tail_range, bze[-1]); (D) two-timescale split with lc-stability signal.
+
+---
+
+## EXP-409 — Hysteresis α_bze Schedule (Conditional Basin Lock)
+
+**Declaration hash:** `32a0fbef5f6e5e1eb0e33adc0ee3e25b332e3586b30e0497f81194fb48b799f6`  
+**Gate source:** EXP-408 Ghost #19 (Attraktorwahl) — ascending α locked lc=64 wrong basin
+
+### Operator: phi_fb_hysteresis_ema
+
+Replaces a continuous α schedule with a discrete irreversible latch keyed on β_Z_eff.
+
+```
+maint_latched_out = maint_latched OR (bze_ema_prev ≥ β_threshold)   [irreversible]
+α_eff    = α_maint if maint_latched_out else α_disc
+β_Z_eff  = max(β_Z_min, α_eff · bze_ema_prev + (1−α_eff) · β_raw)
+```
+
+Parameters: `α_disc=0.5`, `α_maint=0.9`, `β_threshold=12.0`, `τ_warmup=5.0`.
+
+**Caller state** (primary scalars, tracked outside MuState):
+- `bze_ema_prev`: initialized to `β_Z_base=2.0`
+- `maint_latched`: initialized False; set True irreversibly when bze ≥ 12.0
+
+### β_threshold Derivation
+
+Two independent routes converge at 11.73 → 12.0 (0.27 safety margin):
+
+```
+Route 1 (geometric mean):  √(β_low · β_high) = √(8.0 × 17.19) = 11.73
+Route 2 (B_A separatrix):  β_sep = 2.0 · exp(0.5 · (2.773+4.302)/2) = 11.73
+
+Ω_fb(β_threshold) = |12.0 − 2.0| / 2.0 = 5.0  (500% — above cold-start basin)
+```
+
+### Ghost #19 (resolved)
+
+Discovery phase (α=0.5) holds until bze confirms the lc=71 basin (≥12.0), then locks maintenance (α=0.9) irreversibly. lc=71 stable from latch_step=12 onward.
+
+### Ghost #20 — Pre-Latch Discovery Variance
+
+The tail window (n=10–19) straddles the phase boundary at n=12. Pre-latch steps (n=10–11) contribute bze=8.53→12.69 (Δ=4.16) to tail_range=4.87. Post-latch range (n=12–19)=0.69 — 90% reduction.
+
+Observable: `Δ_pre-latch = bze(latch_step) − min(bze_tail_pre_latch)`
+
+### Trajectory (N=20 sequential)
+
+```
+bze_409: [2.0, 2.35, 3.21, 5.28, 6.77, 7.96, 9.35, 7.71, 10.63, 10.09,
+          8.53, 12.69, 12.71, 12.75, 12.82, 12.91, 13.02, 13.15, 13.27, 13.40]
+alpha:   [0.5×12, 0.9×8]    latch_step=12  bze_at_latch=12.69
+lc_409:  bistable n=0-11; locks lc=71 from n=12 onward
+```
+
+Discovery phase (n=0–11) is identical to EXP-406 (same α=0.5). Maintenance phase locks immediately upon latch: lc=71 every step.
+
+### Phi_fb Evolution Table (updated)
+
+| EXP | α schedule | tail_range | bze[-1] | lc_tail | Ghost |
+|-----|-----------|-----------|---------|---------|-------|
+| 404 | fixed γ | — | 17.19 | {71} | #15 overshoot=1.33 |
+| 405 | γ ramp↑ | 14.79 | 21.75 | {71,78} | #16 2-cycle |
+| 406 | fixed α=0.5 | 9.17 | 17.13 | {71,78} | #17 lag |
+| 407 | α ramp↓ (min=0.7) | 2.71 | 11.18 | {64,71,106} | #18 subcritical |
+| 408 | α ramp↑ (max=0.9) | 0.93 | 8.62 | {64} | #19 Attraktorwahl |
+| **409** | **α hysteresis (latch@12.0)** | **4.87** | **13.40** | **{71}** | **#20 pre-latch variance** |
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp409.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp409.py`) | 5/5 | **PASS** |
+
+```
+α_disc=0.5  α_maint=0.9  β_threshold=12.0
+latch_step=12  bze_at_latch=12.71  maint_latched_final=True
+bze_409[-1]=13.40 > bze_407[-1]=11.18 ✓
+tail_range_409=4.87 < tail_range_406=9.17 ✓
+last5_range_409=0.49  overshoot=1.0000 (perfect)
+lc_tail={71} (correct basin, no Attraktorwahl) ✓
+P_yz: max|bze_fwd−mir|=1.78e-15 ✓
+latch_fwd==latch_mir for all n: True ✓
+```
+
+### EXP-410 gate
+
+**Trigger (proactive):** bze_409[-1]=13.40 still below EXP-406's 17.13. Post-latch τ_conv≈9.5 steps at α=0.9; only 8 post-latch steps in N=20.  
+Options: (A) extend N→30 (verify bze reaches EXP-406 levels); (B) two-level maintenance (reduce α after bze>15); (C) β_threshold sensitivity sweep ∈ [10,14]; (D) close Series 400 Phi_fb sub-series; promote hysteresis as canonical operator.
