@@ -1,0 +1,28 @@
+# Dentatus engine core — AGPL-3.0. Installable as the deterministic import path `dentatus`.
+# The game layer (game/) is a SEPARATE project that depends on this via the public package.
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dentatus-core"
+version = "0.6.0"
+description = "Dentatus Reality Engine — axiomatic, cryptographically verified world-state oracle (Cellular Sheaf)."
+authors = [{ name = "Daniel J. Dillberg", email = "bigdilly95@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10"]
+license = { text = "AGPL-3.0-or-later" }
+keywords = ["reality-engine", "cellular-sheaf", "world-state", "dentatus"]
+
+[project.scripts]
+dentatus-service = "dentatus_service:main"
+
+[tool.setuptools]
+# Public contract package + frozen engine core. studies/ is axiom data, not packaged code.
+packages = ["dentatus", "engine"]
+py-modules = ["dentatus_service"]
+
+[tool.dentatus]
+clean_room = true
+engine_protocol = "exp505-v1"
+public_contract = ["dentatus.core", "dentatus.semantic", "dentatus.api"]

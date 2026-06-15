@@ -1,0 +1,20 @@
+# Decoupled game project — SEPARATE from the engine core.
+# Depends on dentatus-core via the public package; does not vendor or fork engine/.
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dentatus-game-example"
+version = "0.1.0"
+description = "Example game layer above the Dentatus Physics Oracle (Clean Room boundary)."
+requires-python = ">=3.10"
+# The ONLY engine dependency is the public contract package:
+dependencies = ["dentatus-core>=0.6.0"]
+# License is independent of the AGPL core (proprietary/experimental allowed via process
+# boundary or dual license — see LICENSE_NOTE.md).
+license = { text = "LicenseRef-Proprietary-Or-Experimental" }
+
+[tool.dentatus]
+clean_room = true
+engine_access = "dentatus.api, dentatus.semantic"   # handshake only; engine.* forbidden
