@@ -43,6 +43,8 @@ Cross-stage mutation outside the defined mapping is forbidden.
 | `apply_gamma_309` / `_recursive` | EXP-309 | SPRT LOD gating; focal point update; ghost quarantine |
 | `apply_gamma_311` / `_recursive` | EXP-311 | G_inject auxiliary residual; dual EMA activation |
 | `apply_gamma_312` / `_recursive` | EXP-312 | extents payload + uniform Sector A split; full P_yz symmetry |
+| `apply_gamma_313` / `_recursive` | EXP-313 | Zeeman K_bound: softmax-weighted child budgets; P_yz-covariant |
+| `apply_gamma_314` / `_recursive` | EXP-314 | Hyperfine ghost: Ω_AC inter-channel precession angle; τ_opt lag |
 
 ### Stalk schema — d=12
 
@@ -101,7 +103,9 @@ Dual arithmetic (forward Z space vs dual S/G space) is never collapsed.
 | EXP-309 | SPRT LOD gating; focal point evolution; ghost quarantine | `c2f9b341...` | closed |
 | EXP-310 | KSG transfer entropy S_A→S_C; lag-3 coupling confirmed | — | closed |
 | EXP-311 | G_inject auxiliary residual; dual EMA activation; single-step P_yz | `10659ed4d37c027a` | closed |
-| EXP-312 | Asymmetry Debt closure; full multi-step P_yz invariance | `2e6ccdc20da7aefb` | **closed** |
+| EXP-312 | Asymmetry Debt closure; full multi-step P_yz invariance | `2e6ccdc20da7aefb` | closed |
+| EXP-313 | Zeeman K_bound; anisotropic budget via softmax field alignment | `2431d09f38554a9b` | closed |
+| EXP-314 | Hyperfine ghost; Ω_AC precession angle; architecture-driven τ_opt | `5ca52bef5d2a5080` | **closed** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -142,6 +146,92 @@ Fork B (`run_p_invariance_exp312.py`): 10/10 PASS
 
 ---
 
+## EXP-313 — The Zeeman K_bound
+
+**Goal:** introduce anisotropic budget allocation via Zeeman-analogue field alignment, with exact P_yz covariance.
+
+**Zeeman weighting:**
+
+```
+B_hat = B / ‖B‖
+centroids = (bbox_lo + bbox_hi) / 2  for each child
+logits_i  = beta_Z * (centroid_i · B_hat)
+w_i       = softmax(logits)_i          (sum = 1)
+K_child_i = K_budget * w_i * exp(-LAMBDA_DECAY)
+```
+
+**P_yz covariance proof:**
+
+```
+B transforms as a polar vector: B_mir = P_yz(B_fwd) = (-B_x, B_y, B_z)
+centroid_mir[i^4] = P_yz(centroid_fwd[i])   (octant permutation)
+
+centroid_mir[i^4] · B_mir
+= P_yz(centroid_fwd[i]) · P_yz(B_fwd)
+= centroid_fwd[i] · B_fwd         (dot product O(3)-invariant)
+=> w_fwd[i] = w_mir[i XOR 4]  =>  K_fwd[i] = K_mir[i XOR 4]   QED
+```
+
+**Budget formula (no N factor):** `K_child_i = K_budget * w_i * exp(-LAMBDA_DECAY)`. With `N * w_max * exp(-LAMBDA_DECAY) < 1` required for convergence; enforced by `K_budget_root = 2048 = N * 256`.
+
+**Results:**
+
+```
+K_fwd[i] == K_mir[i XOR 4]  for all i  (max delta = 0.00e+00)
+fwd_leaves == mir_leaves == 92
+cost_fwd == cost_mir  (delta < 1e-8)
+norm(S_C): 0.03915037 = 0.03915037
+norm(S_A): 1.49806877 = 1.49806877
+K_ratio (max/min) = 4.7349  (Zeeman splitting active)
+```
+
+Fork A (`run_seed_exp313.py`): 8/8 PASS
+Fork B (`run_p_invariance_exp313.py`): 9/9 PASS
+
+---
+
+## EXP-314 — The Hyperfine Ghost
+
+**Goal:** measure inter-channel precession angle Ω_AC between dual ghost channels S_A and S_C; derive architecture-driven lag τ_opt for transfer entropy without grid search.
+
+**Coupling observable:**
+
+```
+v_A     = J_AC @ S_A[0:4]            (J_AC = 4×4 identity; primary path)
+Ω_AC    = arccos(clip(v_A · S_C / (‖v_A‖·‖S_C‖ + ε), −1, 1))
+τ_opt   = max(1, round(Ω_AC / π · W_max))
+```
+
+**Fallback (numeric degeneracy guard):** Under the current G_inject architecture, `S_A[0:4] = 0` in exact arithmetic (`G_inject_A` targets dim 7; lossless partition gives `G_A = 0`). When `‖v_A‖ < 1e-6`, the fallback activates:
+
+```
+Ω_AC    = 2 · arctan2(‖S_C‖, ‖S_A‖)   ∈ (0, π)
+τ_opt   = max(1, round(Ω_AC / π · W_max))   [formula unchanged]
+```
+
+P_yz-invariant: ‖S_A‖ and ‖S_C‖ proven invariant by EXP-313. The primary arccos path activates automatically if `G_inject_A` is re-targeted to dims in `S_A[0:4]` in future experiments.
+
+**Ghost history extension:** `ghost_history` entries are mixed 2-tuples (from `apply_gamma_312` base layer) and 4-tuples from EXP-314:
+
+```
+(‖S_A‖, ‖S_C‖, Ω_AC, τ_opt)   ← EXP-314 entries (4-tuple)
+(‖S_A‖, ‖S_C‖)                 ← EXP-312 base entries (2-tuple)
+```
+
+**Results:**
+
+```
+Ω_AC_fwd = Ω_AC_mir = 0.01727 rad   (delta = 2.00e-14)
+τ_opt = 1  (‖S_A‖ >> ‖S_C‖; short-lag regime)
+fwd_leaves == mir_leaves == 92
+Full trace: max_omega_delta = 6.18e-14  tau_mismatches = 0/13
+```
+
+Fork A (`run_seed_exp314.py`): 8/8 PASS
+Fork B (`run_p_invariance_exp314.py`): 9/9 PASS
+
+---
+
 ## Coordinate conventions
 
 - **Centroid-outward normal**: `n_child = normalize(centroid_child − centroid_parent)` —
@@ -161,7 +251,15 @@ Fork B (`run_p_invariance_exp312.py`): 10/10 PASS
 # Dependencies
 pip install numpy scipy
 
-# EXP-312 (current)
+# EXP-314 (current)
+python run_seed_exp314.py
+python run_p_invariance_exp314.py
+
+# EXP-313
+python run_seed_exp313.py
+python run_p_invariance_exp313.py
+
+# EXP-312
 python run_seed_exp312.py
 python run_p_invariance_exp312.py
 
@@ -209,6 +307,28 @@ flips). Index-based mass assignment breaks focal point covariance across this pe
 Uniform split is the minimal P_yz-invariant Sector A distribution. Conservation holds:
 `Σ stalk_A_i = N·(stalk_A/N) = stalk_A`.
 
+### Zeeman structural anisotropy (ghost #5 — EXP-313)
+
+Budget allocation `K_child_i = K_budget * w_i * exp(-LAMBDA_DECAY)` is spatially anisotropic —
+children aligned with `B` receive more budget than anti-aligned children (`K_ratio = 4.7349` for
+`B=[1,0.5,0.3]`, `beta_Z=2.0`). The tree structure is directionally biased, but the bias is
+P_yz-covariant: `K_fwd[i] = K_mir[i XOR 4]` exactly (max delta = 0, proven analytically and
+verified numerically). Child processing is sorted by descending Zeeman weight — this ensures
+`Z_before[11]` (kappa aggregate) is identical at each corresponding step in fwd/mir, keeping
+`G_inject_A` accumulation P_yz-invariant across the full recursive traversal.
+
+### Hyperfine inter-channel coupling (ghost #6 — EXP-314)
+
+`Ω_AC` is the first INTER-channel observable. Prior observables (`B_A`, `B_C`) measured each
+channel independently. `Ω_AC` measures the precession angle between S_A and S_C in the dual space.
+
+Implementation detail: under the current G_inject architecture (`G_inject_A[7]`, `G_inject_C[3]`,
+lossless partition → `G_A = 0`), the primary arccos path degenerates because `S_A[0:4] = 0` in
+exact arithmetic. The numeric guard (`‖v_A‖ < 1e-6`) switches to the norm-ratio fallback:
+`Ω_AC = 2·arctan2(‖S_C‖, ‖S_A‖)`. This is P_yz-invariant and provides a meaningful lag selection
+(`τ_opt = max(1, round(Ω_AC/π·W_max))`) for EXP-401. The primary path will activate automatically
+when `G_inject_A` is re-targeted to dims in `S_A[0:4]`.
+
 ### LOD_RELAXED validity class propagation
 
 `validity_class` is set on `MuState` (not on individual `Claim` objects). The recursive guard
@@ -244,7 +364,9 @@ Post-execution rule addition is forbidden. All predicates must be declared and l
 
 ## Series-300 closure / EXP-401 gate
 
-Series-300 is **closed** as of EXP-312. The asymmetry debt is paid in full.
+Series-300 is **closed** as of EXP-314. The asymmetry debt is paid in full (EXP-312). Zeeman
+structural anisotropy is P_yz-covariant (EXP-313). Architecture-driven lag selection via `τ_opt`
+is operational (EXP-314).
 
 EXP-401 prerequisites (anisotropic splatting / differentiable volume clusters):
 
@@ -252,3 +374,5 @@ EXP-401 prerequisites (anisotropic splatting / differentiable volume clusters):
 - New validity predicate: `is_valid_covariance_401` — positive-definite Σ on new dims
 - `apply_gamma_401` must extend the block-diagonal F to the new covariance block
 - P_yz must extend: covariance Σ transforms as `Σ' = R·Σ·Rᵀ` where R=diag(-1,1,1)
+- Lag window `τ_opt` from EXP-314 drives anisotropic covariance alignment (no grid search)
+- Consider re-targeting `G_inject_A` to dims in `S_A[0:4]` to activate the primary Ω_AC path

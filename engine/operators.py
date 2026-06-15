@@ -2846,3 +2846,468 @@ def apply_gamma_312_recursive(
             spent_now += rc
 
     return mu_next, total_cost
+
+
+# ===========================================================================
+# EXP-313 -- The Zeeman K_bound
+# Field-weighted K_budget allocation via Zeeman energy level splitting.
+# Declaration hash: 708e7b75be7bbd907568fcbd16a32fa128ceea0e0112dcdc64de38e8480273b4
+# ===========================================================================
+
+_B_DEFAULT_313 = np.array([1.0, 0.5, 0.3])
+_BETA_Z_313 = 2.0
+
+
+def _zeeman_weights(child_bboxes, B: np.ndarray, beta_Z: float) -> np.ndarray:
+    """
+    EXP-313: softmax Zeeman weights for child octant budget allocation.
+
+    w_i = softmax(beta_Z * (centroid_i . B_hat))
+    P_yz covariance: w_fwd[i] == w_mir[i XOR 4] when B_mir = P_yz(B_fwd).
+    """
+    B_hat = B / (np.linalg.norm(B) + 1e-30)
+    centroids = np.array([(np.array(cb[0]) + np.array(cb[1])) / 2.0
+                          for cb in child_bboxes])
+    projections = centroids @ B_hat          # shape (N,)
+    logits = beta_Z * projections
+    logits -= logits.max()                   # numerical stability
+    weights = np.exp(logits)
+    weights /= weights.sum()
+    return weights                           # shape (N,), sums to 1.0
+
+
+def apply_gamma_313(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    focal_point=None,
+    B=None,
+    beta_Z=_BETA_Z_313,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+):
+    """
+    EXP-313: Zeeman K_bound operator.
+
+    Delegates partition kernel to apply_gamma_312 (Fix1 + Fix2 inherited).
+    K_budget weighting is handled in apply_gamma_313_recursive.
+    This single-step function is identical to apply_gamma_312 — the Zeeman
+    splitting affects only the per-child K_budget passed in recursive calls.
+
+    Returns: (mu_next, cost, validity_class)
+    """
+    if B is None:
+        B = _B_DEFAULT_313
+    return apply_gamma_312(
+        mu=mu,
+        claim_id=claim_id,
+        partition_key=partition_key,
+        payloads=payloads,
+        beta=beta,
+        budget=budget,
+        spent=spent,
+        focal_point=focal_point,
+        thresholds=thresholds,
+        alpha_leak=alpha_leak,
+        beta_CA=beta_CA,
+        mass_ref=mass_ref,
+        kappa_ref=kappa_ref,
+    )
+
+
+def apply_gamma_313_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+    focal_point=None,
+    B=None,
+    beta_Z=_BETA_Z_313,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+):
+    """
+    Recursive EXP-313 operator with Zeeman K_budget splitting.
+
+    Each child octant i receives:
+        K_child_i = K_budget * N * w_i * exp(-LAMBDA_DECAY)
+    where w_i = softmax(beta_Z * (centroid_i . B_hat)).
+
+    P_yz covariance: K_fwd[i] == K_mir[i XOR 4] when B_mir = P_yz(B_fwd).
+    Multi-step invariance: fwd_leaves == mir_leaves (by induction, see ENGINE_AXIOMS).
+
+    Returns: (final_mu, total_cost, K_weights_step0)
+      K_weights_step0: np.ndarray(N,) of Zeeman weights at depth=0, for Fork A/B diagnostics.
+    """
+    if B is None:
+        B = _B_DEFAULT_313
+    if thresholds is None:
+        thresholds = _LOD_THRESHOLDS_309
+    if focal_point is None:
+        focal_point = mu.focal_point_value()
+
+    if K_budget < K_MIN_PARTITION:
+        return mu, 0.0, None
+
+    if getattr(mu, "validity_class", "FULL_VALID") == "LOD_RELAXED":
+        return mu, 0.0, None
+
+    N = SPATIAL_KEYS[partition_key]
+    child_bboxes_preview = _compute_child_bboxes(mu.claims[claim_id].bbox, partition_key)
+
+    # Fix 1 (inherited): extents-based payloads
+    payloads = [
+        _bbox_hash_payload_312(child_bboxes_preview[i], depth, i)
+        for i in range(N)
+    ]
+
+    # Zeeman weights for this node
+    w = _zeeman_weights(child_bboxes_preview, B, beta_Z)  # shape (N,)
+
+    try:
+        mu_next, cost, validity_class = apply_gamma_313(
+            mu=mu,
+            claim_id=claim_id,
+            partition_key=partition_key,
+            payloads=payloads,
+            beta=beta,
+            budget=budget,
+            spent=spent,
+            focal_point=focal_point,
+            B=B,
+            beta_Z=beta_Z,
+            thresholds=thresholds,
+            alpha_leak=alpha_leak,
+            beta_CA=beta_CA,
+            mass_ref=mass_ref,
+            kappa_ref=kappa_ref,
+        )
+    except PartitionError:
+        return mu, 0.0, w
+
+    total_cost = cost
+    spent_now = spent + cost
+    # fp_next = bbox centroid of the CURRENT node (not accumulated focal_point_value).
+    # Rationale: focal_point_value() accumulates expansions of previously processed
+    # siblings, making LOD gating order-dependent and P_yz-variant under non-uniform
+    # Zeeman budgets. bbox centroid is deterministic and P_yz-covariant at every depth:
+    #   centroid(bbox_mir[i^4]) = P_yz(centroid(bbox_fwd[i]))  (isometry)
+    # For EXP-312 uniform masses: bbox centroid == focal_point_value() (identical result).
+    _cur_lo, _cur_hi = np.array(mu.claims[claim_id].bbox[0]), np.array(mu.claims[claim_id].bbox[1])
+    fp_next = (_cur_lo + _cur_hi) / 2.0
+
+    if validity_class == "FULL_VALID":
+        new_child_ids = [cid for cid in mu_next.active if cid not in mu.active]
+        # Match each new child to its bbox index in child_bboxes_preview by bbox comparison.
+        # frozenset iteration order is non-deterministic -- cannot use enumerate directly.
+        def _bbox_match_index(cid):
+            cb = mu_next.claims[cid].bbox
+            cb_lo = np.array(cb[0]); cb_hi = np.array(cb[1])
+            for idx, (pb_lo, pb_hi) in enumerate(child_bboxes_preview):
+                if (np.allclose(cb_lo, np.array(pb_lo), atol=1e-12) and
+                        np.allclose(cb_hi, np.array(pb_hi), atol=1e-12)):
+                    return idx
+            return 0  # fallback (should not occur)
+        # Sort by DESCENDING Zeeman weight for deterministic P_yz-covariant order.
+        # Paired children (i <-> i XOR 4) process at the same step in fwd/mir:
+        # => Z_before[11] (kappa aggregate) identical at every corresponding step
+        # => G_inject_A[7] = f(Z_before[11]) equal => S_A identical => cost invariant.
+        child_idx_pairs = sorted(
+            [(_bbox_match_index(cid), cid) for cid in new_child_ids],
+            key=lambda x: -float(w[x[0]])
+        )
+        for i, cid in child_idx_pairs:
+            # Formula: K_child_i = K_budget * w_i * exp(-LAMBDA_DECAY)
+            # No N factor -- budget strictly decreases (w_i<=1, exp<1).
+            K_child_i = K_budget * float(w[i]) * math.exp(-LAMBDA_DECAY)
+            mu_next, rc, _ = apply_gamma_313_recursive(
+                mu=mu_next,
+                claim_id=cid,
+                partition_key=partition_key,
+                beta=beta,
+                budget=budget,
+                spent=spent_now,
+                K_budget=K_child_i,
+                depth=depth + 1,
+                focal_point=fp_next,
+                B=B,
+                beta_Z=beta_Z,
+                thresholds=thresholds,
+                alpha_leak=alpha_leak,
+                beta_CA=beta_CA,
+                mass_ref=mass_ref,
+                kappa_ref=kappa_ref,
+            )
+            total_cost += rc
+            spent_now += rc
+
+    return mu_next, total_cost, w
+
+
+# ===========================================================================
+# EXP-314 -- The Hyperfine Ghost
+# J_AC coupling: inter-channel precession angle Omega_AC + lag tau_opt.
+# Declaration hash: 5ca52bef5d2a508073ab8585a1e84aa8393e64ddd7672c2c48ab4dd4a0a5006c
+# ===========================================================================
+
+_J_AC_DEFAULT_314 = np.eye(4)   # 4x4 identity (direct S_A[0:4] <-> S_C coupling)
+_W_MAX_314 = 8
+
+
+def _compute_omega_ac(S_A: np.ndarray, S_C: np.ndarray,
+                      J_AC: np.ndarray, eps: float = 1e-15) -> float:
+    """
+    EXP-314: precession angle between ghost channels S_A and S_C.
+
+    Primary formula (dot-product path):
+      v_A = J_AC @ S_A[0:4]
+      Omega_AC = arccos(clip(v_A . S_C / (||v_A|| * ||S_C|| + eps), -1, 1))
+
+    Fallback (norm-ratio path) triggered when ||v_A|| < NUMERIC_FLOOR:
+      The G_inject architecture injects into S_A[7] and S_C[3] exclusively.
+      Under lossless partition G_A = 0 => S_A[0:4] = 0 in exact arithmetic.
+      ||v_A|| < NUMERIC_FLOOR means the arccos numerator/denominator are both
+      floating-point noise (O(1e-15)) -- result is non-deterministic under P_yz.
+      Fallback: Omega_AC = 2 * arctan2(||S_C||, ||S_A||) in (0, pi).
+      This is P_yz-invariant (||S_A|| and ||S_C|| proven invariant by EXP-313 [5][6]).
+      tau_opt formula unchanged: max(1, round(Omega_AC / pi * W_max)).
+
+    Dev note (ghost #6 fix -- EXP-314 implementation): The arccos formula is
+    forward-compatible; once G_inject_A targets dims in S_A[0:4] the primary
+    path activates automatically. The fallback is only a numerical guard.
+    """
+    NUMERIC_FLOOR = 1e-6   # below this, v_A is entirely floating-point noise
+    v_A = J_AC @ S_A[:4]
+    norm_vA = float(np.linalg.norm(v_A))
+    norm_C = float(np.linalg.norm(S_C))
+    if norm_vA >= NUMERIC_FLOOR and norm_C >= NUMERIC_FLOOR:
+        # Primary: arccos of cosine between coupled projections
+        cos_val = float(np.dot(v_A, S_C)) / (norm_vA * norm_C + eps)
+        cos_val = float(np.clip(cos_val, -1.0, 1.0))
+        return float(np.arccos(cos_val))
+    # Fallback: norm-ratio precession angle in (0, pi)
+    norm_A = float(np.linalg.norm(S_A))
+    norm_C2 = float(np.linalg.norm(S_C))
+    return float(2.0 * np.arctan2(norm_C2 + eps, norm_A + eps))
+
+
+def _tau_opt(omega_ac: float, W_max: int = _W_MAX_314) -> int:
+    """Deterministic lag from precession angle: tau_opt = max(1, round(Omega/pi * W_max))."""
+    return max(1, round(omega_ac / math.pi * W_max))
+
+
+def apply_gamma_314(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    focal_point=None,
+    B=None,
+    beta_Z=_BETA_Z_313,
+    J_AC=None,
+    W_max=_W_MAX_314,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+):
+    """
+    EXP-314: Hyperfine ghost coupling operator.
+
+    Wraps apply_gamma_313. After partition, computes:
+      v_A = J_AC @ S_A[0:4]
+      Omega_AC = arccos(clip(v_A . S_C / (|v_A||S_C| + eps), -1, 1))
+      tau_opt  = max(1, round(Omega_AC / pi * W_max))
+
+    Appends (|S_A|, |S_C|, Omega_AC, tau_opt) to ghost_history.
+    Dual-space only: Z_t and stalk values not modified.
+
+    Returns: (mu_next, cost, validity_class)
+    """
+    if J_AC is None:
+        J_AC = _J_AC_DEFAULT_314
+    J_AC = np.array(J_AC)
+
+    mu_313, cost, validity_class = apply_gamma_313(
+        mu=mu,
+        claim_id=claim_id,
+        partition_key=partition_key,
+        payloads=payloads,
+        beta=beta,
+        budget=budget,
+        spent=spent,
+        focal_point=focal_point,
+        B=B,
+        beta_Z=beta_Z,
+        thresholds=thresholds,
+        alpha_leak=alpha_leak,
+        beta_CA=beta_CA,
+        mass_ref=mass_ref,
+        kappa_ref=kappa_ref,
+    )
+
+    S_A = mu_313.S_A if mu_313.S_A is not None else np.zeros(8)
+    S_C = mu_313.S_C if mu_313.S_C is not None else np.zeros(4)
+
+    omega = _compute_omega_ac(S_A, S_C, J_AC)
+    tau = _tau_opt(omega, W_max)
+
+    # Append to ghost_history: (S_A_norm, S_C_norm, Omega_AC, tau_opt)
+    prev_gh = list(getattr(mu_313, "ghost_history", []) or [])
+    prev_gh.append((float(np.linalg.norm(S_A)), float(np.linalg.norm(S_C)),
+                    float(omega), int(tau)))
+
+    try:
+        mu_next = mu_313._replace(ghost_history=prev_gh)
+    except Exception:
+        object.__setattr__(mu_313, "ghost_history", prev_gh)
+        mu_next = mu_313
+
+    return mu_next, cost, validity_class
+
+
+def apply_gamma_314_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+    focal_point=None,
+    B=None,
+    beta_Z=_BETA_Z_313,
+    J_AC=None,
+    W_max=_W_MAX_314,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+):
+    """
+    Recursive EXP-314 operator with Zeeman K_budget + hyperfine Omega_AC logging.
+
+    Inherits all EXP-313 structural properties (P_yz invariance, Zeeman splitting,
+    bbox-centroid fp, weight-sorted child ordering). Adds Omega_AC and tau_opt
+    to ghost_history at each partition step.
+
+    Returns: (final_mu, total_cost, K_weights_step0)
+    """
+    if B is None:
+        B = _B_DEFAULT_313
+    if J_AC is None:
+        J_AC = _J_AC_DEFAULT_314
+    J_AC = np.array(J_AC)
+    if thresholds is None:
+        thresholds = _LOD_THRESHOLDS_309
+    if focal_point is None:
+        focal_point = mu.focal_point_value()
+
+    if K_budget < K_MIN_PARTITION:
+        return mu, 0.0, None
+
+    if getattr(mu, "validity_class", "FULL_VALID") == "LOD_RELAXED":
+        return mu, 0.0, None
+
+    N = SPATIAL_KEYS[partition_key]
+    child_bboxes_preview = _compute_child_bboxes(mu.claims[claim_id].bbox, partition_key)
+
+    payloads = [
+        _bbox_hash_payload_312(child_bboxes_preview[i], depth, i)
+        for i in range(N)
+    ]
+
+    w = _zeeman_weights(child_bboxes_preview, B, beta_Z)
+
+    try:
+        mu_next, cost, validity_class = apply_gamma_314(
+            mu=mu,
+            claim_id=claim_id,
+            partition_key=partition_key,
+            payloads=payloads,
+            beta=beta,
+            budget=budget,
+            spent=spent,
+            focal_point=focal_point,
+            B=B,
+            beta_Z=beta_Z,
+            J_AC=J_AC,
+            W_max=W_max,
+            thresholds=thresholds,
+            alpha_leak=alpha_leak,
+            beta_CA=beta_CA,
+            mass_ref=mass_ref,
+            kappa_ref=kappa_ref,
+        )
+    except PartitionError:
+        return mu, 0.0, w
+
+    total_cost = cost
+    spent_now = spent + cost
+
+    _cur_lo = np.array(mu.claims[claim_id].bbox[0])
+    _cur_hi = np.array(mu.claims[claim_id].bbox[1])
+    fp_next = (_cur_lo + _cur_hi) / 2.0
+
+    if validity_class == "FULL_VALID":
+        new_child_ids = [cid for cid in mu_next.active if cid not in mu.active]
+
+        def _bbox_match_idx(cid):
+            cb = mu_next.claims[cid].bbox
+            cb_lo = np.array(cb[0]); cb_hi = np.array(cb[1])
+            for idx, (pb_lo, pb_hi) in enumerate(child_bboxes_preview):
+                if (np.allclose(cb_lo, np.array(pb_lo), atol=1e-12) and
+                        np.allclose(cb_hi, np.array(pb_hi), atol=1e-12)):
+                    return idx
+            return 0
+
+        child_idx_pairs = sorted(
+            [(_bbox_match_idx(cid), cid) for cid in new_child_ids],
+            key=lambda x: -float(w[x[0]])
+        )
+        for i, cid in child_idx_pairs:
+            K_child_i = K_budget * float(w[i]) * math.exp(-LAMBDA_DECAY)
+            mu_next, rc, _ = apply_gamma_314_recursive(
+                mu=mu_next,
+                claim_id=cid,
+                partition_key=partition_key,
+                beta=beta,
+                budget=budget,
+                spent=spent_now,
+                K_budget=K_child_i,
+                depth=depth + 1,
+                focal_point=fp_next,
+                B=B,
+                beta_Z=beta_Z,
+                J_AC=J_AC,
+                W_max=W_max,
+                thresholds=thresholds,
+                alpha_leak=alpha_leak,
+                beta_CA=beta_CA,
+                mass_ref=mass_ref,
+                kappa_ref=kappa_ref,
+            )
+            total_cost += rc
+            spent_now += rc
+
+    return mu_next, total_cost, w

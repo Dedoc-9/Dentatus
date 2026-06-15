@@ -1,0 +1,49 @@
+{
+  "experiment": "EXP-313",
+  "title": "The Zeeman K_bound",
+  "protocol_version": "exp313-v1",
+  "inherits": "exp312-v1",
+  "date": "2026-06-14",
+  "author": "Dentatus Series 300",
+  "hypothesis": "Field-weighted K_budget allocation (Zeeman splitting) produces directionally asymmetric recursion depth while preserving P_yz budget covariance: K_fwd[i] == K_mir[i XOR 4] for all octant pairs.",
+  "field_B": [
+    1.0,
+    0.5,
+    0.3
+  ],
+  "field_B_note": "Arbitrary 3D vector with nonzero x-component to fully exercise Option B P_yz transform.",
+  "beta_Z": 2.0,
+  "beta_Z_note": "Softmax temperature for Zeeman energy level weighting.",
+  "K_child_rule": "K_child_i = K_budget * w_i * exp(-LAMBDA_DECAY)",
+  "K_child_conservation": "sum_i K_child_i = K_budget * exp(-LAMBDA_DECAY) -- total budget decays by exp(-LAMBDA_DECAY) per level (guaranteed convergence). Individual child i gets w_i fraction of total.",
+  "K_child_uniform_limit": "beta_Z -> 0: w_i -> 1/N, K_child_i -> K_budget/N * exp(-LAMBDA_DECAY). With K_budget_root=N*K_312: each child gets K_312 * exp(-LAMBDA_DECAY) = EXP-312.",
+  "P_yz_field_rule": "B transforms as a polar vector under P_yz (x -> -x): B_mir = (-B_x, B_y, B_z)",
+  "P_yz_covariance_proof": "centroid_mir[i XOR 4] . B_mir = P_yz(centroid_fwd[i]) . P_yz(B) = centroid_fwd[i] . B  (dot product invariant under orthogonal transform) => softmax weights equal => K_fwd[i] == K_mir[i XOR 4]  QED",
+  "partition_kernel": "apply_gamma_312 (inherits Fix1 extents payload + Fix2 uniform Sector A split)",
+  "G_inject_rule": "identical to EXP-311/312 (alpha_leak, beta_CA, mass_ref, kappa_ref unchanged)",
+  "fork_a_assertions": [
+    "declaration_hash match",
+    "norm(S_C) > 0.01",
+    "norm(S_A) > 0.001",
+    "K_child distribution non-uniform (max/min > 1.01 for beta_Z > 0)",
+    "K_child sum = K_budget * N * exp(-LAMBDA_DECAY) within 1e-10",
+    "H_t chain continuous"
+  ],
+  "fork_b_assertions": [
+    "declaration_hash match",
+    "K_fwd[i] == K_mir[i XOR 4] for all i in {0..7} (budget covariance, delta < 1e-10)",
+    "fwd_leaves == mir_leaves (full multi-step P_yz invariance)",
+    "cost_fwd == cost_mir (delta < 1e-8)",
+    "norm(S_C) P_yz-invariant (multi-step)",
+    "norm(S_A) P_yz-invariant (multi-step)",
+    "G_t = 0 identity both orientations",
+    "G_inject_C single-step P_yz-invariant",
+    "G_inject_A single-step P_yz-invariant"
+  ],
+  "forbidden": "ghost_direct_control | stalk_collapse | retroactive_confluence_cert | budget_retroactive_adjustment | validity_predicate_shift | post_hoc_rewrite_rule_addition",
+  "K_budget_root": 2048,
+  "K_budget_root_note": "K_budget_root = N * K_budget_312 = 8 * 256 = 2048. When beta_Z=0: K_child_i = 2048*(1/N)*exp(-0.1) = 256*exp(-0.1) -- recovers EXP-312 individual child budgets exactly.",
+  "convergence_proof": "K_child_i = K_budget * w_i * exp(-LAMBDA_DECAY) < K_budget * exp(-LAMBDA_DECAY) < K_budget (since w_i <= 1 and exp(-LAMBDA_DECAY) < 1). Budget strictly decreases every level.",
+  "divergence_note": "Prior formula K_budget*N*w_i*exp(-LAMBDA_DECAY) diverges when N*w_max*exp(-LAMBDA_DECAY)>1 (for B=[1,0.5,0.3], beta_Z=2.0, N=8: 8*0.24*0.905=1.74>1). Corrected by removing N factor.",
+  "declaration_hash": "2431d09f38554a9b8d57c45ffea29a1e48fa63f5dc3701bcc53ecb515f011efd"
+}

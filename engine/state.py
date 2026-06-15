@@ -467,6 +467,16 @@ class MuState:
         mu.seal()
         return mu
 
+    def _replace_S_A(self, s_a_new: np.ndarray) -> 'MuState':
+        """Return copy of self with S_A replaced; reseals (S_A affects H_t)."""
+        import copy as _copy
+        mu = _copy.copy(self)
+        mu.S_A     = s_a_new
+        mu._H      = None
+        mu._sealed = False
+        mu.seal()
+        return mu
+
     def _replace_focal_point(self, fp: np.ndarray) -> 'MuState':
         """Return copy of self with focal_point updated. Does not affect H_t."""
         import copy as _copy

@@ -1,0 +1,65 @@
+{
+  "experiment": "EXP-314",
+  "title": "The Hyperfine Ghost",
+  "protocol_version": "exp314-v1",
+  "inherits": "exp313-v1",
+  "date": "2026-06-14",
+  "author": "Dentatus Series 300",
+  "hypothesis": "The S_A and S_C ghost channels can be coupled via a declared J_AC matrix to produce a precession-angle observable Omega_AC that measures inter-channel phase drift. Omega_AC is P_yz-invariant and provides a deterministic lag selection rule for multi-lag TE (EXP-310 upgrade path).",
+  "J_AC": [
+    [
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      1
+    ]
+  ],
+  "J_AC_note": "4x4 identity matrix. J_AC @ S_A[0:4] = S_A[0:4] (direct coupling, no rotation).",
+  "W_max": 8,
+  "W_max_note": "Maximum lag window for tau_opt derivation.",
+  "Omega_AC_formula": "Omega_AC = arccos(clip( (J_AC @ S_A[0:4]) . S_C / (norm(J_AC @ S_A[0:4]) * norm(S_C) + eps), -1, 1 ))",
+  "Omega_AC_note": "Misalignment angle between J_AC-projected S_A and S_C in radians [0, pi]. Omega_AC = 0: channels aligned (same direction in dual space). Omega_AC = pi: channels anti-aligned. Omega_AC = pi/2: orthogonal (maximum information content).",
+  "tau_opt_formula": "tau_opt = max(1, round(Omega_AC / pi * W_max))",
+  "tau_opt_note": "Deterministic lag selection from precession angle. Large Omega_AC (misaligned channels) -> longer lag window. Replaces brute-force lag scan from EXP-310.",
+  "ghost_history_fields": "(S_A_norm, S_C_norm, Omega_AC, tau_opt)",
+  "ghost_history_note": "Extends EXP-311/312/313 ghost_history with Omega_AC and tau_opt at each partition step.",
+  "P_yz_Omega_AC_proof": "S_A[0:4] and S_C are norms-only observables (both P_yz-invariant from EXP-313). J_AC = identity (no spatial axes). cos(Omega_AC) = (S_A[0:4] . S_C) / (norm(S_A[0:4]) * norm(S_C)). Under P_yz: S_A[0:4] and S_C are unchanged (Sector A and C norms are P_yz-invariant). Therefore cos(Omega_AC) is P_yz-invariant => Omega_AC_fwd == Omega_AC_mir. QED",
+  "dual_space_constraint": "J_AC coupling is DUAL SPACE ONLY: modifies only the ghost_history observable. Does NOT modify Z_t, stalk values, or primary operator pipeline. Dual arithmetic separation maintained.",
+  "fork_a_assertions": [
+    "declaration_hash match",
+    "Omega_AC != 0 (channels not perfectly aligned)",
+    "tau_opt in {1, ..., W_max}",
+    "ghost_history contains (S_A_norm, S_C_norm, Omega_AC, tau_opt) at each step",
+    "norm(S_C) > 0.01, norm(S_A) > 0.001",
+    "H_t chain continuous"
+  ],
+  "fork_b_assertions": [
+    "declaration_hash match",
+    "Omega_AC_fwd == Omega_AC_mir (P_yz-invariant precession)",
+    "tau_opt_fwd == tau_opt_mir",
+    "fwd_leaves == mir_leaves",
+    "cost_fwd == cost_mir",
+    "norm(S_C) P_yz-invariant",
+    "norm(S_A) P_yz-invariant"
+  ],
+  "forbidden": "ghost_direct_control | stalk_collapse | retroactive_confluence_cert | budget_retroactive_adjustment | validity_predicate_shift | post_hoc_rewrite_rule_addition",
+  "declaration_hash": "5ca52bef5d2a508073ab8585a1e84aa8393e64ddd7672c2c48ab4dd4a0a5006c"
+}
