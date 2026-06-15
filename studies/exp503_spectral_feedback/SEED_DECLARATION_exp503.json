@@ -1,0 +1,62 @@
+{
+  "protocol": "exp503-v1",
+  "series": "500",
+  "inherits": "exp502-v1",
+  "title": "Spectral Manifold Feedback -- Phi_fb_manifold",
+  "gate_source": "EXP-502 firewall stable; wire spectral scaffold into beta_Z_eff",
+  "operator": "phi_fb_manifold + apply_gamma_503_recursive",
+  "pipeline_insertion": "Z -> [phi_ent_observe -> spectral_ent_project -> B_ent_spectral] -(retarded)-> [phi_fb_manifold -> Btau] -> ...",
+  "parameters": {
+    "gamma_inf_ent": 0.5,
+    "k_fiedler": 3,
+    "beta_threshold": 12.0,
+    "alpha_disc": 0.5,
+    "alpha_maint": 0.9,
+    "tau_warmup": 5.0,
+    "beta_Z_min": 0.1,
+    "manifold_gating": "maintenance_phase_only"
+  },
+  "beta_law": {
+    "Omega_ent_sp": "B_ent_spectral_prev / (1 + B_ent_spectral_prev)  in [0,1)  bounded backreaction",
+    "g_ent": "gamma_inf_ent * ramp(n) * 1[maint_latched]",
+    "beta_raw": "max(beta_Z_min, beta_Z_base * exp(g_A*B_A - g_D*B_D + g_ent*Omega_ent_sp))",
+    "beta_Z_eff": "max(beta_Z_min, alpha_eff*bze_ema_prev + (1-alpha_eff)*beta_raw)  [EXP-409 EMA+latch]",
+    "retardation": "B_ent_spectral_prev from prior-step manifold observation (caller-tracked primary scalar)"
+  },
+  "ghost_25": {
+    "name": "Manifold-induced latch evasion (Attraktorwahl-II)",
+    "observation": "applied during discovery, the spectral term perturbs the trajectory across the beta_threshold separatrix, preventing latch engagement and reintroducing the lc {64,71} 2-cycle",
+    "resolution": "gate manifold term to maintenance phase: g_ent=0 until maint_latched. Discovery stays byte-identical to EXP-409; basin-selection latch untouched.",
+    "forked_option_exp504": "manifold-aware latch: drive maint_latched on sustained manifold tension rather than gating the term off in discovery"
+  },
+  "observables": {
+    "beta_Z_eff": "f(B_A, B_D, B_ent_spectral)",
+    "Omega_ent_sp": "bounded manifold backreaction in [0,1)",
+    "B_ent_spectral": "low-Fiedler-mode entanglement ratio (k=3)",
+    "restoring_delta": "beta_Z_eff(manifold on) - beta_Z_eff(manifold off), maintenance phase"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] discovery phase ON == OFF byte-identical (EXP-409 latch preserved; Ghost #25 resolved)",
+    "[3] g_ent == 0 in discovery, > 0 in maintenance (maintenance-gated manifold term)",
+    "[4] monotone restoring response: beta_Z_eff non-decreasing in B_ent_spectral_prev (latched, other inputs fixed)",
+    "[5] bounded backreaction: Omega_ent_sp < 1 for all B_ent_spectral_prev >= 0; -> 1 as B -> inf",
+    "[6] tectonic tear: large B_ent_spectral_prev raises beta_Z_eff (restoring_delta > 0) and stays finite",
+    "[7] gamma_inf_ent=0 recovers EXP-409 beta trajectory exactly (regression)",
+    "[8] single attractor lc tail (no 2-cycle): manifold-on lc tail == {71}",
+    "[9] convergence: bze tail range (last 5) < 1.0",
+    "[10] is_manifold_501 admissible for all n (manifold feedback does not tear the skin)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] max|beta_Z_eff_fwd - beta_Z_eff_mir| < 1e-10 (phi_fb_manifold P_yz-invariant)",
+    "[3] max|B_ent_spectral_fwd - B_ent_spectral_mir| < 1e-10",
+    "[4] max|Omega_ent_sp_fwd - Omega_ent_sp_mir| < 1e-10",
+    "[5] lc_fwd == lc_mir and gate_fwd == gate_mir for all n"
+  ],
+  "exp504_gate": {
+    "trigger": "stateful seed: persist {S_A,S_D,S_ent,bze_ema,maint_latched,B_ent_spectral} across scenes",
+    "target": "demonstrate manifold restoring force damping a real tectonic tear across scene transitions (geometric stiffness lifted by multi-scene re-partition)"
+  },
+  "declaration_hash": "16f3e47232a3a84ed9814a57c502730dfffd30f8c55e4e405c368c0989db68b7"
+}

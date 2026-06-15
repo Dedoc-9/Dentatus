@@ -4916,3 +4916,153 @@ def spectral_ent_project(G_ent_per_claim, edges, ids,
     B_ent_spectral = float(np.linalg.norm(g_spectral)) / (Z_active_norm + eps)
     fiedler_vector = eigvecs[:, 1] if N >= 2 else np.zeros(N)
     return B_ent_spectral, lambda_modes, fiedler_vector, g_spectral
+
+
+# ============================================================
+# EXP-503 - Spectral Manifold Feedback (Phi_fb_manifold)
+# Protocol: exp503-v1
+# Wires the EXP-501/502 spectral scaffold into the Zeeman field:
+#   beta_Z_eff = f(B_A, B_D, B_ent_spectral)
+# The manifold term acts as a bounded restoring force on tectonic
+# (low-Fiedler-mode) deformation. Inherits the EXP-409 hysteresis latch
+# and EMA inertia unchanged; EXP-409 path is NOT mutated.
+# ============================================================
+
+_GAMMA_INF_ENT_503 = 0.5      # manifold spectral coupling strength (matches gamma_A/gamma_D)
+_K_FIEDLER_503     = 3        # low-mode count fed back (matches spectral_ent_project default)
+
+
+def phi_fb_manifold(S_A, Z_A, S_D, scene_n, bze_ema_prev,
+                    B_ent_spectral_prev=0.0,
+                    maint_latched=False,
+                    beta_Z_base=_BETA_Z_313,
+                    gamma_inf_A=_GAMMA_INF_A_409, gamma_inf_D=_GAMMA_INF_D_409,
+                    gamma_inf_ent=_GAMMA_INF_ENT_503,
+                    tau_warmup=_TAU_WARMUP_409,
+                    alpha_disc=_ALPHA_DISC_409, alpha_maint=_ALPHA_MAINT_409,
+                    beta_threshold=_BETA_THRESHOLD_409,
+                    beta_Z_min=_BETA_Z_MIN_409, eps=_EPS_FB_409):
+    """
+    EXP-503: Spectral manifold feedback. Extends phi_fb_hysteresis_ema (EXP-409)
+    with a bounded inter-claim (manifold) restoring term.
+
+        B_A          = ||S_A|| / (||Z_A|| + eps)                  [intra-claim desire]
+        B_D          = ||S_D|| / (||Z_A|| + eps)                  [intra-claim cost]
+        Omega_ent_sp = B_ent_spectral_prev / (1 + B_ent_spectral_prev)  in [0,1)  [bounded]
+        ramp(n)      = 1 - exp(-n / tau_warmup)
+        g_A, g_D, g_ent = {gamma_inf_A, gamma_inf_D, gamma_inf_ent} * ramp
+        beta_raw = max(beta_Z_min,
+                       beta_Z_base * exp(g_A*B_A - g_D*B_D + g_ent*Omega_ent_sp))
+        [hysteresis latch + EMA inertia identical to EXP-409]
+
+    B_ent_spectral_prev is RETARDED (prior-step manifold observation), caller-tracked
+    in primary space alongside bze_ema_prev and maint_latched. At scene_n=0 the ramp is
+    zero, so the manifold term vanishes at cold start regardless of B_ent_spectral_prev.
+
+    Bounded backreaction (EXP-501 Axiom 7): Omega_ent_sp < 1, so the manifold factor is
+    at most exp(gamma_inf_ent) ~ 1.65x. The EXP-409 latch absorbs this without
+    destabilization (latch already governs beta up to ~17).
+
+    P_yz: B_ent_spectral is a spectral projection of P_yz-invariant residuals onto the
+    P_yz-isomorphic L_sheaf spectrum, hence P_yz-invariant -> beta_Z_eff P_yz-invariant.
+
+    Returns: (beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, g_ent, Omega_ent_sp,
+              alpha_eff, maint_latched_out)
+    """
+    import numpy as np, math
+    n = scene_n
+    norm_SA = np.linalg.norm(S_A)
+    norm_ZA = np.linalg.norm(Z_A)
+    norm_SD = np.linalg.norm(S_D)
+    B_A = norm_SA / (norm_ZA + eps)
+    B_D = norm_SD / (norm_ZA + eps)
+    # Bounded manifold restoring term (gravitational-backreaction-safe)
+    bes = max(0.0, float(B_ent_spectral_prev))
+    Omega_ent_sp = bes / (1.0 + bes)
+    ramp = (1.0 - math.exp(-n / tau_warmup)) if n > 0 else 0.0
+    # Hysteresis latch evaluated FIRST: the manifold restoring force is gated to the
+    # maintenance phase. During discovery (not latched) g_ent=0, so beta_Z_eff is
+    # byte-identical to EXP-409 and the proven convergence/basin-selection latch is
+    # untouched (Ghost #25 - manifold-induced latch evasion / Attraktorwahl-II).
+    maint_latched_out = maint_latched or (bze_ema_prev >= beta_threshold)
+    manifold_active = 1.0 if maint_latched_out else 0.0
+    g_A   = gamma_inf_A   * ramp
+    g_D   = gamma_inf_D   * ramp
+    g_ent = gamma_inf_ent * ramp * manifold_active
+    beta_raw = max(beta_Z_min,
+                   beta_Z_base * math.exp(g_A * B_A - g_D * B_D + g_ent * Omega_ent_sp))
+    alpha_eff = alpha_maint if maint_latched_out else alpha_disc
+    beta_Z_eff = max(beta_Z_min, alpha_eff * bze_ema_prev + (1.0 - alpha_eff) * beta_raw)
+    return (beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, g_ent, Omega_ent_sp,
+            alpha_eff, maint_latched_out)
+
+
+def apply_gamma_503_recursive(mu, claim_id,
+                              partition_key="octree_split",
+                              beta=1.0, budget=1e9, spent=0.0,
+                              K_budget=2048, depth=0,
+                              focal_point=None,
+                              B=None, J_AC=None, W_max=8,
+                              beta_Z_base=_BETA_Z_313,
+                              gamma_inf_A=_GAMMA_INF_A_409, gamma_inf_D=_GAMMA_INF_D_409,
+                              gamma_inf_ent=_GAMMA_INF_ENT_503,
+                              tau_warmup=_TAU_WARMUP_409,
+                              alpha_disc=_ALPHA_DISC_409, alpha_maint=_ALPHA_MAINT_409,
+                              beta_threshold=_BETA_THRESHOLD_409,
+                              beta_Z_min=_BETA_Z_MIN_409,
+                              scene_n=0, bze_ema_prev=None, maint_latched=False,
+                              B_ent_spectral_prev=0.0):
+    """
+    EXP-503 recursive operator. Identical to apply_gamma_409_recursive except beta_Z_eff
+    is produced by phi_fb_manifold (adds the retarded bounded manifold term). Setting
+    gamma_inf_ent=0.0 recovers EXP-409 beta_Z_eff exactly (manifold feedback off).
+
+    Caller tracks: bze_ema_prev (float), maint_latched (bool), B_ent_spectral_prev (float).
+    Returns: (mu_next, cost, K, bze, raw, B_A, B_D, g_A, g_D, g_ent, Omega_ent_sp,
+              alpha_eff, maint_latched_out)
+    """
+    import numpy as np
+    if bze_ema_prev is None:
+        bze_ema_prev = beta_Z_base
+
+    Z_prev = mu.Z()
+    Z_A = Z_prev[:4] if len(Z_prev) >= 4 else Z_prev
+    S_A = np.array(mu.S_A) if hasattr(mu, 'S_A') else np.zeros(8)
+    S_D = np.array(mu.S_D) if hasattr(mu, 'S_D') else np.zeros(6)
+
+    (beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, g_ent, Omega_ent_sp,
+     alpha_eff, maint_latched_out) = phi_fb_manifold(
+        S_A, Z_A, S_D, scene_n, bze_ema_prev,
+        B_ent_spectral_prev=B_ent_spectral_prev,
+        maint_latched=maint_latched,
+        beta_Z_base=beta_Z_base,
+        gamma_inf_A=gamma_inf_A, gamma_inf_D=gamma_inf_D, gamma_inf_ent=gamma_inf_ent,
+        tau_warmup=tau_warmup,
+        alpha_disc=alpha_disc, alpha_maint=alpha_maint,
+        beta_threshold=beta_threshold, beta_Z_min=beta_Z_min,
+    )
+
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu, claim_id=claim_id,
+        partition_key=partition_key,
+        beta=beta, budget=budget, spent=spent,
+        K_budget=K_budget, depth=depth,
+        focal_point=focal_point,
+        B=B, J_AC=J_AC, W_max=W_max,
+        beta_Z=beta_Z_eff,
+    )
+
+    try:
+        gh = list(getattr(mu_next, 'ghost_history', []) or [])
+    except Exception:
+        gh = []
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return (mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D,
+            g_A, g_D, g_ent, Omega_ent_sp, alpha_eff, maint_latched_out)
