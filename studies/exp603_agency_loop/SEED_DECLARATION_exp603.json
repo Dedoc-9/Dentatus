@@ -1,0 +1,55 @@
+{
+  "protocol": "exp603-v1",
+  "series": "600",
+  "inherits": "exp602-v1",
+  "title": "Agency Loop & Autonomous Reality Search",
+  "gate_source": "EXP-602 bit-stable verified addresses -> agent can iterate-to-stable against permanent ids",
+  "operator": "game.agency.loop.run_reality_search + AgencyLatch (decoupled game layer)",
+  "location": "game/agency/loop.py (NEVER engine/); reaches core via dentatus.api only",
+  "mechanism": {
+    "loop": "agent proposes Semantic Intent (L2) -> reads B_ent / B_ent_spectral / lambda_2 + firewall (eps=0.8) from L1 -> iterates",
+    "agency_latch": "hysteresis lift of EXP-409: greedy-accept only stress-reducing proposals (monotone trajectory); irreversible maintenance latch on convergence (k_stable non-improving probes) or ladder exhaustion, gated by monotone B_ent AND monotone B_ent_spectral AND firewall admission",
+    "teeth_of_truth": "H_verified committed only in the latched, firewall-admitted state; success iff non-null H_verified",
+    "witness": "every iteration incl. failed probes emitted as an executable-epistemics Witness Artifact (observable purity; no verdict leakage); audit trail of the agency's manifold traversal"
+  },
+  "ghost_34": {
+    "name": "Sector D stress is realization-inert",
+    "observation": "Sector D (stress/shear) is dual-only (not partition-inherited), so semantic stress intent does NOT shape realized geometry; B_ent_spectral ~ 0 for symmetric single worlds",
+    "consequence": "the operative, realizable tectonic-stress signal is B_ent (degree-normalized inter-claim deformation); the realizable search variable is resolution budget"
+  },
+  "ghost_35": {
+    "name": "Agency Attraktorwahl",
+    "observation": "greedy descent + early latch can commit a LOCAL stress minimum (EXP-409 Ghost #19 at the agency layer)",
+    "mitigation": "full-ladder exploration + exhaustion latch commits the global best found; k_stable tunes explore-vs-commit"
+  },
+  "observables": {
+    "stress_trajectory": "accepted B_ent sequence (monotone non-increasing)",
+    "stress_reduction": "B_ent[0] - B_ent[-1] (>=0)",
+    "H_verified": "committed bit-stable reality address (requires PYTHONHASHSEED=0)",
+    "audit_trail": "witnessed artifacts incl. rejected probes"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] tectonic-stress trajectory monotone non-increasing (B_ent)",
+    "[3] stress_reduction > 0 (agent reduced manifold deformation)",
+    "[4] agency latch engages (success True)",
+    "[5] teeth of truth: H_verified non-null iff latched-and-admitted",
+    "[6] bit-stable in-process: two runs -> identical committed H_verified",
+    "[7] bit-perfect cross-process: subprocess PYTHONHASHSEED=0 -> identical H_verified",
+    "[8] audit trail includes failed probes (>=1 rejected, witnessed)",
+    "[9] witness purity: every artifact passes the witness firewall (no verdict field); H_verified only in commit artifact",
+    "[10] decoupled: game/ has no engine.* import (clean-room guard passes)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] search stress trajectory fwd == mir (observables P_yz-invariant)",
+    "[3] committed H_verified fwd == mir (realized world P_yz-invariant under seed x-stalk flip)",
+    "[4] agency latch engages for both fwd and mir",
+    "[5] stress_reduction fwd == mir"
+  ],
+  "exp604_gate": {
+    "trigger": "agency loop stable -> real-time MCL Observability dashboard",
+    "target": "WebXR/dashboard rendering firewall gauge, healing curve, Fiedler fault, agency audit trail"
+  },
+  "declaration_hash": "fdb106028f99333e4673e4a134d841ddca3261be234094925e62483ca5489da2"
+}

@@ -153,6 +153,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-505 | Persistent world-state across moving claims; motion-compensated world frame; track correspondence DAG; Ghost #28 | `6885720d383ca775` | **open** |
 | EXP-601 | Deterministic seeding; Claim.id timestamp-excluded; bitwise-reproducible H_t (Ghost #27 killed); P_yz exact | `f352e458d1e252f4` | **open** |
 | EXP-602 | Bit-stable semantic compiler; H_verified = firewall-gated realized-state address; PYTHONHASHSEED=0 pin (Ghost #32); witness-pure | `7753731c596ef389` | **open** |
+| EXP-603 | Agency loop & autonomous reality search; Agency Hysteresis Latch (Ghost #33); witnessed audit trail; decoupled in game/ | `fdb106028f99333e` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -514,7 +515,7 @@ degree-normalized median ≈ 0.52; firewall ε_manifold = 0.8 (≈1.5× margin, 
 EXP-503 spectral feedback is scaffolded (`spectral_ent_project`, `build_L_sheaf_503`,
 observation-only): Fiedler modes [0.316, 0.808, 0.940], B_ent_spectral(k=3) ≈ 0.125.
 
-Fork results: EXP-501..505 + EXP-601/602 all Fork A 10/10 · Fork B 5/5 (P_yz δ ≤ 8.9e-15; EXP-505/601 exact 0.0). EXP-602: `H_verified` is the firewall-gated, bit-stable realized-state content address (requires `PYTHONHASHSEED=0`, Ghost #32); cross-checked epistemically clean against the executable-epistemics witness instrument (no verdict leakage).
+Fork results: EXP-501..505 + EXP-601/602 all Fork A 10/10 · Fork B 5/5 (P_yz δ ≤ 8.9e-15; EXP-505/601 exact 0.0). EXP-602: `H_verified` is the firewall-gated, bit-stable realized-state content address (requires `PYTHONHASHSEED=0`, Ghost #32); cross-checked epistemically clean against the executable-epistemics witness instrument (no verdict leakage). EXP-603 lands the agency loop in the decoupled `game/` layer: an agent prompts a world and autonomously searches resolution space, reducing tectonic stress (`B_ent` 0.170→0.057) until the Agency Hysteresis Latch (lift of EXP-409, Ghost #33) commits a bit-perfect verified reality address; every probe — including failed attempts — is emitted as a witness-pure audit artifact. The core never sees game code (clean-room guard enforced).
 
 EXP-503 wires the spectral scaffold into the Zeeman field: `β_Z_eff = f(B_A, B_D, B_ent_spectral)` with a bounded restoring term `Ω_ent_sp = B_ent_spectral/(1+B_ent_spectral) ∈ [0,1)`, gated to the maintenance phase so the EXP-409 discovery latch stays byte-identical (Ghost #25 — manifold-induced latch evasion). EXP-504 lands the Stateful Seed: `SeedMemory` persists `{S_A,S_C,S_D, S_ent(spatial-keyed), bze_ema, maint_latched, B_ent_spectral}` across scene resets via the stateless `persist_scene_504`. A tectonic tear now **heals** on a geometric curve (excess decays ∝ α_persist=0.5 per scene) instead of being forgotten — temporal manifold smoothing (Ghost #26 lifted). The structural index `H_seed` is norm-based (Ghost #27: claim-id-order fp noise) and P_yz-invariant. EXP-505 lands moving-claim persistence: claims are re-referenced to a motion-compensated world frame (`estimate_global_motion_505` + `world_frame_key_505`), and a hash-indexed correspondence DAG (`track_correspondence_505`) links tracks across scenes. Under rigid world drift, localized `S_ent` memory and tear-healing follow moving claims (continuity 0→1 vs absolute keys); `H_dag` is P_yz-invariant. EXP-506 target: non-rigid / independent per-claim motion via nearest-neighbor association (Ghost #29).
 
@@ -538,6 +539,7 @@ Series 600 builds the LLM-pilotable interface **above** it without modifying it.
 | `dentatus.semantic` (L2) | Semantic Compiler — physical-property intent → SEED_DECLARATION; **invertible log-Cholesky** (Σ ↔ Sector D, round-trip 8.9e-16) | landed ✓ |
 | `dentatus.api` (L1) | Stateless Reality API — intent/DAG → observables + **firewall-gated verified hash** (`H_verified` only when `is_manifold_501` passes) | landed ✓ |
 | `dentatus_service.py` | Process-boundary handshake (stdio JSON) — license firewall for proprietary game layers | landed ✓ |
+| EXP-603 agency (`game/agency/`) | Autonomous Reality Search — iterate-to-stable; Agency Latch commits `H_verified` only on monotone-settled tectonic stress; every probe a Witness Artifact | landed ✓ |
 
 **The Clean Room Protocol.** Every game lives in a decoupled `game/` layer that reaches the core
 *only* through the `dentatus.*` handshake (Intent JSON in, Verified State Hash out). No game
