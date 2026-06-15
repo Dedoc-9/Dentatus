@@ -1,0 +1,73 @@
+{
+  "protocol": "exp407-v1",
+  "inherits": [
+    "exp406-v1",
+    "exp405-v1",
+    "exp404-v1",
+    "exp403-v1",
+    "exp402-v1",
+    "exp401-v1"
+  ],
+  "author": "Daniel J. Dillberg",
+  "email": "bigdilly95@gmail.com",
+  "gate": "EXP-406 Ghost #17 \u2014 EMA lag-overshoot=1.033; tail variability at N=20; 2-cycle not fully broken",
+  "description": "Adaptive alpha_bze schedule: alpha_eff(n)=alpha_min+(alpha_max-alpha_min)*exp(-n/tau_alpha). High inertia during bistable crossing (n<5, alpha~0.9), decays to light inertia post-convergence (n>>tau, alpha->0.2). Both tau_alpha and tau_warmup synchronized at 5.0. Ghost #17 lag-overshoot bounded by initial high-alpha damping; fast tracking restored at large n.",
+  "operator": "phi_fb_adaptive_ema",
+  "parameters": {
+    "gamma_inf_A": 0.5,
+    "gamma_inf_D": 0.5,
+    "tau_warmup": 5.0,
+    "alpha_max": 0.9,
+    "alpha_min": 0.7,
+    "tau_alpha": 5.0,
+    "beta_Z_min": 0.1,
+    "beta_Z_base": 2.0,
+    "eps": 1e-15
+  },
+  "pipeline": "mu -> L_tau -> [phi_fb_adaptive_ema(bze_ema_prev, scene_n) -> B_tau] -> R_tau -> Z -> S -> W -> OBS",
+  "dual_arithmetic": {
+    "primary": [
+      "beta_Z_eff",
+      "beta_raw",
+      "bze_ema_prev",
+      "alpha_eff",
+      "gamma_eff_A",
+      "gamma_eff_D",
+      "scene_n"
+    ],
+    "dual": [
+      "S_A",
+      "S_C",
+      "S_D",
+      "S",
+      "G_A",
+      "G_D"
+    ]
+  },
+  "schedule_sync": "tau_alpha == tau_warmup == 5.0. alpha_min=0.7 > alpha_crit=0.667: guaranteed 2-cycle suppression at all n. alpha_max=0.9: initial freeze. alpha range 0.9->0.7 (narrow): refined inertia modulation over warmup only.",
+  "observables": [
+    "B_A=||S_A||/(||Z_A||+eps)",
+    "B_D=||S_D||/(||Z_A||+eps)",
+    "beta_Z_eff",
+    "beta_raw",
+    "alpha_eff",
+    "bze_tail_range",
+    "saturation_ratio",
+    "overshoot_ratio",
+    "Omega_inertia=|beta_Z_eff-beta_raw|/(beta_raw+eps)"
+  ],
+  "ghost_notes": {
+    "Ghost_17": "EXP-406 EMA lag-overshoot=1.033 from fixed alpha=0.5 carrying momentum past beta_raw peak. EXP-407 adaptive alpha: high alpha during rising phase prevents lag accumulation; low alpha after convergence allows faster tracking.",
+    "Ghost_18_candidate": "If alpha_eff decays too fast (tau_alpha too small), system may enter EXP-404-like transient overshoot after alpha drops to alpha_min. Monitor overshoot_ratio vs EXP-404.",
+    "Ghost_18": "Alpha_min=0.2 (original) drops below alpha_crit=0.667 at large n, reintroducing 2-cycle. Fix: alpha_min=0.7 > alpha_crit ensures persistent 2-cycle damping at equilibrium. Revised EXP-407 uses alpha_min=0.7, alpha_max=0.9."
+  },
+  "assertions": {
+    "A1_cold_start": "phi_fb_adaptive_ema(n=0, bze_prev=base) == base",
+    "A2_alpha_schedule": "alpha_eff(0)==alpha_max; alpha_eff(large n)~alpha_min",
+    "A3_stronger_damping": "bze_407[1] < bze_406[1] (alpha=0.9 at n=1 vs alpha=0.5)",
+    "A4_2cycle_broken": "tail_range_407 < tail_range_406",
+    "A5_saturation": "saturation_ratio < 0.5",
+    "A6_p_invariance": "max|bze_fwd-bze_mir| < 1e-10"
+  },
+  "declaration_hash": "2dc29bcfbb1d7b02f65549f4d4750ac9b7af5603d4a726a3fa53347e67773f87"
+}

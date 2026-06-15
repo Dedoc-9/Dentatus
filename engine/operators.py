@@ -4288,3 +4288,131 @@ def apply_gamma_406_recursive(mu, claim_id,
             pass
 
     return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXP-407 — Adaptive α_bze Schedule (Synchronized Dual Warmup)
+# Gate: EXP-406 Ghost #17 — EMA lag-overshoot; 2-cycle not fully broken
+# Declaration hash: 0c536a015d8754620400cf5e3abd00cb778a4fedf08fd43a04dbe182c39e67df
+# ══════════════════════════════════════════════════════════════════════════════
+
+_ALPHA_MAX_407   = 0.9     # maximum EMA inertia (cold: strong 2-cycle damping)
+_ALPHA_MIN_407   = 0.7     # minimum EMA inertia (above alpha_crit≈0.667: persistent 2-cycle suppression)
+_TAU_ALPHA_407   = 5.0     # inertia decay timescale (synchronized with tau_warmup)
+_GAMMA_INF_A_407 = 0.5     # inherits from EXP-405/406
+_GAMMA_INF_D_407 = 0.5
+_TAU_WARMUP_407  = 5.0
+_BETA_Z_MIN_407  = 0.1
+_EPS_FB_407      = 1e-15
+
+def phi_fb_adaptive_ema(S_A, Z_A, S_D, scene_n, bze_ema_prev,
+                        beta_Z_base=_BETA_Z_313,
+                        gamma_inf_A=_GAMMA_INF_A_407, gamma_inf_D=_GAMMA_INF_D_407,
+                        tau_warmup=_TAU_WARMUP_407,
+                        alpha_max=_ALPHA_MAX_407, alpha_min=_ALPHA_MIN_407,
+                        tau_alpha=_TAU_ALPHA_407,
+                        beta_Z_min=_BETA_Z_MIN_407, eps=_EPS_FB_407):
+    """EXP-407: phi_fb_adaptive + adaptive EMA inertia schedule.
+
+    Synchronized dual warmup:
+      gamma_eff(n) = gamma_inf * (1 - exp(-n / tau_warmup))   [feedback gain ramp UP]
+      alpha_eff(n) = alpha_min + (alpha_max-alpha_min)*exp(-n/tau_alpha)  [inertia ramp DOWN]
+
+    At n=0: gamma_eff=0 (no feedback), alpha_eff=alpha_max=0.9 (maximum inertia)
+    At n=tau: gamma_eff=0.316*gamma_inf, alpha_eff~0.457 (half-power crossing)
+    At n->inf: gamma_eff->gamma_inf, alpha_eff->alpha_min=0.2 (fast-tracking regime)
+
+    2-cycle damping ratio at alpha_eff:
+      |p-q|/|f1-f2| = (1-alpha_eff)/(1+alpha_eff)
+      alpha=0.9 -> 5.3%  (bistable crossing: nearly frozen)
+      alpha=0.5 -> 33.3% (EXP-406 fixed)
+      alpha=0.2 -> 66.7% (converged: responsive but moderate)
+
+    Ghost #17 resolution: high alpha_eff during rising phase prevents lag accumulation.
+    Ghost #18 candidate: if alpha_min too low, fast-tracking may reintroduce overshoot.
+
+    Returns: (beta_Z_eff, beta_raw, B_A, B_D, gamma_eff_A, gamma_eff_D, alpha_eff)
+    """
+    import numpy as _np407; import math as _math407
+
+    norm_Z_A = float(_np407.linalg.norm(Z_A))
+    B_A = float(_np407.linalg.norm(S_A)) / (norm_Z_A + eps)
+    B_D = float(_np407.linalg.norm(S_D)) / (norm_Z_A + eps)
+
+    n = max(0, int(scene_n))
+
+    # Gamma warmup (ramp up)
+    ramp_g = 1.0 - _math407.exp(-n / float(tau_warmup)) if n > 0 else 0.0
+    g_A = float(gamma_inf_A) * ramp_g
+    g_D = float(gamma_inf_D) * ramp_g
+
+    # Alpha schedule (ramp down: high inertia -> low inertia)
+    a_min = float(alpha_min); a_max = float(alpha_max)
+    ramp_a = _math407.exp(-n / float(tau_alpha)) if n > 0 else 1.0
+    alpha_eff = a_min + (a_max - a_min) * ramp_a
+
+    beta_raw = float(max(float(beta_Z_min),
+                         float(beta_Z_base) * _math407.exp(g_A * B_A - g_D * B_D)))
+
+    bze_sm   = alpha_eff * float(bze_ema_prev) + (1.0 - alpha_eff) * beta_raw
+    beta_Z_eff = float(max(float(beta_Z_min), bze_sm))
+
+    return beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff
+
+
+def apply_gamma_407_recursive(mu, claim_id,
+        partition_key="octree_split", beta=1.0,
+        budget=1e9, spent=0.0, K_budget=2048,
+        depth=0, focal_point=None, B=None, J_AC=None, W_max=8,
+        beta_Z_base=_BETA_Z_313,
+        gamma_inf_A=_GAMMA_INF_A_407, gamma_inf_D=_GAMMA_INF_D_407,
+        tau_warmup=_TAU_WARMUP_407,
+        alpha_max=_ALPHA_MAX_407, alpha_min=_ALPHA_MIN_407,
+        tau_alpha=_TAU_ALPHA_407,
+        beta_Z_min=_BETA_Z_MIN_407, scene_n=0, bze_ema_prev=None):
+    """EXP-407: phi_fb_adaptive_ema -> apply_gamma_401_recursive.
+
+    bze_ema_prev: primary-scalar (caller-tracked). Defaults to beta_Z_base (cold).
+    Returns: (mu_next, cost, K, beta_Z_eff, beta_raw, B_A, B_D, gamma_eff_A, gamma_eff_D, alpha_eff)
+    """
+    import numpy as _np407r
+
+    if bze_ema_prev is None:
+        bze_ema_prev = float(beta_Z_base)
+
+    S_A_prev = getattr(mu, 'S_A', None)
+    S_D_prev = getattr(mu, 'S_D', None)
+    S_A_prev = _np407r.zeros(8) if S_A_prev is None else _np407r.array(S_A_prev, dtype=float)
+    S_D_prev = _np407r.zeros(6) if S_D_prev is None else _np407r.array(S_D_prev, dtype=float)
+
+    Z_prev   = mu.Z()
+    Z_A_prev = Z_prev[0:4] if len(Z_prev) >= 4 else _np407r.zeros(4)
+
+    beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff = phi_fb_adaptive_ema(
+        S_A=S_A_prev, Z_A=Z_A_prev, S_D=S_D_prev,
+        scene_n=scene_n, bze_ema_prev=bze_ema_prev,
+        beta_Z_base=beta_Z_base,
+        gamma_inf_A=gamma_inf_A, gamma_inf_D=gamma_inf_D,
+        tau_warmup=tau_warmup,
+        alpha_max=alpha_max, alpha_min=alpha_min, tau_alpha=tau_alpha,
+        beta_Z_min=beta_Z_min,
+    )
+
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu, claim_id=claim_id,
+        partition_key=partition_key, beta=beta,
+        budget=budget, spent=spent, K_budget=K_budget,
+        depth=depth, focal_point=focal_point, B=B,
+        beta_Z=beta_Z_eff, J_AC=J_AC, W_max=W_max,
+    )
+
+    gh = list(getattr(mu_next, 'ghost_history', None) or [])
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff

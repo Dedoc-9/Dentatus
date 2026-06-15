@@ -810,3 +810,80 @@ P_yz: max|bze_fwd−mir|=7.11e-15 ✓
 
 **Trigger:** Ghost #17 (lag-overshoot 1.033); tail variability at N=20.  
 Options: increase α_bze (stronger inertia), adaptive α_bze schedule, or fix alpha_leak Ghost.
+
+---
+
+## EXP-407 — Adaptive α_bze Schedule (Synchronized Dual Warmup)
+
+**Declaration hash:** `2dc29bcfbb1d7b02f65549f4d4750ac9b7af5603d4a726a3fa53347e67773f87`  
+**Gate source:** EXP-406 Ghost #17 — EMA lag-overshoot (fixed α=0.5 provides equal damping at all stages)
+
+### Operator: phi_fb_adaptive_ema
+
+EXP-407 extends `phi_fb_ema` (EXP-406) with a time-varying inertia schedule synchronized to the γ ramp.
+
+```
+α_eff(n) = α_min + (α_max − α_min) · exp(−n / τ_α)
+β_Z_eff  = max(β_Z_min, α_eff · bze_ema_prev + (1−α_eff) · β_raw)
+```
+
+Parameters: `α_max=0.9`, `α_min=0.7`, `τ_α=5.0` (synchronized with `τ_warmup=5.0`).
+
+**Synchronized dual warmup:** γ_eff ramps UP as α_eff ramps DOWN — both on timescale τ=5.
+
+### Critical Damping Threshold (α_crit = 2/3)
+
+For the EMA-filtered 2-cycle with raw amplitude `|f₁−f₂|≈5`:
+
+```
+2-cycle amplitude = (1−α)/(1+α) · |f₁−f₂|
+Suppressed when: (1−α)/(1+α) < 1/|f₁−f₂| ≈ 0.2   →   α > 2/3
+```
+
+`α_min=0.7 > α_crit=0.667` ensures persistent 2-cycle suppression at all n.
+
+### Ghost #18 — Alpha Subcritical Failure
+
+EXP-407 v1 used `α_min=0.2`. At n≥15, α_eff≈0.22 — below α_crit. Ghost #16 2-cycle was reintroduced with tail_range=13.07 (WORSE than EXP-406's 9.17). Ghost #16 is a persistent equilibrium feature; inertia must be sustained above α_crit at all n. Resolution: `α_min=0.7`.
+
+```
+|p−q| / |f₁−f₂| = (1−α)/(1+α):
+  α=0.20 → 0.667  (above lc-switching threshold — 2-cycle active)
+  α=0.50 → 0.333  (EXP-406 floor — marginal)
+  α=0.70 → 0.176  (EXP-407 floor — suppressed)
+```
+
+### Trajectory (N=20 sequential, α_min=0.7)
+
+```
+bze_407: [2.0, 2.1, 2.32, 2.89, 4.08, 5.96, 7.43, 8.64, 8.08, 9.87,
+          9.13, 8.56, 11.13, 11.19, 11.24, 10.67, 10.98, 11.27, 10.78, 11.18]
+bze_406: [2.0, 2.35, 3.21, ..., 17.13]   fixed α=0.5
+alpha:   [0.9, 0.864, 0.834, ..., 0.704]  (decays to α_min=0.7)
+tail_range_407=2.71  vs  tail_range_406=9.17  (70% reduction) ✓
+last5_range_407=0.59 vs  last5_range_406=4.22 (7× tighter) ✓
+overshoot_407=1.008                            (vs 404: 1.33) ✓
+```
+
+Note: bze_407[-1]=11.18 < bze_406[-1]=17.13 — convergence rate reduced by high inertia floor. EXP-408 gate triggered.
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp407.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp407.py`) | 5/5 | **PASS** |
+
+```
+α_max=0.9  α_min=0.7  τ_α=5.0  (α_crit=0.667)
+tail_range_407=2.7114 < tail_range_406=9.1732 ✓
+last5_range_407=0.5939 < last5_range_406=4.2170 ✓
+overshoot_407=1.0083 < overshoot_404=1.33 ✓
+saturation_ratio=0.0000  lc_tail={64,71,106}
+P_yz: max|bze_fwd−mir|=7.11e-15 ✓
+```
+
+### EXP-408 gate
+
+**Trigger (proactive):** bze_407[-1]=11.18 < bze_406[-1]=17.13 — high α_min floor reduces convergence rate. Convergence-damping Pareto frontier not yet explored.  
+Options: (A) increase τ_α (slower decay, higher early damping), (B) decouple τ_warmup ≠ τ_α, (C) Pareto sweep (tail_range, convergence_speed) vs α_min ∈ [0.667, 0.95].
