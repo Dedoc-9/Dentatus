@@ -1,0 +1,65 @@
+{
+  "experiment": "EXP-316",
+  "protocol_version": "exp316-v1",
+  "inherits": "exp315-v1",
+  "description": "3-component G_inject_A: y-aggregate coupling activates S_A[1]. v_A = [S_A0, S_A1, 0, S_A3]. Full 4D angular resolution of ghost precession. Series 300 hardening (final).",
+  "seed_stalk": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.5,
+    0.5,
+    0.5,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+    2.0
+  ],
+  "stalk_layout": {
+    "Sector_A": "[0:4] = mass, r, g, b",
+    "Sector_B": "[4:8] = x, y, z, w",
+    "Sector_C": "[8:12] = nx, ny, nz, kappa"
+  },
+  "G_inject": {
+    "G_inject_A_0": "alpha_leak * (||Z_before[0:4]|| / mass_ref)  [mass-norm, EXP-315]",
+    "G_inject_A_1": "alpha_leak * (|Z_before[5]| / y_ref)         [y-agg, NEW EXP-316]",
+    "G_inject_A_3": "alpha_leak * beta_CA * (kappa / kappa_ref)   [kappa, EXP-315]",
+    "G_inject_C_3": "alpha_leak * (||Z_before[0:4]|| / mass_ref)  [unchanged]"
+  },
+  "parameters": {
+    "alpha_leak": 0.1,
+    "beta_CA": 0.3,
+    "mass_ref": 2.0,
+    "kappa_ref": 2.0,
+    "y_ref": 1.0,
+    "alpha_ema": 0.85,
+    "J_AC": "eye(4)",
+    "W_max": 8,
+    "B": [
+      1.0,
+      0.5,
+      0.3
+    ],
+    "beta_Z": 2.0,
+    "K_budget_root": 2048
+  },
+  "v_A": "[S_A0, S_A1, 0, S_A3]  -- 3-component non-degenerate (EXP-316)",
+  "Omega_AC_formula": "arccos(S_A3 / sqrt(S_A0^2 + S_A1^2 + S_A3^2))",
+  "P_yz_invariance_proof": {
+    "G_inject_A_0": "f(||Z_before[0:4]||) -- Sector A norm, unchanged under P_yz",
+    "G_inject_A_1": "f(|Z_before[5]|) -- |y-agg|; p_yz_stalk negates stalk[4] not stalk[5] => invariant",
+    "G_inject_A_3": "f(kappa) -- extents-based, P_yz-invariant (EXP-312)",
+    "conclusion": "v_A = [S_A0, S_A1, 0, S_A3] P_yz-invariant => Omega_AC P_yz-invariant => tau_opt P_yz-invariant QED"
+  },
+  "GR_backreaction_analog": {
+    "S_A0": "mass-field source term (leading order)",
+    "S_A1": "y-shear perturbation (second-order transverse)",
+    "S_A3": "curvature response (Ricci term)",
+    "Omega_AC": "phase angle in (mass, y-shear, curvature) 3-space",
+    "tau_opt": "retarded lag window f(Omega_AC)"
+  },
+  "EXP_317_gate": "Ghost-Zeeman homeostatic feedback: beta_Z_eff = beta_Z_base * (1 + gamma_fb * B_A(t-1)). Valid under protocol (uses S not G, declared I/O, P_yz-invariant). First Series 400 experiment.",
+  "declaration_hash": "522ca73148485fdc41b7f496ff21c13d34133318fb2ba259040508537f571f1f"
+}

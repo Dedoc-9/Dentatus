@@ -2725,7 +2725,8 @@ def apply_gamma_312(
 
     if g_inject_fn is not None:
         G_inject_C, G_inject_A = g_inject_fn(
-            mass_norm, kappa_val, alpha_leak, beta_CA, mass_ref, kappa_ref
+            mass_norm, kappa_val, alpha_leak, beta_CA, mass_ref, kappa_ref,
+            Z_before=Z_before,
         )
         G_inject_C = _np.asarray(G_inject_C, dtype=float)
         G_inject_A = _np.asarray(G_inject_A, dtype=float)
@@ -3341,7 +3342,7 @@ def apply_gamma_314_recursive(
 # Declaration hash: e16dd1a01735bc1d6a97100daf2bfb3dfd172e2853b5875a875ccc54ea5933b0
 # ===========================================================================
 
-def _g_inject_315(mass_norm, kappa_val, alpha_leak, beta_CA, mass_ref, kappa_ref):
+def _g_inject_315(mass_norm, kappa_val, alpha_leak, beta_CA, mass_ref, kappa_ref, Z_before=None):
     """
     EXP-315 dual G_inject_A function.
 
@@ -3476,4 +3477,168 @@ def apply_gamma_315_recursive(
         mass_ref=mass_ref,
         kappa_ref=kappa_ref,
         g_inject_fn=_g_inject_315,
+    )
+
+
+# ===========================================================================
+# EXP-316 -- 3-Component G_inject_A: y-aggregate coupling into S_A[1]
+# Extends EXP-315 dual injection with a third channel from |Z_before[5]|.
+# v_A = [S_A0, S_A1, 0, S_A3] -- 3-component non-degenerate precession vector.
+# Full 4D angular resolution of ghost precession beyond the planar EXP-315 angle.
+# Series 300 hardening (final).
+# ===========================================================================
+
+_Y_REF_316 = 1.0  # y-coordinate reference scale
+
+
+def _g_inject_316(
+    mass_norm, kappa_val, alpha_leak, beta_CA, mass_ref, kappa_ref,
+    Z_before=None, y_ref=_Y_REF_316,
+):
+    """
+    EXP-316 three-component G_inject_A function.
+
+    G_inject_A[0] = alpha_leak * (mass_norm / mass_ref)               [mass-norm, EXP-315]
+    G_inject_A[1] = alpha_leak * (|Z_before[5]| / y_ref)              [y-agg coupling, NEW]
+    G_inject_A[3] = alpha_leak * beta_CA * (kappa_val / kappa_ref)    [kappa, EXP-315]
+    G_inject_C[3] = alpha_leak * (mass_norm / mass_ref)               [unchanged]
+
+    P_yz-invariance:
+      Z_before[5] = aggregate y-coordinate (Sector B dim 1).
+      p_yz_stalk negates stalk[4] (x) and stalk[8] (nx); stalk[5] (y) unchanged.
+      => |Z_before[5]| P_yz-invariant => G_inject_A[1] P_yz-invariant.
+
+    Returns: (G_inject_C: ndarray(4), G_inject_A: ndarray(8))
+    """
+    eps = 1e-15
+    G_C = np.zeros(4)
+    G_C[3] = alpha_leak * (mass_norm / (mass_ref + eps))
+
+    G_A = np.zeros(8)
+    G_A[0] = alpha_leak * (mass_norm / (mass_ref + eps))
+    if Z_before is not None:
+        y_val = abs(float(Z_before[5]))
+    else:
+        y_val = 0.0
+    G_A[1] = alpha_leak * (y_val / (y_ref + eps))
+    G_A[3] = alpha_leak * beta_CA * (kappa_val / (kappa_ref + eps))
+
+    return G_C, G_A
+
+
+def apply_gamma_316(
+    mu,
+    claim_id,
+    partition_key,
+    payloads,
+    beta,
+    budget,
+    spent,
+    focal_point=None,
+    B=None,
+    beta_Z=_BETA_Z_313,
+    J_AC=None,
+    W_max=_W_MAX_314,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+    y_ref=_Y_REF_316,
+):
+    """
+    EXP-316: Three-component G_inject_A operator.
+
+    Calls apply_gamma_314 with g_inject_fn=_g_inject_316.
+    Injects G_inject_A[0]=f(mass_norm), G_inject_A[1]=f(|y_agg|), G_inject_A[3]=f(kappa).
+    v_A = J_AC @ S_A[0:4] = [S_A0, S_A1, 0, S_A3]  (three non-zero dims)
+    Omega_AC = arccos(S_A3 / sqrt(S_A0^2 + S_A1^2 + S_A3^2))
+    tau_opt varies with three-way mass/y/kappa balance.
+    P_yz-invariant: all three injection sources P_yz-invariant.
+
+    Returns: (mu_next, cost, validity_class)
+    """
+    import functools
+    if J_AC is None:
+        J_AC = _J_AC_DEFAULT_314
+    J_AC = np.array(J_AC)
+    fn = functools.partial(_g_inject_316, y_ref=y_ref)
+
+    return apply_gamma_314(
+        mu=mu,
+        claim_id=claim_id,
+        partition_key=partition_key,
+        payloads=payloads,
+        beta=beta,
+        budget=budget,
+        spent=spent,
+        focal_point=focal_point,
+        B=B,
+        beta_Z=beta_Z,
+        J_AC=J_AC,
+        W_max=W_max,
+        thresholds=thresholds,
+        alpha_leak=alpha_leak,
+        beta_CA=beta_CA,
+        mass_ref=mass_ref,
+        kappa_ref=kappa_ref,
+        g_inject_fn=fn,
+    )
+
+
+def apply_gamma_316_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+    focal_point=None,
+    B=None,
+    beta_Z=_BETA_Z_313,
+    J_AC=None,
+    W_max=_W_MAX_314,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+    y_ref=_Y_REF_316,
+):
+    """
+    Recursive EXP-316 operator.
+
+    Inherits Zeeman K_budget, bbox-centroid fp, weight-sorted child ordering (EXP-313).
+    Inherits Omega_AC ghost_history logging (EXP-314).
+    Inherits dual G_inject_A channels 0+3 (EXP-315).
+    Adds y-aggregate channel G_inject_A[1] (EXP-316): 3-component v_A.
+    Full 4D angular resolution of ghost precession.
+
+    Returns: (final_mu, total_cost, K_weights_step0)
+    """
+    import functools
+    fn = functools.partial(_g_inject_316, y_ref=y_ref)
+
+    return apply_gamma_314_recursive(
+        mu=mu,
+        claim_id=claim_id,
+        partition_key=partition_key,
+        beta=beta,
+        budget=budget,
+        spent=spent,
+        K_budget=K_budget,
+        depth=depth,
+        focal_point=focal_point,
+        B=B,
+        beta_Z=beta_Z,
+        J_AC=J_AC,
+        W_max=W_max,
+        thresholds=thresholds,
+        alpha_leak=alpha_leak,
+        beta_CA=beta_CA,
+        mass_ref=mass_ref,
+        kappa_ref=kappa_ref,
+        g_inject_fn=fn,
     )
