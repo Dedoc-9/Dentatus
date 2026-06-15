@@ -4675,3 +4675,152 @@ def apply_gamma_409_recursive(mu, claim_id,
             pass
 
     return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff, maint_latched_out
+
+
+# ============================================================
+# EXP-501 — Manifold Observation (Sheaf Coboundary G_ent)
+# Protocol: exp501-v1
+# Declaration hash: bfbf52c2977f436a78f1136555a0e46d00eae43eb95344fc679223961fa60a8b
+# Pipeline insertion: Z -> [phi_ent_observe -> G_ent -> S_ent] -> S -> W -> OBS
+# Observation only — no modification to Z, S, W, or Phi_fb dynamics.
+# ============================================================
+
+_ALPHA_ENT_501    = 0.5
+_EPS_ENT_501      = 1e-15
+_ADJ_TOL_501      = 1e-9
+
+# Sector D XOR sign rule: l_pq flips sign iff face_axis in {p,q}
+# parameter order: [log_l11, log_l22, log_l33, l21, l31, l32]
+_XOR_SIGNS_D_501 = {
+    0: np.array([1., 1., 1., -1., -1.,  1.]),   # x-face: xy,xz flip; yz unchanged
+    1: np.array([1., 1., 1., -1.,  1., -1.]),   # y-face: xy,yz flip; xz unchanged
+    2: np.array([1., 1., 1.,  1., -1., -1.]),   # z-face: xz,yz flip; xy unchanged
+}
+
+# Sector C sign rule: normal component along face axis flips sign (anti-parallel BC)
+# parameter order: [nx, ny, nz, kappa]
+_FLIP_SIGNS_C_501 = {
+    0: np.array([-1., 1., 1., 1.]),
+    1: np.array([ 1.,-1., 1., 1.]),
+    2: np.array([ 1., 1.,-1., 1.]),
+}
+
+
+def face_adjacent_501(bbox_i, bbox_j, tol=_ADJ_TOL_501):
+    """Return (True, face_axis) if bboxes share exactly one axis-aligned face, else (False, -1).
+    6-connected: face neighbors only.
+    Derivation: touching condition on axis k; overlap in other two dims.
+    """
+    lo_i, hi_i = bbox_i
+    lo_j, hi_j = bbox_j
+    for k in range(3):
+        touch = (abs(float(hi_i[k]) - float(lo_j[k])) < tol or
+                 abs(float(hi_j[k]) - float(lo_i[k])) < tol)
+        if touch:
+            others = [d for d in range(3) if d != k]
+            overlap = all(float(lo_i[d]) < float(hi_j[d]) - tol and
+                          float(lo_j[d]) < float(hi_i[d]) - tol
+                          for d in others)
+            if overlap:
+                return True, k
+    return False, -1
+
+
+def apply_F_ij_501(stalk_j, face_axis):
+    """Full 18-dim restriction map F_ij for face normal axis k.
+    F_ij = block_diag(I_4, I_4, F^C_k, F^D_k)
+    Sectors A,B: identity (continuity).
+    Sector C [8:12]: normal-flip at face axis; kappa continuous.
+    Sector D [12:18]: XOR sign rule on off-diagonal Cholesky params.
+    Involution: apply_F_ij_501(apply_F_ij_501(stalk, k), k) == stalk for all k.
+    """
+    s = np.array(stalk_j, dtype=float)
+    s[8:12]  = stalk_j[8:12]  * _FLIP_SIGNS_C_501[face_axis]
+    s[12:18] = stalk_j[12:18] * _XOR_SIGNS_D_501[face_axis]
+    return s
+
+
+def phi_ent_observe(Z_claims, bboxes, S_ent_prev,
+                    alpha_ent=_ALPHA_ENT_501, eps=_EPS_ENT_501):
+    """EXP-501 Manifold Observation — phi_ent_observe.
+
+    Stateless operator on the full active leaf set. Computes the sheaf coboundary
+    G_ent = delta_0(Z), accumulates per-claim EMA S_ent, and returns global observable B_ent.
+
+    Inputs:
+        Z_claims:    dict[claim_id -> np.ndarray shape (18,)]   stalk values
+        bboxes:      dict[claim_id -> (lo, hi)]                 claim bboxes
+        S_ent_prev:  dict[claim_id -> float]                    per-claim EMA state (caller-tracked)
+        alpha_ent:   float   EMA coefficient (default 0.5)
+        eps:         float   denominator floor
+
+    Returns:
+        G_ent_per_claim: dict[claim_id -> float]   local entanglement residual norm
+        S_ent:           dict[claim_id -> float]   updated EMA
+        B_ent:           float                     global entanglement ratio
+        N_edges:         int                       number of face-adjacent pairs
+        lambda_2:        float                     Fiedler value of scalar L_sheaf
+        edges:           list[(id_i, id_j, k)]     neighbor edge list
+
+    Protocol constraints:
+        - No modification to Z_claims, bboxes, or any MuState field.
+        - G_ij^{ent} = F_ij * stalk_j - stalk_i  (coboundary orientation: id_i < id_j canonical)
+        - Per-claim accumulation: G_ent_i = ||sum_j G_ij^{ent}||
+        - Dual arithmetic: S_ent orthogonal to S_A/S_D (intra-claim dual) and bze_ema (primary)
+    """
+    ids = sorted(Z_claims.keys())
+    N = len(ids)
+    id_to_idx = {cid: i for i, cid in enumerate(ids)}
+
+    # Build neighbor graph: 6-connected face adjacency
+    edges = []
+    for a in range(N):
+        for b in range(a + 1, N):
+            cid_i, cid_j = ids[a], ids[b]
+            adj, k = face_adjacent_501(bboxes[cid_i], bboxes[cid_j])
+            if adj:
+                edges.append((cid_i, cid_j, k))
+
+    N_edges = len(edges)
+
+    # Accumulate entanglement residual per claim: G_ent_i = ||sum_j G_ij^{ent}||
+    G_sum = {cid: np.zeros(18) for cid in ids}
+    for (cid_i, cid_j, k) in edges:
+        # G_ij^{ent} = F_ij * stalk_j - stalk_i
+        G_ij = apply_F_ij_501(Z_claims[cid_j], k) - Z_claims[cid_i]
+        G_sum[cid_i] += G_ij
+        # Symmetric contribution: G_ji^{ent} = F_ji * stalk_i - stalk_j
+        # F_ji = F_ij (same face axis k; involution: F_ij^{-1} = F_ij)
+        G_ji = apply_F_ij_501(Z_claims[cid_i], k) - Z_claims[cid_j]
+        G_sum[cid_j] += G_ji
+
+    G_ent_per_claim = {cid: float(np.linalg.norm(G_sum[cid])) for cid in ids}
+
+    # EMA update: S_ent_i(t+1) = alpha * S_ent_prev_i + (1-alpha) * G_ent_i
+    S_ent = {}
+    for cid in ids:
+        prev = float(S_ent_prev.get(cid, 0.0))
+        S_ent[cid] = alpha_ent * prev + (1.0 - alpha_ent) * G_ent_per_claim[cid]
+
+    # Global observables
+    S_ent_vec = np.array([S_ent[cid] for cid in ids])
+    Z_norms = np.array([np.linalg.norm(Z_claims[cid]) for cid in ids])
+    Z_active_norm = float(np.linalg.norm(Z_norms))
+    B_ent = float(np.linalg.norm(S_ent_vec)) / (Z_active_norm + eps)
+
+    # Scalar sheaf Laplacian L_sheaf (N x N) from incidence matrix
+    # L_sheaf[i,i] = degree(i); L_sheaf[i,j] = -1 if (i,j) is an edge
+    if N_edges > 0:
+        delta = np.zeros((N_edges, N))
+        for e_idx, (cid_i, cid_j, _) in enumerate(edges):
+            delta[e_idx, id_to_idx[cid_i]] = -1.0
+            delta[e_idx, id_to_idx[cid_j]] = +1.0
+        L_sheaf = delta.T @ delta
+        eigvals = np.linalg.eigvalsh(L_sheaf)
+        # lambda_2: smallest non-zero eigenvalue (Fiedler value)
+        nonzero = eigvals[eigvals > 1e-10]
+        lambda_2 = float(nonzero[0]) if len(nonzero) > 0 else 0.0
+    else:
+        lambda_2 = 0.0
+
+    return G_ent_per_claim, S_ent, B_ent, N_edges, lambda_2, edges

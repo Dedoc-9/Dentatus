@@ -1043,3 +1043,112 @@ latch_fwd==latch_mir for all n: True ✓
 
 **Trigger (proactive):** bze_409[-1]=13.40 still below EXP-406's 17.13. Post-latch τ_conv≈9.5 steps at α=0.9; only 8 post-latch steps in N=20.  
 Options: (A) extend N→30 (verify bze reaches EXP-406 levels); (B) two-level maintenance (reduce α after bze>15); (C) β_threshold sensitivity sweep ∈ [10,14]; (D) close Series 400 Phi_fb sub-series; promote hysteresis as canonical operator.
+
+**Resolution:** Option D selected. bze gap is a τ_conv arithmetic artifact of the N=20 harness, not a structural failure. Phi_fb sub-series closed. Series 500 opens.
+
+---
+
+## Series 400 — Phi_fb Sub-Series Closure
+
+| EXP | Operator | α schedule | tail_range | bze[-1] | lc_tail | Ghost resolved |
+|-----|----------|-----------|-----------|---------|---------|----------------|
+| 404 | phi_fb_exp | fixed γ | — | 17.19 | {71} | baseline |
+| 405 | phi_fb_adaptive | γ ramp↑ | 14.79 | 21.75 | {71,78} | #15 → gate #16 |
+| 406 | phi_fb_ema | fixed α=0.5 | 9.17 | 17.13 | {71,78} | #16 → gate #17 |
+| 407 | phi_fb_adaptive_ema | α ramp↓ | 2.71 | 11.18 | {64,71,106} | #17 → gate #18 |
+| 408 | phi_fb_ascending_ema | α ramp↑ | 0.93 | 8.62 | {64} | #18 → gate #19 |
+| **409** | **phi_fb_hysteresis_ema** | **α hysteresis** | **4.87** | **13.40** | **{71}** | **#19 resolved** |
+
+Canonical operator: `phi_fb_hysteresis_ema` (EXP-409). α_disc=0.5 (discovery) / α_maint=0.9 (maintenance, irreversible latch at β_threshold=12.0). Correct basin, zero overshoot, P_yz-symmetric latch.
+
+---
+
+## Series 500 — Inter-Claim Entanglement (Manifold Birth)
+
+Series 400 operated on a single active claim per step. Series 500 introduces the **neighbor graph** over the full active leaf set W_t, coupling adjacent claims via the sheaf coboundary δ_0.
+
+Extended pipeline:
+```
+μ → Lτ → [Phi_fb → Bτ] → Rτ → Z → [Φ_ent → G_ent → S_ent] → S → W → OBS
+```
+
+The `Φ_ent` block is stateless on the current active set. It reads all Z values simultaneously after Rτ, before EMA accumulation, producing the inter-claim entanglement ghost S_ent and observable B_ent.
+
+Series 500 roadmap:
+
+| EXP | Target | Gate |
+|-----|--------|------|
+| 501 | Manifold Observation: G_ent, S_ent, B_ent, λ_2 (no feedback) | EXP-409 closure |
+| 502 | `is_manifold_501` validity predicate; ε_manifold from B_ent baseline | EXP-501 B_ent distribution |
+| 503 | Phi_fb_manifold: B_ent → β_Z_eff coupling (Zeeman as restoring force) | is_manifold_501 stable |
+| 504 | Stateful Seed: SectorMemory persistence across scenes | Phi_fb_manifold stable |
+
+---
+
+## EXP-501 — Manifold Observation (Sheaf Coboundary)
+
+**Declaration hash:** `bfbf52c2977f436a78f1136555a0e46d00eae43eb95344fc679223961fa60a8b`  
+**Gate source:** EXP-409 closure — Series 400 Phi_fb sub-series complete
+
+### Architecture: Face Adjacency + Restriction Maps
+
+Two active leaf claims are face-adjacent (6-connected) if their bboxes share exactly one axis-aligned face. For K=92 leaves: N_edges ≈ 3·K^(2/3) ≈ 60 neighbor pairs.
+
+The restriction map `F_ij` (18×18 block-diagonal) encodes the expected boundary condition from claim j at the shared face with normal axis k:
+
+```
+F_ij = block_diag(I_4, I_4, F^C_k, F^D_k)
+
+Sector A [0:4]:  F^A = I_4                   (mass/color: continuity)
+Sector B [4:8]:  F^B = I_4                   (position: continuity)
+Sector C [8:12]: F^C_k = diag(c_0,c_1,c_2,1) where c_d = −1 if d==k else +1
+                                               (normal anti-parallel at face; κ continuous)
+Sector D [12:18]: F^D_k = diag(XOR signs)    (covariance: XOR rule below)
+```
+
+### Sector D XOR Sign Rule
+
+Derivation: `L_mirror = R_k · L · D_k` where `D_k = diag(−1 at k, +1 elsewhere)`.
+
+Off-diagonal Cholesky parameter l_{pq} (coupling axes p,q) flips sign iff `k ∈ {p,q}` — the **XOR rule**. Diagonal log-variance entries are invariant. Verified: `max|Σ_i − R_k·Σ_j·R_k^T| = 0.00e+00` for all k.
+
+| Parameter | k=0 (x) | k=1 (y) | k=2 (z) |
+|-----------|:---:|:---:|:---:|
+| log_l11, log_l22, log_l33 | +1 | +1 | +1 |
+| l21 (xy coupling) | −1 | −1 | +1 |
+| l31 (xz coupling) | −1 | +1 | −1 |
+| l32 (yz coupling) | +1 | −1 | −1 |
+
+The restriction map is an involution: `F_D(F_D(stalk,k),k) = stalk` for all k. Physical meaning: log-variances (ellipsoid size) are equal across a face; covariance tilts (ellipsoid orientation) mirror with signs determined by which axes they couple to the face normal. This is the *Zusammenhang* (differential-geometric connection) of the Dentatus fiber bundle.
+
+### Entanglement Ghost and Observables
+
+```
+G_ij^{ent} = F_ij · stalk_j − stalk_i    ∈ ℝ^18      (coboundary δ_0)
+G_ent_i    = ‖Σ_{j∈N(i)} G_ij^{ent}‖                 (per-claim residual norm)
+S_ent_i(t+1) = α_ent·S_ent_i(t) + (1−α_ent)·G_ent_i  (EMA; α_ent=0.5; caller-tracked)
+
+B_ent(t)   = ‖S_ent‖  / (‖Z_active‖ + ε)             [global entanglement ratio]
+Ω_ent(t)   = Z^T L_sheaf Z / (‖Z‖^2 + ε)             [Rayleigh quotient]
+λ_2(t)     = Fiedler value of L_sheaf                  [algebraic connectivity]
+```
+
+Global section (manifold-continuous state): `G_ij^{ent} = 0` for all edges → `B_ent = 0`.
+
+**Dual arithmetic:** S_ent is orthogonal to both S_A/S_D (intra-claim dual) and bze_ema_prev/maint_latched (primary). Three non-collapsing channels: S_intra ∈ ℝ^d_stalk, S_ent ∈ ℝ^N_claims, bze_ema/maint ∈ ℝ^1 × {0,1}.
+
+### P_yz Invariance
+
+The face-adjacent graph is P_yz-invariant (adjacency depends only on bbox extents). F^C_k and F^D_k both commute with the P_yz stalk transform (both are diagonal sign operators). Therefore `B_ent_fwd = B_ent_mir` and `λ_2_fwd = λ_2_mir` exactly.
+
+### Ghost Notes (Series 500)
+
+**Ghost #21 — Zusammenhang Stiffness:** ε_manifold_crit = λ_2/N_claims ≈ 0.5 for 2×2 grid. Calibrated from EXP-501 B_ent tail distribution in EXP-502.
+
+**Ghost #22 — Neighbor Explosion:** High-degree claims accumulate more G_ent (degree-dependent signal). Per-claim norm `‖Σ_j G_ij^{ent}‖` is not degree-normalized. Observable: max_degree/mean_degree ratio.
+
+**Ghost #23 — Temporal Decoherence:** S_ent cold-reset across scenes in EXP-501. Decay cost `α_ent^{T_away}` quantified for EXP-504 Stateful Seed design.
+
+### EXP-502 gate
+
+B_ent baseline from Fork A → calibrate ε_manifold → `is_manifold_501` validity predicate using XOR restriction maps. Target: ε_manifold ∈ [B_ent_median, B_ent_95th].

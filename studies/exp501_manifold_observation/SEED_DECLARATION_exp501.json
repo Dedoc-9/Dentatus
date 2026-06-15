@@ -1,0 +1,118 @@
+{
+  "protocol": "exp501-v1",
+  "series": "500",
+  "inherits": "exp409-v1",
+  "title": "Manifold Observation \u2014 Sheaf Coboundary G_ent",
+  "gate_source": "EXP-409 closure: Phi_fb sub-series complete; Series 500 target inter-claim entanglement",
+  "operator": "phi_ent_observe",
+  "pipeline_insertion": "Z -> [phi_ent_observe -> G_ent -> S_ent] -> S -> W -> OBS",
+  "parameters": {
+    "alpha_ent": 0.5,
+    "eps_ent": 1e-15,
+    "adjacency": "face_adjacent_6connected"
+  },
+  "restriction_map": {
+    "sector_A": "identity_4x4",
+    "sector_B": "identity_4x4",
+    "sector_C": "normal_flip_at_face_axis",
+    "sector_D": "XOR_sign_rule"
+  },
+  "sector_D_sign_rule": {
+    "description": "l_pq flips sign iff face_axis in {p,q}; diagonal log-Cholesky terms invariant",
+    "derivation": "L_mirror = R_k @ L @ D_k; D_k = diag(-1 at pos k, +1 elsewhere)",
+    "k0_x_face": [
+      1,
+      1,
+      1,
+      -1,
+      -1,
+      1
+    ],
+    "k1_y_face": [
+      1,
+      1,
+      1,
+      -1,
+      1,
+      -1
+    ],
+    "k2_z_face": [
+      1,
+      1,
+      1,
+      1,
+      -1,
+      -1
+    ],
+    "parameter_order": [
+      "log_l11",
+      "log_l22",
+      "log_l33",
+      "l21",
+      "l31",
+      "l32"
+    ],
+    "involution": "F_D(F_D(stalk,k),k) == stalk for all k (verified)"
+  },
+  "sector_C_rule": {
+    "description": "Normal component along face axis flips sign (anti-parallel boundary condition)",
+    "k0": [
+      -1,
+      1,
+      1,
+      1
+    ],
+    "k1": [
+      1,
+      -1,
+      1,
+      1
+    ],
+    "k2": [
+      1,
+      1,
+      -1,
+      1
+    ],
+    "parameter_order": [
+      "nx",
+      "ny",
+      "nz",
+      "kappa"
+    ]
+  },
+  "observables": {
+    "B_ent": "||S_ent|| / (||Z_active|| + eps)",
+    "Omega_ent": "Z^T L_sheaf Z / (||Z||^2 + eps)",
+    "lambda_2": "Fiedler value of L_sheaf (algebraic connectivity)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] B_ent > 0 for seed stalk (non-trivial manifold tension)",
+    "[3] B_ent_gs == 0 for synthetic global section (all neighbors matched)",
+    "[4] lambda_2 > 0 (graph connected; at least one neighbor edge)",
+    "[5] F_ij involution: apply_F_ij(apply_F_ij(stalk,k),k) == stalk for all k",
+    "[6] G_ent Sector D log-diagonal == 0 for matched variance params (variances invariant)",
+    "[7] N_edges >= 1 (neighbor graph non-empty for seed octree)",
+    "[8] S_ent converges: |S_ent[n]-S_ent[n-1]| < 0.1 by n=15",
+    "[9] Sigma_i = R_k @ Sigma_j @ R_k.T for synthetic perfect-glue pair (max err < 1e-12)",
+    "[10] B_ent_ema[-1] < max(B_ent_raw) (EMA damping confirmed)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] max|B_ent_fwd - B_ent_mir| < 1e-10 (P_yz invariance of B_ent)",
+    "[3] max|lambda_2_fwd - lambda_2_mir| < 1e-10",
+    "[4] N_edges_fwd == N_edges_mir for all n",
+    "[5] max|G_ent_norm_fwd - G_ent_norm_mir| < 1e-10"
+  ],
+  "ghost_predictions": {
+    "Ghost_21": "Zusammenhang Stiffness: epsilon_manifold calibration from B_ent distribution required in EXP-502",
+    "Ghost_22": "Neighbor Explosion: N_edges ~ 3*K^(2/3); per-claim projection S_ent_i = ||sum_j G_ij|| normalizes",
+    "Ghost_23": "Temporal Decoherence: S_ent decay rate during inactive scenes; decay = alpha_ent^T_away"
+  },
+  "exp502_gate": {
+    "trigger": "B_ent baseline established; is_manifold_501 epsilon tuned from B_ent tail distribution",
+    "target": "is_manifold_501 validity predicate + proper off-diagonal F coupling"
+  },
+  "declaration_hash": "bfbf52c2977f436a78f1136555a0e46d00eae43eb95344fc679223961fa60a8b"
+}
