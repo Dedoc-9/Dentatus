@@ -1,0 +1,110 @@
+{
+  "experiment": "EXP-402",
+  "title": "Ghost-Zeeman Homeostasis \u2014 Dual Pullback Feedback",
+  "series": "400",
+  "protocol_version": "exp402-v1",
+  "inherits": "exp401-v1",
+  "status": "preregistered",
+  "operator": {
+    "name": "Phi_fb",
+    "pipeline_position": "inserted between Z-computation and B_tau (Zeeman weights)",
+    "declared_inputs": [
+      "S_A_prev",
+      "Z_A_prev",
+      "S_D_prev",
+      "beta_Z_base",
+      "gamma_fb_A",
+      "gamma_fb_D",
+      "beta_Z_min",
+      "eps"
+    ],
+    "declared_outputs": [
+      "beta_Z_eff"
+    ],
+    "formula": "beta_Z_eff = max(beta_Z_min, beta_Z_base * (1.0 + gamma_fb_A * B_A - gamma_fb_D * B_D))",
+    "B_A": "norm(S_A_prev) / (norm(Z_A_prev) + eps)",
+    "B_D": "norm(S_D_prev) / (norm(Z_A_prev) + eps)",
+    "note_B_D_normalization": "Z_D = stalk[12:18] = 0 in all partition children (not partition-inherited). B_D normalized against Z_A (root mass-energy sector) to keep B_D in [0,1) at initialization and across full tree depth.",
+    "equilibrium_condition": "gamma_fb_A * B_A_star = gamma_fb_D * B_D_star => B_A_star = B_D_star when gamma_fb_A == gamma_fb_D",
+    "p_yz_invariance": "norm(S_A) and norm(Z_A) are both P_yz-invariant (norms); norm(S_D) P_yz-invariant (EXP-401 Fork B). => B_A, B_D P_yz-invariant => beta_Z_eff P_yz-invariant."
+  },
+  "parameters": {
+    "beta_Z_base": 2.0,
+    "gamma_fb_A": 0.5,
+    "gamma_fb_D": 0.5,
+    "beta_Z_min": 0.5,
+    "eps": 1e-15,
+    "alpha_D": 0.05,
+    "alpha_leak": 0.1,
+    "beta_CA": 0.3,
+    "mass_ref": 2.0,
+    "kappa_ref": 2.0,
+    "y_ref": 1.0,
+    "W_max": 8,
+    "K_budget": 2048,
+    "alpha_ema": 0.85
+  },
+  "stability": {
+    "linear_bound": "gamma_fb_A * B_A - gamma_fb_D * B_D > -1.0 required for beta_Z_eff > 0 before clamp",
+    "clamp_guarantee": "beta_Z_eff >= beta_Z_min = 0.5 always; no collapse to zero",
+    "equilibrium": "B_A_star = B_D_star at gamma_fb_A = gamma_fb_D = 0.5",
+    "linearized_stability_condition": "gamma_fb_A in (0, 2.0) for beta_Z_base=2.0 (inherited from EXP-317 gate spec)",
+    "ghost_10_prevention": "B_D uses norm(Z_A) denominator; S_D_0=0 => B_D_0=0 at t=0; no t=1 collapse"
+  },
+  "ghost_axioms": {
+    "ghost_10_risk": "Z_D = Z[12:18] = 0 in all partition children. eps-only denominator gives B_D=norm(S_D)/eps at t>0. RESOLVED: B_D = norm(S_D)/(norm(Z_A)+eps).",
+    "forbidden": [
+      "ghost_direct_control",
+      "stalk_collapse",
+      "retroactive_confluence_cert",
+      "budget_retroactive_adjustment",
+      "validity_predicate_shift",
+      "post_hoc_rewrite_rule_addition"
+    ]
+  },
+  "fork_A": {
+    "script": "run_seed_exp402.py",
+    "seed_B": [
+      1.0,
+      0.5,
+      0.3
+    ],
+    "assertions": [
+      "[1]  declaration_hash verified",
+      "[2]  beta_Z_eff(gamma_fb_A=0, gamma_fb_D=0) == beta_Z_base (reduce to EXP-401 with feedback disabled)",
+      "[3]  beta_Z_eff > beta_Z_min always (clamp active; no collapse)",
+      "[4]  beta_Z_eff increases when gamma_fb_A increases 0->0.5 (B_A amplification active)",
+      "[5]  beta_Z_eff decreases when gamma_fb_D increases 0->0.5 (B_D pullback active)",
+      "[6]  EXP-401 regression: 92 leaves at gamma_fb_A=0, gamma_fb_D=0",
+      "[7]  tau_opt distribution right-shifts at gamma_fb_A=0.5 vs gamma_fb_A=0 (larger Omega_AC under tighter Zeeman)",
+      "[8]  ||S_D|| responds to beta_Z_eff change (B_D couples back through G_inject_D modulation)",
+      "[9]  H_t hash chain continuous across Phi_fb operator insertion",
+      "[10] B_A in [0,2.0], B_D in [0,1.0) at seed depth (Ghost #10 prevention verified)"
+    ]
+  },
+  "fork_B": {
+    "script": "run_p_invariance_exp402.py",
+    "assertions": [
+      "[1]  declaration_hash verified",
+      "[2]  beta_Z_eff_fwd == beta_Z_eff_mir (P_yz-invariant, delta < 1e-12)",
+      "[3]  fwd_leaves == mir_leaves (tree structure P_yz-covariant under feedback)",
+      "[4]  Omega_AC_fwd == Omega_AC_mir (EXP-316 invariance holds under feedback)",
+      "[5]  S_D[3]_mir = -S_D[3]_fwd, S_D[4]_mir = -S_D[4]_fwd, S_D[5]_mir = S_D[5]_fwd (EXP-401 tensor covariance preserved under feedback)"
+    ]
+  },
+  "exp403_gate": {
+    "trigger": "beta_Z_eff saturates at beta_Z_min in >50% of tree steps under default gamma_fb_D=0.5",
+    "proposed_change": "exponential: beta_Z_eff = beta_Z_base * exp(gamma_fb_A * B_A - gamma_fb_D * B_D)",
+    "property": "beta_Z_eff > 0 guaranteed without clamp; equilibrium B_A=B_D is exp(0)=1 fixed point",
+    "gate_observable": "saturation_ratio = steps_at_beta_Z_min / total_steps"
+  },
+  "dual_arithmetic_invariant": {
+    "primary_space": "Z dynamics under L_tau/B_tau/R_tau; beta_Z_eff modulates B_tau only",
+    "dual_space_A": "S_A EMA + Omega_AC + tau_opt (EXP-314/315/316)",
+    "dual_space_D": "S_D EMA + G_inject_D (EXP-401)",
+    "phi_fb_reads": "S_A_prev, Z_A_prev, S_D_prev (declared inputs only)",
+    "phi_fb_writes": "beta_Z_eff (scalar passed to _zeeman_weights only)",
+    "no_write_back": "Phi_fb does not modify Z_t, stalk values, or S_A/S_D directly"
+  },
+  "declaration_hash": "d933ad3ba860b601137cf7159b2485b2e86e1fc12b8939bce9bc1a08c3678407"
+}

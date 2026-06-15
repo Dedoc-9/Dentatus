@@ -3823,3 +3823,147 @@ def apply_gamma_401_recursive(
         mu_next.S_D = s_d_new
 
     return mu_next, total_cost, K_weights
+
+
+# ===========================================================================
+# EXP-402 -- Ghost-Zeeman Homeostasis (Dual Pullback Feedback)
+# Operator Phi_fb: (S_A_prev, Z_A_prev, S_D_prev) -> beta_Z_eff
+# Inserted between Z-computation and B_tau (Zeeman weight step).
+# B_A = norm(S_A) / (norm(Z_A) + eps)    [precession ghost ratio]
+# B_D = norm(S_D) / (norm(Z_A) + eps)    [covariance ghost ratio, Z_A denominator]
+# beta_Z_eff = max(beta_Z_min, beta_Z_base * (1 + gamma_fb_A*B_A - gamma_fb_D*B_D))
+# Equilibrium: B_A* = B_D* when gamma_fb_A == gamma_fb_D
+# Ghost #10 prevention: Z_D=0 in all children => B_D uses norm(Z_A) not norm(Z_D)
+# Declaration hash: d933ad3ba860b601137cf7159b2485b2e86e1fc12b8939bce9bc1a08c3678407
+# ===========================================================================
+
+_GAMMA_FB_A_402 = 0.5
+_GAMMA_FB_D_402 = 0.5
+_BETA_Z_MIN_402 = 0.5
+_EPS_FB_402     = 1e-15
+
+
+def phi_fb(S_A, Z_A, S_D,
+           beta_Z_base=_BETA_Z_313,
+           gamma_fb_A=_GAMMA_FB_A_402,
+           gamma_fb_D=_GAMMA_FB_D_402,
+           beta_Z_min=_BETA_Z_MIN_402,
+           eps=_EPS_FB_402):
+    """
+    Phi_fb: Ghost-Zeeman homeostasis operator.
+
+    Declared I/O: (S_A_prev, Z_A_prev, S_D_prev, params) -> beta_Z_eff (scalar).
+    Stateless. Does not write to Z_t, stalk, or S_A/S_D.
+
+    B_A = norm(S_A) / (norm(Z_A) + eps)
+    B_D = norm(S_D) / (norm(Z_A) + eps)   [Z_A denominator: Ghost #10 prevention]
+    beta_Z_eff = max(beta_Z_min, beta_Z_base * (1 + gamma_fb_A*B_A - gamma_fb_D*B_D))
+
+    P_yz invariance: B_A and B_D are norms => P_yz-invariant => beta_Z_eff P_yz-invariant.
+    Stability: gamma_fb_A in (0, 2.0) with beta_Z_base=2.0 (inherited EXP-317 gate spec).
+    Equilibrium: B_A* = B_D* when gamma_fb_A == gamma_fb_D.
+    """
+    S_A_arr = np.asarray(S_A, dtype=float)
+    Z_A_arr = np.asarray(Z_A, dtype=float)
+    S_D_arr = np.asarray(S_D, dtype=float) if S_D is not None else np.zeros(6)
+
+    norm_Z_A = float(np.linalg.norm(Z_A_arr))
+    B_A = float(np.linalg.norm(S_A_arr)) / (norm_Z_A + eps)
+    B_D = float(np.linalg.norm(S_D_arr)) / (norm_Z_A + eps)
+
+    beta_raw = float(beta_Z_base) * (1.0 + float(gamma_fb_A) * B_A - float(gamma_fb_D) * B_D)
+    return float(max(float(beta_Z_min), beta_raw)), B_A, B_D
+
+
+def apply_gamma_402_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+    focal_point=None,
+    B=None,
+    beta_Z_base=_BETA_Z_313,
+    J_AC=None,
+    W_max=_W_MAX_314,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+    y_ref=_Y_REF_316_,
+    alpha_D=_ALPHA_D_401,
+    gamma_fb_A=_GAMMA_FB_A_402,
+    gamma_fb_D=_GAMMA_FB_D_402,
+    beta_Z_min=_BETA_Z_MIN_402,
+):
+    """
+    EXP-402 recursive operator.
+
+    Inherits all EXP-401 properties (d=18, S_D, log-Cholesky, Sigma_mir=R*Sigma*R^T).
+    Prepends Phi_fb: computes beta_Z_eff from prior mu's S_A, Z_A, S_D before
+    passing to apply_gamma_401_recursive.
+
+    Pipeline position: Phi_fb between Z-read and B_tau (Zeeman weights).
+    Declared I/O: (S_A_prev, Z_A_prev, S_D_prev) -> beta_Z_eff (scalar).
+
+    Returns: (final_mu, total_cost, K_weights_step0, beta_Z_eff, B_A, B_D)
+    """
+    if B is None:
+        B = np.array([1.0, 0.0, 0.0])
+
+    # Phi_fb: read prior state BEFORE any partition
+    S_A_prev = mu.S_A if (hasattr(mu, 'S_A') and mu.S_A is not None) else np.zeros(8)
+    S_D_prev = mu.S_D if (hasattr(mu, 'S_D') and mu.S_D is not None) else np.zeros(6)
+    Z_prev   = mu.Z()
+    Z_A_prev = Z_prev[0:4] if len(Z_prev) >= 4 else np.zeros(4)
+
+    beta_Z_eff, B_A, B_D = phi_fb(
+        S_A=S_A_prev,
+        Z_A=Z_A_prev,
+        S_D=S_D_prev,
+        beta_Z_base=beta_Z_base,
+        gamma_fb_A=gamma_fb_A,
+        gamma_fb_D=gamma_fb_D,
+        beta_Z_min=beta_Z_min,
+    )
+
+    # Delegate to apply_gamma_401_recursive with effective beta_Z
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu,
+        claim_id=claim_id,
+        partition_key=partition_key,
+        beta=beta,
+        budget=budget,
+        spent=spent,
+        K_budget=K_budget,
+        depth=depth,
+        focal_point=focal_point,
+        B=B,
+        beta_Z=beta_Z_eff,
+        J_AC=J_AC,
+        W_max=W_max,
+        thresholds=thresholds,
+        alpha_leak=alpha_leak,
+        beta_CA=beta_CA,
+        mass_ref=mass_ref,
+        kappa_ref=kappa_ref,
+        y_ref=y_ref,
+        alpha_D=alpha_D,
+    )
+
+    # Store beta_Z_eff and B_A/B_D in ghost_history as 7-tuple for observability
+    # Format: (norm_S_A, norm_S_C, Omega_AC, tau_opt, beta_Z_eff, B_A, B_D)
+    gh = list(getattr(mu_next, 'ghost_history', None) or [])
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D
