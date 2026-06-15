@@ -1,0 +1,43 @@
+{
+  "protocol": "exp602-v1",
+  "series": "600",
+  "inherits": "exp601-v1",
+  "title": "Bit-Stable Semantic Compiler -- realized-state H_verified",
+  "gate_source": "EXP-601 bitwise H_t -> content-addressed reality store now possible",
+  "operator": "dentatus.api.state_hash + dentatus.api.observe (H_verified = realized-state address)",
+  "change": {
+    "before": "H_verified = declaration_hash (the RECIPE hash; deterministic but input-side)",
+    "after": "H_verified = state_hash(realized W,Z,S) iff firewall passes (permanent REALITY address)",
+    "state_hash": "SHA256(W # Z # S_A # S_C # S_D # protocol); rounded 12 decimals; bit-stable via EXP-601",
+    "firewall_gating": "H_verified issued only when is_manifold_501 (eps=0.8) passes; else None"
+  },
+  "observables": {
+    "H_decl": "recipe hash (intent -> declaration); deterministic",
+    "H_state": "realized-world content address (W,Z,S); bit-stable",
+    "H_verified": "H_state iff admissible; the permanent unique reality address"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] H_verified bit-stable: same intent run 3x -> identical address",
+    "[3] admissible world: H_verified == H_state (realized-state address)",
+    "[4] H_decl (recipe) != H_state (reality) -- distinct address spaces",
+    "[5] firewall-gating contract: (H_verified is None) iff (not is_manifold_501)",
+    "[6] sensitivity: a different intent -> different H_verified",
+    "[7] idempotent content address: same intent -> same address (dedup/store key)",
+    "[8] end-to-end determinism: H_decl deterministic AND H_state deterministic",
+    "[9] L2 invertible log-Cholesky: Sigma -> Sector D stalk -> Sigma round-trip < 1e-12",
+    "[10] realized-state dependence: changing K_budget that alters geometry -> different H_state"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] firewall admissibility fwd == mir (verification decision P_yz-invariant)",
+    "[3] observables B_ent, lambda_2 fwd == mir (machine precision)",
+    "[4] H_verified differs fwd vs mir (signed realized state -> a reflected world is a DISTINCT reality/address; documented)",
+    "[5] reflected world equally verifiable: firewall decision + observables P_yz-invariant"
+  ],
+  "exp603_gate": {
+    "trigger": "bit-stable verified addresses -> agency loop can iterate-to-stable against permanent ids",
+    "target": "LLM iterate-to-stable loop with agency latch (bound outer-loop backreaction)"
+  },
+  "declaration_hash": "7753731c596ef389d92449092d15f94f38a1ba3f66cba237ba980a32190b6abd"
+}

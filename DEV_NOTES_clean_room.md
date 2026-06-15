@@ -63,10 +63,17 @@ The engine is a self-contained AGPL project (`dentatus-core`) with its own test 
 can fork, extend the studies pipeline, and ship under AGPL-3.0 — or, as copyright holder, grant
 commercial licenses — without ever touching a game layer.
 
+## Determinism requirement (content-addressed store)
+
+`H_verified` (the realized-state reality address) is bit-stable only with **`PYTHONHASHSEED=0`**
+(EXP-602 Ghost #32). `dentatus_service.py` self-pins it; set it in any process that needs stable
+addresses. EXP-601 fixed claim-id determinism; the hash-seed pin fixes set/dict iteration order.
+
 ## Guardrails (wire into CI)
 
 ```bash
 python game/tests/test_clean_room.py     # fails if game/ imports engine.* directly
 python run_seed_exp505.py                # core forks must stay green (no contamination)
-python game/examples/docking_bay.py      # handshake smoke test -> H_verified
+PYTHONHASHSEED=0 python game/examples/docking_bay.py   # handshake smoke -> bit-stable H_verified
+python studies/exp602_semantic_compiler/determinism_crossproc.py  # cross-process address stability
 ```

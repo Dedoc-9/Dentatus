@@ -11,6 +11,12 @@ Request:  {"op":"observe","intent":{...}}  or  {"op":"observe","declaration":{..
 Response: {... observables, firewall, H_verified ...}
 """
 import sys, os, json
+# EXP-602 determinism: a content-addressed reality store needs cross-process bit-stability.
+# PYTHONHASHSEED randomizes string set/dict iteration order, which perturbs the gamma-recursion
+# summation. Pin it to 0 (re-exec once) so H_verified is identical across processes/machines.
+if os.environ.get("PYTHONHASHSEED") != "0":
+    os.environ["PYTHONHASHSEED"] = "0"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dentatus import api
 

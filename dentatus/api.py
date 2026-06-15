@@ -8,6 +8,8 @@ The FIREWALL IS THE HANDSHAKE CONTRACT: a verified state hash (`H_verified`) is 
 when is_manifold_501 passes. A torn world receives observables but no verified hash, so the
 game layer cannot obtain a verified universe that violates manifold continuity.
 """
+import json
+import hashlib
 import numpy as np
 
 from dentatus import core, semantic
@@ -25,6 +27,28 @@ def _build_seed_mu(declaration):
                       S=np.zeros(12), alpha=core.ALPHA_DEFAULT,
                       S_A=np.zeros(8), S_C=np.zeros(4), S_D=np.zeros(6))
     return mu, claim.id, bbox
+
+
+
+def state_hash(mu, ndigits=12):
+    """EXP-602: deterministic content address of the REALIZED state (not the recipe).
+
+    H_state = SHA256(W (sorted claim ids) # Z (stalks) # S_A # S_C # S_D # protocol).
+    Bit-stable because EXP-601 made claim ids, Z, and the carried ghosts bitwise
+    reproducible. Rounded to `ndigits` decimals to absorb cross-platform libm ULP while
+    remaining a unique address. This is H_t in the engine sense: HASH(Z # S # W # protocol).
+    """
+    W = sorted(mu.active)
+    def r(arr):
+        return [round(float(x), ndigits) for x in np.asarray(arr).ravel()]
+    payload = json.dumps({
+        "W": W,
+        "Z": {cid: r(mu.claims[cid].stalk) for cid in W},
+        "S_A": r(mu.S_A), "S_C": r(mu.S_C), "S_D": r(mu.S_D),
+        "protocol": "dentatus-state-v1",
+        "engine_protocol": core.ENGINE_PROTOCOL,
+    }, sort_keys=True).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def observe(request):
@@ -95,6 +119,11 @@ def observe(request):
         },
         "fiedler": {"lambda_2": round(float(lam2), 9), "n_modes": int(len(lam_modes))},
     }
-    # FIREWALL = HANDSHAKE: verified hash only when the manifold is admissible.
-    resp["H_verified"] = decl["declaration_hash"] if admissible else None
+    # EXP-602: H_state is the bit-stable content address of the REALIZED world (W,Z,S).
+    H_state = state_hash(mu)
+    resp["H_state"] = H_state
+    # FIREWALL = HANDSHAKE: a VERIFIED reality address is issued only when the manifold is
+    # admissible. The address is the realized-state hash (a permanent, unique reality id),
+    # not merely the recipe hash H_decl.
+    resp["H_verified"] = H_state if admissible else None
     return resp
