@@ -1,9 +1,10 @@
-# Reality Engine — Series 300 (Dentatus)
+# Reality Engine — Series 300–400 (Dentatus)
 
 Generative reality engine implementing a cellular sheaf state machine over a claim DAG.
 State evolution is governed by a fixed operator pipeline with immutable hash-indexed states,
 dual ghost channels, and preregistered validity predicates.
 
+**Author**: Daniel J. Dillberg — bigdilly95@gmail.com  
 **License**: GNU Affero General Public License v3.0 — see `AGPL-3.0`
 
 ---
@@ -47,6 +48,7 @@ Cross-stage mutation outside the defined mapping is forbidden.
 | `apply_gamma_314` / `_recursive` | EXP-314 | Hyperfine ghost: Ω_AC inter-channel precession angle; τ_opt lag |
 | `apply_gamma_315` / `_recursive` | EXP-315 | Dual G_inject_A: mass-norm→S_A[0], kappa→S_A[3]; primary arccos path |
 | `apply_gamma_316` / `_recursive` | EXP-316 | 3-component G_inject_A: adds y-agg→S_A[1]; τ_opt range {1,2,3}; Series 300 final |
+| `apply_gamma_401` / `_recursive` | EXP-401 | d=18 stalk; log-Cholesky Σ (S_D); G_inject_D ∝ B̂⊗B̂·τ_norm; Σ_mir=R·Σ_fwd·Rᵀ |
 
 ### Stalk schema — d=12
 
@@ -59,6 +61,20 @@ Sector C: [nx, ny, nz, kappa]      — centroid-outward unit normal + curvature
 ```
 
 Restriction map `F` is block-diagonal 12×12; no cross-sector coupling.
+
+### Stalk schema — d=18 (EXP-401+)
+
+```
+F(v) ∈ ℝ¹⁸  =  [Sector A (0-3) | Sector B (4-7) | Sector C (8-11) | Sector D (12-17)]
+
+Sector D: [log_l11, log_l22, log_l33, l21, l31, l32]  — log-Cholesky covariance
+  L[i,i] = exp(log_lii) > 0  always (positive diagonal guaranteed)
+  Σ = L·Lᵀ  (positive-definite guaranteed)
+```
+
+Sector D is NOT partition-inherited. Child stalks have `stalk[12:18] = 0`.
+`S_D` tracks Sector D covariance exclusively via EMA ghost injection.
+`is_valid_block_diagonal_306` extended to 18×18: Sector D cross-blocks must be zero.
 
 ### Validity predicates (EXP-308, 6 total)
 
@@ -88,6 +104,11 @@ B_C(t) = ‖S_C‖ / (‖Z_C‖ + ε)          sector C ghost ratio
 `G_t` is a numeric residual only — not an entity, not directly controlled.
 Dual arithmetic (forward Z space vs dual S/G space) is never collapsed.
 
+EXP-401 adds `S_D` (Sector D dual, d=6) tracking log-Cholesky covariance off-diagonals:
+```
+B_D(t) = ‖S_D‖ / (‖Z_D‖ + ε)          sector D covariance ghost ratio
+```
+
 ---
 
 ## Study series
@@ -110,6 +131,7 @@ Dual arithmetic (forward Z space vs dual S/G space) is never collapsed.
 | EXP-314 | Hyperfine ghost; Ω_AC precession angle; architecture-driven τ_opt | `5ca52bef5d2a5080` | closed |
 | EXP-315 | Dual G_inject_A; primary arccos path active; τ_opt varies with mass/kappa | `e16dd1a01735bc1d` | closed |
 | EXP-316 | 3-component G_inject_A; y-agg→S_A[1]; τ_opt range {1,2,3}; Series 300 final | `522ca73148485fdc` | **closed** |
+| EXP-401 | d=18 stalk; log-Cholesky Σ via S_D; G_inject_D ∝ B̂⊗B̂·τ_norm; Σ_mir=R·Σ_fwd·Rᵀ | `ff1fb75eb819cf1e` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -385,7 +407,11 @@ claims that do not undergo full partition — they are accepted as-is into the a
 # Dependencies
 pip install numpy scipy
 
-# EXP-316 (current — Series 300 final)
+# EXP-401 (current — Series 400 Exp 1)
+python run_seed_exp401.py        # Fork A: 10/10 PASS
+python run_p_invariance_exp401.py  # Fork B: 10/10 PASS
+
+# EXP-316 (Series 300 final)
 python run_seed_exp316.py
 python run_p_invariance_exp316.py
 
@@ -408,9 +434,9 @@ python run_p_invariance_exp312.py
 
 ---
 
-## Series-300 closure / EXP-401 gate
+## Series-300 closure
 
-Series-300 is **closed** as of EXP-316. All prerequisites for EXP-401 satisfied:
+Series-300 is **closed** as of EXP-316.
 
 | Requirement | Status |
 |-------------|--------|
@@ -420,19 +446,90 @@ Series-300 is **closed** as of EXP-316. All prerequisites for EXP-401 satisfied:
 | Primary arccos path active; τ_opt varies with depth | EXP-315 ✓ |
 | 3-component v_A; τ_opt range {1,2,3}; Series 300 hardened | EXP-316 ✓ |
 
-EXP-401 prerequisites (anisotropic splatting / differentiable volume clusters):
+---
 
-- Stalk schema extension to d=15 (add 3 Gaussian covariance dims) or d=18 (full 3×3 covariance)
-- New validity predicate: `is_valid_covariance_401` — positive-definite Σ on new dims
-- `apply_gamma_401` must extend the block-diagonal F to the new covariance block
-- P_yz must extend: covariance Σ transforms as `Σ' = R·Σ·Rᵀ` where R=diag(-1,1,1)
-- Per-node `τ_opt` from EXP-316 drives anisotropic covariance alignment; range {1,2,3} provides richer lag window selection
+## EXP-401 — Anisotropic Gaussian Covariance (Series 400 Exp 1)
 
-**EXP-317 gate — Ghost-Zeeman homeostasis (Series 400 Experiment 1):**
+**Status: open** | declaration_hash: `ff1fb75eb819cf1e79e778886ebfdd4291f48e3d2cc7d1dbd0630a603a124323`
+
+### Architecture: d=18 stalk, log-Cholesky Sector D
+
+Stalk extended from d=12 to d=18. Sector D `[12:18]` encodes the lower-triangular
+log-Cholesky factor of a 3×3 covariance matrix:
+
+```
+L = [[exp(log_l11),  0,            0          ],
+     [l21,           exp(log_l22), 0          ],
+     [l31,           l32,          exp(log_l33)]]
+Σ = L·Lᵀ  (positive-definite by construction)
+```
+
+**Architectural choice — d=18 over d=15 (diagonal-only):**
+Diagonal-only covariance is an architectural dead end. Zeeman-weighted partitions create
+directional pressures that don't respect axis-aligned boundaries. Off-diagonal terms
+`l21`, `l31`, `l32` encode the tilt of the covariance ellipsoid. Without them, the Ghost
+cannot track correlation between x-variance and y-variance under B-field rotation.
+
+### G_inject_D
+
+```
+G_inject_D[3] = α_D · τ_norm · B̂[0]·B̂[1]    (l21: xy coupling)
+G_inject_D[4] = α_D · τ_norm · B̂[0]·B̂[2]    (l31: xz coupling)
+G_inject_D[5] = α_D · τ_norm · B̂[1]·B̂[2]    (l32: yz coupling)
+
+τ_norm = τ_opt / W_max    (retarded: from prior ghost_history entry)
+α_D = 0.05
+```
+
+S_D EMA: `S_D_{t+1} = α·S_D_t + (1−α)·G_inject_D`
+
+### P_yz covariance (NOT invariance)
+
+Covariance is a tensor. Under `P_yz` (x→−x):
+
+```
+Σ_mir = R·Σ_fwd·Rᵀ    where R = diag(−1, 1, 1)
+
+S_D[3]_mir = −S_D[3]_fwd    (l21: anti-symmetric)
+S_D[4]_mir = −S_D[4]_fwd    (l31: anti-symmetric)
+S_D[5]_mir =  S_D[5]_fwd    (l32: symmetric)
+‖S_D‖ P_yz-invariant → B_D P_yz-invariant
+```
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp401.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp401.py`) | 10/10 | **PASS** |
+
+```
+leaves=92  ‖v_A‖=6.606456  ‖S_D‖=0.00042123  B_D=1.0000
+Σ off-diagonal: s12=0.000350  s13=0.000210  s23=0.000105
+min eigval(Σ)=0.999632 (PD ✓)
+max|Σ_mir − R·Σ_fwd·Rᵀ| = 0.00e+00 (Fork B ✓)
+```
+
+### Ghost notes (EXP-401)
+
+**Ghost #7 — np.empty(d) uninitialized Sector D:**
+`apply_gamma_312` used `np.empty(d)`. With d=18, child stalk positions [12:18] contained
+garbage. `is_valid` consistency check `‖F@parent − child‖` failed because F[12:18,:]=0
+but child[12:18]≠0. Fix: `np.zeros(d)`. Sector D is NOT partition-inherited.
+
+**Ghost #8 — is_valid_block_diagonal_306 skipped 18×18:**
+Extended to handle 18×18 F matrices: ABC cross-blocks + Sector D cross-terms must be zero.
+
+**Ghost #9 — NTFS truncation: operators.py at `mu_next._re`:**
+Edit tool truncated after replacement boundary. Fixed via Python append script targeting
+the truncation marker; forced recompile with `py_compile.compile()`.
+
+### EXP-402 gate — Ghost-Zeeman homeostasis
+
 ```
 β_Z_eff(t) = β_Z_base · (1 + γ_fb · B_A(t−1))
 B_A(t−1)   = ‖S_A(t−1)‖ / (‖Z_A(t−1)‖ + ε)
 ```
-New declared operator Φ_fb: `(S_A_prev, Z_A_prev, β_Z_base, γ_fb) → β_Z_eff`.
-P_yz-invariant (‖S_A‖ and ‖Z_A‖ are norms). Uses S (EMA), not G (raw residual) — not `ghost_direct_control`.
-Stability bound: γ_fb ∈ (0, 2.0) with β_Z_base = 2.0.
+Operator Φ_fb: declared I/O `(S_A_prev, Z_A_prev, β_Z_base, γ_fb) → β_Z_eff`.
+P_yz-invariant. Uses S (EMA), not G. Stability: γ_fb ∈ (0, 2.0), β_Z_base=2.0.
+Extension: `β_Z_eff_D(t) = β_Z_base·(1 + γ_fb_D·B_D(t−1))` using Sector D ghost ratio.

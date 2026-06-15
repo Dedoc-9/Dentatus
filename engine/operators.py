@@ -2636,7 +2636,7 @@ def apply_gamma_312(
         centroid_B = (c_lo + c_hi) / 2.0
         kappa_child = _kappa_integral((c_lo, c_hi))
 
-        child_stalk = _np.empty(d)
+        child_stalk = _np.zeros(d)  # zero-init: Sector D (d>12) starts at 0; S_D tracks via EMA
         child_stalk[b0A:b1A] = stalk_A_i
         child_stalk[b0B:b0B + 3] = centroid_B
         child_stalk[SECTOR_B_DIMS[-1]] = 1.0
@@ -3642,3 +3642,184 @@ def apply_gamma_316_recursive(
         kappa_ref=kappa_ref,
         g_inject_fn=fn,
     )
+
+
+# ===========================================================================
+# EXP-401 -- Anisotropic Gaussian Covariance
+# Extends EXP-316 with Sector D: 6-dim log-Cholesky covariance.
+# G_inject_D[3:6] aligned to B_hat outer-product, modulated by tau_opt.
+# Covariance tensor test (Fork B): Sigma_mir = R * Sigma_fwd * R^T, R=diag(-1,1,1).
+# ===========================================================================
+
+_ALPHA_D_401  = 0.05   # injection rate for Sector D
+_Y_REF_316_   = 1.0    # re-export for EXP-401 use
+
+def p_yz_stalk_401(stalk):
+    """P_yz reflection for d=18 stalk. Extends EXP-316 with Sector D terms.
+    Negates: stalk[4]=x, stalk[8]=nx, stalk[15]=l21 (xy), stalk[16]=l31 (xz).
+    stalk[17]=l32 (yz) unchanged: no x component.
+    """
+    s = stalk.copy()
+    s[4]  = -s[4]
+    s[8]  = -s[8]
+    s[15] = -s[15]
+    s[16] = -s[16]
+    return s
+
+
+def _g_inject_401(
+    mass_norm, kappa_val, alpha_leak, beta_CA, mass_ref, kappa_ref,
+    Z_before=None, y_ref=_Y_REF_316_,
+    B=None, tau_opt=1, W_max=8, alpha_D=_ALPHA_D_401,
+):
+    """
+    EXP-401 injection function.
+
+    Inherits EXP-316 channels:
+      G_inject_A[0] = alpha_leak * (mass_norm / mass_ref)
+      G_inject_A[1] = alpha_leak * (|Z_before[5]| / y_ref)
+      G_inject_A[3] = alpha_leak * beta_CA * (kappa / kappa_ref)
+      G_inject_C[3] = alpha_leak * (mass_norm / mass_ref)
+
+    New Sector D channel:
+      tau_norm = tau_opt / W_max  in [1/8, 1]
+      B_hat    = B / ||B||
+      G_inject_D[3] = alpha_D * tau_norm * B_hat[0] * B_hat[1]   (l21: xy)
+      G_inject_D[4] = alpha_D * tau_norm * B_hat[0] * B_hat[2]   (l31: xz)
+      G_inject_D[5] = alpha_D * tau_norm * B_hat[1] * B_hat[2]   (l32: yz)
+      G_inject_D[0:3] = 0  (diagonal log-scales: identity in EXP-401)
+
+    P_yz covariance proof:
+      B_hat[0] -> -B_hat[0] under P_yz
+      => G_D[3] -> -G_D[3]  =>  S_D[3] -> -S_D[3]  (l21 negates)  checkmark
+      => G_D[4] -> -G_D[4]  =>  S_D[4] -> -S_D[4]  (l31 negates)  checkmark
+      => G_D[5] unchanged   =>  S_D[5] unchanged    (l32 invariant) checkmark
+      => Sigma_mir = R * Sigma_fwd * R^T  QED
+
+    Returns: (G_inject_C: ndarray(4), G_inject_A: ndarray(8), G_inject_D: ndarray(6))
+    """
+    eps = 1e-15
+
+    G_C = np.zeros(4)
+    G_C[3] = alpha_leak * (mass_norm / (mass_ref + eps))
+
+    G_A = np.zeros(8)
+    G_A[0] = alpha_leak * (mass_norm / (mass_ref + eps))
+    y_val = abs(float(Z_before[5])) if Z_before is not None else 0.0
+    G_A[1] = alpha_leak * (y_val / (y_ref + eps))
+    G_A[3] = alpha_leak * beta_CA * (kappa_val / (kappa_ref + eps))
+
+    G_D = np.zeros(6)
+    if B is not None and W_max > 0:
+        B_arr = np.asarray(B, dtype=float)
+        B_norm = float(np.linalg.norm(B_arr))
+        if B_norm > eps:
+            B_hat = B_arr / B_norm
+            tau_norm = float(tau_opt) / float(W_max)
+            G_D[3] = alpha_D * tau_norm * B_hat[0] * B_hat[1]
+            G_D[4] = alpha_D * tau_norm * B_hat[0] * B_hat[2]
+            G_D[5] = alpha_D * tau_norm * B_hat[1] * B_hat[2]
+
+    return G_C, G_A, G_D
+
+
+def apply_gamma_401_recursive(
+    mu,
+    claim_id,
+    partition_key,
+    beta,
+    budget,
+    spent,
+    K_budget,
+    depth=0,
+    focal_point=None,
+    B=None,
+    beta_Z=_BETA_Z_313,
+    J_AC=None,
+    W_max=_W_MAX_314,
+    thresholds=None,
+    alpha_leak=_ALPHA_LEAK_311,
+    beta_CA=_BETA_CA_311,
+    mass_ref=_MASS_REF_311,
+    kappa_ref=_KAPPA_REF_311,
+    y_ref=_Y_REF_316_,
+    alpha_D=_ALPHA_D_401,
+):
+    """
+    Recursive EXP-401 operator.
+
+    Inherits all EXP-316 properties (3-component v_A, Zeeman K_budget, Omega_AC,
+    tau_opt in {1,2,3}). Adds Sector D covariance update:
+      S_D tracks log-Cholesky off-diagonals aligned to B_hat,
+      modulated by retarded tau_opt from previous ghost_history entry.
+
+    Fork B invariant: Sigma_mir = R * Sigma_fwd * R^T  where R = diag(-1,1,1).
+
+    Returns: (final_mu, total_cost, K_weights_step0)
+    """
+    if B is None:
+        B = np.array([1.0, 0.0, 0.0])
+
+    # Retarded tau_opt: use last recorded tau from prior ghost_history
+    gh_prev = getattr(mu, 'ghost_history', None) or []
+    gh4_prev = [h for h in gh_prev if len(h) == 4]
+    tau_opt_prev = int(gh4_prev[-1][3]) if gh4_prev else 1
+
+    # Run EXP-316 recursive (gets S_A, S_C, ghost_history with tau_opt)
+    mu_next, total_cost, K_weights = apply_gamma_316_recursive(
+        mu=mu,
+        claim_id=claim_id,
+        partition_key=partition_key,
+        beta=beta,
+        budget=budget,
+        spent=spent,
+        K_budget=K_budget,
+        depth=depth,
+        focal_point=focal_point,
+        B=B,
+        beta_Z=beta_Z,
+        J_AC=J_AC,
+        W_max=W_max,
+        thresholds=thresholds,
+        alpha_leak=alpha_leak,
+        beta_CA=beta_CA,
+        mass_ref=mass_ref,
+        kappa_ref=kappa_ref,
+        y_ref=y_ref,
+    )
+
+    # Final tau_opt from completed run
+    gh_final = getattr(mu_next, 'ghost_history', None) or []
+    gh4_final = [h for h in gh_final if len(h) == 4]
+    tau_opt_final = int(gh4_final[-1][3]) if gh4_final else 1
+
+    # Compute G_inject_D using root stalk and final tau_opt
+    Z_root = mu.claims[claim_id].stalk if claim_id in mu.claims else mu_next.Z()
+    mass_norm_root = float(np.linalg.norm(Z_root[0:4]))
+    kappa_root_val = float(Z_root[11]) if len(Z_root) > 11 else 0.0
+
+    _G_C, _G_A, G_D = _g_inject_401(
+        mass_norm=mass_norm_root,
+        kappa_val=kappa_root_val,
+        alpha_leak=alpha_leak,
+        beta_CA=beta_CA,
+        mass_ref=mass_ref,
+        kappa_ref=kappa_ref,
+        Z_before=Z_root,
+        y_ref=y_ref,
+        B=B,
+        tau_opt=tau_opt_final,
+        W_max=W_max,
+        alpha_D=alpha_D,
+    )
+
+    # EMA update for S_D
+    s_d_init = mu.S_D if (hasattr(mu, 'S_D') and mu.S_D is not None) else np.zeros(6)
+    alpha_ema = float(mu_next.alpha)
+    s_d_new = alpha_ema * s_d_init + (1.0 - alpha_ema) * G_D
+    if hasattr(mu_next, '_replace_S_D'):
+        mu_next = mu_next._replace_S_D(s_d_new)
+    else:
+        mu_next.S_D = s_d_new
+
+    return mu_next, total_cost, K_weights

@@ -1,0 +1,85 @@
+{
+  "experiment": "EXP-401",
+  "series": "400",
+  "protocol_version": "exp401-v1",
+  "inherits": "exp316-v1",
+  "description": "Anisotropic Gaussian Covariance. d=12->18 stalk extension with Sector D log-Cholesky. G_inject_D aligned to B_hat, modulated by tau_opt. Covariance tensor test: Sigma_mir = R*Sigma_fwd*R^T.",
+  "stalk_layout": {
+    "Sector_A": "[0:4]   mass, r, g, b",
+    "Sector_B": "[4:8]   x, y, z, w",
+    "Sector_C": "[8:12]  nx, ny, nz, kappa",
+    "Sector_D": "[12:18] log_l11, log_l22, log_l33, l21, l31, l32  (log-Cholesky)"
+  },
+  "Sigma_construction": "Sigma = L @ L.T where L lower-triangular with positive diagonal via exp(log_lii)",
+  "seed_stalk_d18": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.5,
+    0.5,
+    0.5,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+    2.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "G_inject_D": {
+    "formula": "G_D[3] = alpha_D * (tau_opt/W_max) * B_hat[0] * B_hat[1]  (l21: xy)",
+    "G_D_4": "G_D[4] = alpha_D * (tau_opt/W_max) * B_hat[0] * B_hat[2]  (l31: xz)",
+    "G_D_5": "G_D[5] = alpha_D * (tau_opt/W_max) * B_hat[1] * B_hat[2]  (l32: yz)",
+    "G_D_0_2": "G_D[0:3] = 0 (diagonal log-scales: identity in EXP-401)"
+  },
+  "parameters": {
+    "alpha_leak": 0.1,
+    "beta_CA": 0.3,
+    "mass_ref": 2.0,
+    "kappa_ref": 2.0,
+    "y_ref": 1.0,
+    "alpha_D": 0.05,
+    "alpha_ema": 0.85,
+    "J_AC": "eye(4)",
+    "W_max": 8,
+    "B": [
+      1.0,
+      0.5,
+      0.3
+    ],
+    "B_hat": [
+      0.86386842558136,
+      0.43193421279068,
+      0.259160527674408
+    ],
+    "beta_Z": 2.0,
+    "K_budget_root": 2048
+  },
+  "P_yz_covariance_proof": {
+    "transformation": "Sigma_mir = R * Sigma_fwd * R^T  where R = diag(-1,1,1)",
+    "NOT_invariant": "Covariance is a tensor, not a scalar. Sigma_mir != Sigma_fwd.",
+    "B_hat_0_negates": "B_hat[0] -> -B_hat[0] under P_yz (x -> -x)",
+    "G_D3_negates": "G_D[3] = ... * B_hat[0] * B_hat[1] -> -G_D[3] => S_D[3] -> -S_D[3]",
+    "G_D4_negates": "G_D[4] = ... * B_hat[0] * B_hat[2] -> -G_D[4] => S_D[4] -> -S_D[4]",
+    "G_D5_invariant": "G_D[5] = ... * B_hat[1] * B_hat[2] unchanged => S_D[5] unchanged",
+    "l21_mir": "l21_mir = -l21_fwd  (x-y off-diagonal)",
+    "l31_mir": "l31_mir = -l31_fwd  (x-z off-diagonal)",
+    "l32_mir": "l32_mir = l32_fwd   (y-z off-diagonal, no x term)",
+    "conclusion": "Sigma_mir = R * Sigma_fwd * R^T  QED"
+  },
+  "validity_predicate": "is_valid_covariance_401: no NaN/Inf in stalk[12:18], min_eigval(Sigma) > 0",
+  "tau_opt_modulation": "G_inject_D scales with tau_opt/W_max. tau_opt from EXP-316 ghost_history (range {1,2,3}). Retarded-time: tau_opt from prior ghost_history entry.",
+  "GR_backreaction_extension": {
+    "S_D": "tracks anisotropic covariance of the splat",
+    "l21_l31": "off-diagonal Cholesky: encode tilt of the Gaussian splat toward Zeeman field B_hat",
+    "tau_opt_modulation": "stronger lag (higher tau_opt) -> faster covariance alignment",
+    "physical_analog": "metric tensor perturbation delta_g_ij aligned to stress-energy flow"
+  },
+  "EXP_402_gate": "Differentiable volume rendering: compute Gaussian splat integral over bbox using Sigma from Sector D. Requires valid is_valid_covariance_401 on all leaves.",
+  "declaration_hash": "ff1fb75eb819cf1e79e778886ebfdd4291f48e3d2cc7d1dbd0630a603a124323"
+}

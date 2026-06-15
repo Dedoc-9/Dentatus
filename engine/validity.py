@@ -256,11 +256,14 @@ def is_valid_block_diagonal(mu, tol=1e-7) -> bool:
 
 def is_valid_block_diagonal_306(mu, tol=1e-7) -> bool:
     """
-    Block-diagonal restriction map predicate for EXP-306 (d=12).
-    Sector boundaries: A=[0:4], B=[4:8], C=[8:12]
+    Block-diagonal restriction map predicate for EXP-306 (d=12) / EXP-401 (d=18).
+    Sector boundaries: A=[0:4], B=[4:8], C=[8:12], D=[12:18] (EXP-401 only)
     Off-diagonal cross blocks must be near-zero.
     Also handles d=11 (delegates to is_valid_block_diagonal).
-    Skips F with shape other than (11,11) or (12,12).
+    Skips F with shape other than (11,11), (12,12), or (18,18).
+    EXP-401: Sector D (log-Cholesky) is tracked via S_D EMA, not partition-inherited.
+      Child claims have stalk[12:18]=0, so F[12:18,:] must be zero (satisfied by
+      np.zeros construction in apply_gamma_312). Block D cross-terms checked here.
     """
     from engine.state import EntailmentType
     for (src_id, tgt_id), ent in mu.entailments.items():
@@ -285,6 +288,21 @@ def is_valid_block_diagonal_306(mu, tol=1e-7) -> bool:
             if np.linalg.norm(F[4:8, 8:12]) > tol:
                 return False
             if np.linalg.norm(F[8:12, 0:8]) > tol:
+                return False
+        elif F.shape == (18, 18):
+            # EXP-401: check ABC block off-diagonals; Sector D rows/cols must be zero
+            if np.linalg.norm(F[0:4, 4:12]) > tol:
+                return False
+            if np.linalg.norm(F[4:8, 0:4]) > tol:
+                return False
+            if np.linalg.norm(F[4:8, 8:12]) > tol:
+                return False
+            if np.linalg.norm(F[8:12, 0:8]) > tol:
+                return False
+            # Sector D cross-terms (rows 12:18 touching ABC columns, and vice versa)
+            if np.linalg.norm(F[12:18, 0:12]) > tol:
+                return False
+            if np.linalg.norm(F[0:12, 12:18]) > tol:
                 return False
         # else: skip non-matching shapes
     return True
@@ -513,3 +531,59 @@ def bypass_registry_309(mu, focal_point, thresholds=None) -> dict:
         for cid, claim in mu.claims.items()
         if claim.bbox is not None
     }
+
+
+# ===========================================================================
+# EXP-401 -- Anisotropic Gaussian Covariance validity predicate
+# Sector D: stalk[12:18] = [log_l11, log_l22, log_l33, l21, l31, l32]
+# Cholesky factor L: lower-triangular, positive diagonal via exp(log_lii).
+# Positive-definiteness guaranteed by log-Cholesky construction.
+# ===========================================================================
+
+import numpy as _np401
+
+
+def cholesky_from_stalk_401(stalk):
+    """
+    Reconstruct lower-triangular Cholesky factor L from Sector D stalk[12:18].
+
+    stalk[12] = log_l11  => L[0,0] = exp(stalk[12])  (l11 > 0 always)
+    stalk[13] = log_l22  => L[1,1] = exp(stalk[13])  (l22 > 0 always)
+    stalk[14] = log_l33  => L[2,2] = exp(stalk[14])  (l33 > 0 always)
+    stalk[15] = l21      => L[1,0] = stalk[15]        (unconstrained)
+    stalk[16] = l31      => L[2,0] = stalk[16]        (unconstrained)
+    stalk[17] = l32      => L[2,1] = stalk[17]        (unconstrained)
+
+    Returns (L, Sigma) where Sigma = L @ L.T (guaranteed positive-definite).
+    """
+    s = stalk
+    L = _np401.zeros((3, 3))
+    L[0, 0] = _np401.exp(float(s[12]))
+    L[1, 1] = _np401.exp(float(s[13]))
+    L[2, 2] = _np401.exp(float(s[14]))
+    L[1, 0] = float(s[15])
+    L[2, 0] = float(s[16])
+    L[2, 1] = float(s[17])
+    Sigma = L @ L.T
+    return L, Sigma
+
+
+def is_valid_covariance_401(stalk):
+    """
+    EXP-401 validity predicate for Sector D (log-Cholesky covariance).
+
+    Checks:
+      1. stalk has at least 18 elements.
+      2. stalk[12:18] are all finite.
+      3. Sigma = L @ L.T is positive-definite (all eigenvalues > 0).
+         (Guaranteed by log-Cholesky unless diagonal entries are -inf.)
+
+    Returns bool.
+    """
+    if len(stalk) < 18:
+        return False
+    if not _np401.all(_np401.isfinite(stalk[12:18])):
+        return False
+    L, Sigma = cholesky_from_stalk_401(stalk)
+    eigvals = _np401.linalg.eigvalsh(Sigma)
+    return bool(_np401.all(eigvals > 0))

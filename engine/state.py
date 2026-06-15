@@ -161,6 +161,7 @@ class MuState:
     alpha:       float = ALPHA_DEFAULT
     S_A:         Optional[np.ndarray] = field(default=None)  # dual ghost Sector A+B dims 0-7 (EXP-306)
     S_C:         Optional[np.ndarray] = field(default=None)  # dual ghost Sector C dims 8-11 (EXP-306)
+    S_D:         Optional[np.ndarray] = field(default=None)  # dual ghost Sector D dims 12-17 log-Cholesky (EXP-401)
     _H:          Optional[str]  = field(default=None, repr=False)
     _sealed:     bool           = field(default=False, repr=False)
 
@@ -258,7 +259,10 @@ class MuState:
         if self._sealed:
             raise RuntimeError(f"State t={self.t} already sealed; H={self._H}")
         if self.S_A is not None and self.S_C is not None:
-            S_hash = np.concatenate([self.S_A, self.S_C])
+            parts = [self.S_A, self.S_C]
+            if self.S_D is not None:
+                parts.append(self.S_D)
+            S_hash = np.concatenate(parts)
         else:
             S_hash = self.S
         self._H      = _compute_H(self.Z(), S_hash, self.active, self.t)
@@ -477,6 +481,30 @@ class MuState:
         mu.seal()
         return mu
 
+    def next_S_D(self, G_inject_D: np.ndarray) -> np.ndarray:
+        """S_D_{t+1} = alpha * S_D + (1-alpha) * G_inject_D  (EXP-401 Sector D EMA).
+        G_inject_D: 6-dim log-Cholesky injection vector.
+        """
+        s = self.S_D if self.S_D is not None else np.zeros(6)
+        return self.alpha * s + (1.0 - self.alpha) * np.asarray(G_inject_D, dtype=float)
+
+    def B_D(self) -> float:
+        """B_D(t) = ||S_D|| / (||Z[12:18]|| + eps)  (EXP-401 covariance ghost ratio)."""
+        S_D = self.S_D if self.S_D is not None else np.zeros(6)
+        Z = self.Z()
+        Z_D = Z[12:18] if len(Z) >= 18 else np.zeros(6)
+        return float(np.linalg.norm(S_D) / (np.linalg.norm(Z_D) + EPSILON))
+
+    def _replace_S_D(self, s_d_new: np.ndarray) -> 'MuState':
+        """Return copy of self with S_D replaced; reseals (S_D affects H_t)."""
+        import copy as _copy
+        mu = _copy.copy(self)
+        mu.S_D     = s_d_new
+        mu._H      = None
+        mu._sealed = False
+        mu.seal()
+        return mu
+
     def _replace_focal_point(self, fp: np.ndarray) -> 'MuState':
         """Return copy of self with focal_point updated. Does not affect H_t."""
         import copy as _copy
@@ -563,37 +591,11 @@ class MuState:
             ny3 = np.array([np.sum(np.max(np.abs(ap_cp - ap_cp[i]), axis=1) <= e3[i] + 1e-15) - 1
                             for i in range(N)])
             I_joint = (_digamma(k)
-                       - float(np.mean([_digamma(nx3[i]+1)+_digamma(ny3[i]+1) for i in range(N)]))
-                       + _digamma(N))
+                    + _digamma(N) - _digamma_mean(ny1) - _digamma_mean(ny3))
+            te_vals.append(float(I_joint))
 
-            # I(c_now ; c_prev) in R^2
-            j2 = np.column_stack([c_now, c_prev])
-            e2 = _kth_eps_joint(j2)
-            nx2 = np.array([np.sum(np.abs(c_now - c_now[i]) <= e2[i] + 1e-15) - 1
-                            for i in range(N)])
-            ny2 = np.array([np.sum(np.abs(c_prev - c_prev[i]) <= e2[i] + 1e-15) - 1
-                            for i in range(N)])
-            I_cond = (_digamma(k)
-                      - float(np.mean([_digamma(nx2[i]+1)+_digamma(ny2[i]+1) for i in range(N)]))
-                      + _digamma(N))
+        if not te_vals:
+            return 0.0
+        return float(np.mean(te_vals))
 
-            return max(0.0, I_joint - I_cond)
-
-        T_ac = _ksg_te(a_seq, c_seq)
-        T_ca = _ksg_te(c_seq, a_seq)
-        if _math.isnan(T_ac) or _math.isnan(T_ca):
-            nan = float('nan')
-            return nan, nan, nan, nan
-        delta = T_ac - T_ca
-
-        # Normalization: T_norm = T_ac / H(c|c_prev)  via KSG entropy estimate
-        # H(c_now | c_prev) = H(c_now, c_prev) - H(c_prev)
-        # H_KSG(X) = -< log(n_X / (N-1)) > + log(vol_k)  [marginal KSG entropy]
-        # Approximate: use I_cond = H(c_now) - H(c_now|c_prev) -> H(c|c_prev) = H(c_now) - I_cond
-        # For normalization, use I_cond as proxy for H(c|c_prev); T_norm = T_ac / I_cond
-        T_norm = float('nan')
-        if T_ac > 1e-15:
-            # simple normalization: T_ac / (T_ac + T_ca + 1e-15)
-            T_norm = T_ac / (T_ac + T_ca + 1e-15)
-
-        return T_ac, T_ca, delta, T_norm
+    # ---- new methods for EXP-401 (S_D) added above _replace_focal_point ----
