@@ -4173,3 +4173,118 @@ def apply_gamma_405_recursive(mu, claim_id, partition_key, beta, budget, spent, 
             pass
 
     return mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D, g_A, g_D
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXP-406 — EMA-Smoothed β_Z_eff (Inertial Attention Field)
+# Gate: EXP-405 Ghost #16 — 2-period lc oscillation
+# Declaration hash: 84255beb1f11d0182a052e6d31e9c5aaa4e87c37d3d1c0a6494b56fd4ad891cf
+# ══════════════════════════════════════════════════════════════════════════════
+
+_ALPHA_BZE_406   = 0.5     # EMA smoothing on beta_Z_eff (inertial mass)
+_GAMMA_INF_A_406 = 0.5     # inherits from EXP-405
+_GAMMA_INF_D_406 = 0.5
+_TAU_WARMUP_406  = 5.0
+_BETA_Z_MIN_406  = 0.1
+_EPS_FB_406      = 1e-15
+
+def phi_fb_ema(S_A, Z_A, S_D, scene_n, bze_ema_prev,
+               beta_Z_base=_BETA_Z_313,
+               gamma_inf_A=_GAMMA_INF_A_406, gamma_inf_D=_GAMMA_INF_D_406,
+               tau_warmup=_TAU_WARMUP_406, alpha_bze=_ALPHA_BZE_406,
+               beta_Z_min=_BETA_Z_MIN_406, eps=_EPS_FB_406):
+    """EXP-406: phi_fb_adaptive + EMA smoothing on beta_Z_eff.
+
+    Inertial mass on attention field:
+        beta_raw(n) = phi_fb_adaptive(S_A, Z_A, S_D, scene_n, ...)
+        beta_Z_eff  = max(beta_Z_min, alpha_bze * bze_ema_prev + (1-alpha_bze) * beta_raw)
+
+    bze_ema_prev: primary-scalar, caller-tracked. NOT stored in MuState (dual/primary separation).
+    Cold start: bze_ema_prev = beta_Z_base (no prior state).
+
+    2-cycle damping (Ghost #16 resolution):
+        Steady-state 2-cycle {f1, f2} -> EMA 2-cycle amplitude:
+        |p - q| = |f1 - f2| * (1 - alpha_bze) / (1 + alpha_bze)
+        alpha_bze=0.5 -> reduces to 1/3 of EXP-405 amplitude.
+
+    Gravitational backreaction:
+        Omega_inertia = |beta_Z_eff - beta_raw| / beta_raw  (inertial lag observable)
+
+    Returns: (beta_Z_eff, beta_raw, B_A, B_D, gamma_eff_A, gamma_eff_D)
+    """
+    import numpy as _np406; import math as _math406
+
+    norm_Z_A = float(_np406.linalg.norm(Z_A))
+    B_A = float(_np406.linalg.norm(S_A)) / (norm_Z_A + eps)
+    B_D = float(_np406.linalg.norm(S_D)) / (norm_Z_A + eps)
+
+    n = max(0, int(scene_n))
+    ramp = 1.0 - _math406.exp(-n / float(tau_warmup)) if n > 0 else 0.0
+    g_A  = float(gamma_inf_A) * ramp
+    g_D  = float(gamma_inf_D) * ramp
+
+    beta_raw = float(max(float(beta_Z_min),
+                         float(beta_Z_base) * _math406.exp(g_A * B_A - g_D * B_D)))
+
+    # EMA smoothing: inertial mass on beta_Z_eff
+    alpha  = float(alpha_bze)
+    bze_sm = alpha * float(bze_ema_prev) + (1.0 - alpha) * beta_raw
+    beta_Z_eff = float(max(float(beta_Z_min), bze_sm))
+
+    return beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D
+
+
+def apply_gamma_406_recursive(mu, claim_id,
+        partition_key="octree_split", beta=1.0,
+        budget=1e9, spent=0.0, K_budget=2048,
+        depth=0, focal_point=None, B=None, J_AC=None, W_max=8,
+        thresholds=None, alpha_leak=0.0, beta_CA=0.0,
+        mass_ref=1.0, kappa_ref=1.0, y_ref=0.5, alpha_D=0.0,
+        beta_Z_base=_BETA_Z_313,
+        gamma_inf_A=_GAMMA_INF_A_406, gamma_inf_D=_GAMMA_INF_D_406,
+        tau_warmup=_TAU_WARMUP_406, alpha_bze=_ALPHA_BZE_406,
+        beta_Z_min=_BETA_Z_MIN_406, scene_n=0, bze_ema_prev=None):
+    """EXP-406: phi_fb_ema -> apply_gamma_401_recursive.
+
+    bze_ema_prev: primary-scalar (caller-tracked). Defaults to beta_Z_base (cold start).
+    Returns: (mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, gamma_eff_A, gamma_eff_D)
+    """
+    import numpy as _np406r
+
+    if bze_ema_prev is None:
+        bze_ema_prev = float(beta_Z_base)
+
+    S_A_prev = getattr(mu, 'S_A', None)
+    S_D_prev = getattr(mu, 'S_D', None)
+    S_A_prev = _np406r.zeros(8) if S_A_prev is None else _np406r.array(S_A_prev, dtype=float)
+    S_D_prev = _np406r.zeros(6) if S_D_prev is None else _np406r.array(S_D_prev, dtype=float)
+
+    Z_prev   = mu.Z()
+    Z_A_prev = Z_prev[0:4] if len(Z_prev) >= 4 else _np406r.zeros(4)
+
+    beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D = phi_fb_ema(
+        S_A=S_A_prev, Z_A=Z_A_prev, S_D=S_D_prev,
+        scene_n=scene_n, bze_ema_prev=bze_ema_prev,
+        beta_Z_base=beta_Z_base,
+        gamma_inf_A=gamma_inf_A, gamma_inf_D=gamma_inf_D,
+        tau_warmup=tau_warmup, alpha_bze=alpha_bze, beta_Z_min=beta_Z_min,
+    )
+
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu, claim_id=claim_id,
+        partition_key=partition_key, beta=beta,
+        budget=budget, spent=spent, K_budget=K_budget,
+        depth=depth, focal_point=focal_point, B=B,
+        beta_Z=beta_Z_eff, J_AC=J_AC, W_max=W_max,
+    )
+
+    gh = list(getattr(mu_next, 'ghost_history', None) or [])
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D

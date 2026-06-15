@@ -750,3 +750,63 @@ Options:
 - A: EMA smoothing of β_Z_eff (second-order damping breaks 2-cycle)
 - B: Larger τ_warmup (avoid bistable crossing during ramp)
 - C: Non-monotone ramp (fast to 0.3·γ_∞, plateau, then slower rise to γ_∞)
+
+---
+
+## EXP-406 — EMA-Smoothed β_Z_eff (Inertial Attention Field)
+
+**Gate:** EXP-405 Ghost #16 (2-period lc oscillation; parametric resonance τ=5 × EMA memory ~10 steps).  
+**Declaration hash:** `84255beb1f11d0182a052e6d31e9c5aaa4e87c37d3d1c0a6494b56fd4ad891cf`  
+**Files:** `studies/exp406_ema_bze/`  
+**Author:** Daniel J. Dillberg — bigdilly95@gmail.com
+
+### Operator: phi_fb_ema
+
+```
+β_raw      = max(β_Z_min, β_Z_base · exp(γ_eff_A·B_A − γ_eff_D·B_D))   [phi_fb_adaptive]
+β_Z_eff    = max(β_Z_min, α_bze · bze_ema_prev + (1−α_bze) · β_raw)     [EMA inertia]
+```
+
+`bze_ema_prev`: primary-scalar, caller-tracked (NOT in MuState dual state). Cold start = β_Z_base.  
+Parameters: `α_bze=0.5`, `γ_∞=0.5`, `τ=5.0`, `β_Z_min=0.1`.
+
+2-cycle damping: steady-state amplitude `|p−q| = |f₁−f₂|·(1−α)/(1+α) = |f₁−f₂|/3` at α=0.5.
+
+### Trajectory comparison (N=20)
+
+```
+bze_404: [2.00, 10.43, 22.88↑, 17.19, ...]  overshoot=1.33  settled n=7  (single attractor)
+bze_405: [2.00,  2.70,  4.77, ..., 21.75]   overshoot=1.00  2-cycle {71,78} lc
+bze_406: [2.00,  2.35,  3.21, ..., 17.13]   overshoot=1.033 Ghost #17 lag  (converging)
+```
+
+### Ghost #17 — EMA Lag-Overshoot
+
+EMA momentum carries β_Z_eff past the β_raw peak during declining transient.  
+`overshoot_ratio_406=1.033` (3.3%); `Ω_inertia_max=0.281` (28% peak lag).  
+Bounded well below EXP-404's 1.33. Decays as system converges.
+
+### Dev note: alpha_leak=0.0 Ghost
+
+Passing `alpha_leak=0.0` explicitly to `apply_gamma_401_recursive` suppresses S_A accumulation (boolean branch `if alpha_leak:` is False for 0.0). EXP-406 workaround: omit kwarg. Recommend audit of all EXP-4xx callers.
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp406.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp406.py`) | 5/5 | **PASS** |
+
+```
+alpha_bze=0.5  tau_warmup=5.0
+tail_range_406=9.173 < tail_range_405=14.785 (Ghost #16 damped 38%) ✓
+last5_range_406=4.217 < last5_range_405=5.830 ✓
+bze_406[-1]=17.13 ≈ bze_404*=17.19 (equilibrium near-recovered) ✓
+saturation_ratio=0.0000  overshoot=1.033  Omega_inertia_max=0.281
+P_yz: max|bze_fwd−mir|=7.11e-15 ✓
+```
+
+### EXP-407 gate
+
+**Trigger:** Ghost #17 (lag-overshoot 1.033); tail variability at N=20.  
+Options: increase α_bze (stronger inertia), adaptive α_bze schedule, or fix alpha_leak Ghost.

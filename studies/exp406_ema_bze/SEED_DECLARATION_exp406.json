@@ -1,0 +1,66 @@
+{
+  "protocol": "exp406-v1",
+  "inherits": [
+    "exp405-v1",
+    "exp404-v1",
+    "exp403-v1",
+    "exp402-v1",
+    "exp401-v1"
+  ],
+  "author": "Daniel J. Dillberg",
+  "email": "bigdilly95@gmail.com",
+  "gate": "EXP-405 Ghost #16 \u2014 2-period leaf count oscillation (parametric 2-cycle: tau_warmup=5 resonates with EMA memory ~10 steps)",
+  "description": "EMA-smoothed beta_Z_eff: inertial attention field. phi_fb_ema wraps phi_fb_adaptive output with second-order EMA damping (alpha_bze). bze_ema_prev is a primary-scalar caller-tracked (not in MuState dual state). Preserves dual/primary separation.",
+  "operator": "phi_fb_ema",
+  "parameters": {
+    "gamma_inf_A": 0.5,
+    "gamma_inf_D": 0.5,
+    "tau_warmup": 5.0,
+    "alpha_bze": 0.5,
+    "beta_Z_min": 0.1,
+    "beta_Z_base": 2.0,
+    "eps": 1e-15
+  },
+  "pipeline": "mu -> L_tau -> [phi_fb_ema(bze_ema_prev) -> B_tau] -> R_tau -> Z -> S -> W -> OBS",
+  "dual_arithmetic": {
+    "primary": [
+      "beta_Z_eff",
+      "beta_raw",
+      "bze_ema_prev",
+      "gamma_eff_A",
+      "gamma_eff_D",
+      "scene_n"
+    ],
+    "dual": [
+      "S_A",
+      "S_C",
+      "S_D",
+      "S",
+      "G_A",
+      "G_D"
+    ]
+  },
+  "observables": [
+    "B_A=||S_A||/(||Z_A||+eps)",
+    "B_D=||S_D||/(||Z_A||+eps)",
+    "beta_Z_eff",
+    "beta_raw",
+    "bze_tail_range",
+    "saturation_ratio",
+    "overshoot_ratio",
+    "inertial_lag=|beta_Z_eff - beta_raw|"
+  ],
+  "ghost_notes": {
+    "Ghost_16": "EXP-405 2-cycle: parametric resonance tau_warmup=5 with EMA memory ~10 steps -> lc oscillates {71,78}. EXP-406 alpha_bze=0.5 introduces inertial mass on beta_Z_eff.",
+    "Ghost_17_candidate": "EMA lag: bze_ema_prev < beta_raw during rising phase -> systematic under-focusing during warmup transient. Monitor inertial_lag=|beta_Z_eff - beta_raw|."
+  },
+  "assertions": {
+    "A1_cold_start": "phi_fb_ema(n=0, bze_prev=base) == base",
+    "A2_inertial_damping": "bze_406[1] < bze_404[1] (ramp suppressed by inertia)",
+    "A3_2cycle_damped": "tail_range_406 < tail_range_405 (Ghost #16 resolved)",
+    "A4_convergence": "last-5 bze_406 range < 2.0",
+    "A5_saturation": "saturation_ratio < 0.5",
+    "A6_p_invariance": "max|bze_fwd-bze_mir| < 1e-10"
+  },
+  "declaration_hash": "84255beb1f11d0182a052e6d31e9c5aaa4e87c37d3d1c0a6494b56fd4ad891cf"
+}
