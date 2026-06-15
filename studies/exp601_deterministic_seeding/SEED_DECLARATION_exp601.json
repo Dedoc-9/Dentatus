@@ -1,0 +1,45 @@
+{
+  "protocol": "exp601-v1",
+  "series": "600",
+  "inherits": "exp505-v1",
+  "title": "Deterministic Seeding -- bitwise-reproducible H_t (kill Ghost #27)",
+  "gate_source": "Series 600 API requires content-addressable bitwise-reproducible state hashes",
+  "operator": "engine.state.Claim.id (timestamp excluded from identity)",
+  "change": {
+    "scope": "engine/state.py ONLY (authorized core change); operators/validity/confluence untouched",
+    "before": "id = SHA256(provenance{parent_ids,operator_id,timestamp} + payload + t + protocol)[:16]",
+    "after": "id = SHA256({parent_ids, operator_id} + payload + t + protocol)[:16]  (timestamp excluded)",
+    "child_id": "f(parent.id, child_index): parent.id in parent_ids; child_index in operator_id 'Gamma:key:i'",
+    "isometric": "payload = coordinate-free extents hash (_bbox_hash_payload_312, P_yz-invariant since EXP-312)",
+    "audit": "timestamp retained on Provenance dataclass for audit; not part of identity"
+  },
+  "observables": {
+    "H_t_reproducible": "same SEED_DECLARATION run twice -> bit-identical (W, Z, S_A)",
+    "S_A_bitwise": "carried intra-claim ghost bit-identical across runs (Ghost #27 root cause removed)",
+    "p_yz_exact": "deterministic summation order -> P_yz deltas now exactly 0.0 (was ~1e-14)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] timestamp excluded: two Claims, same provenance content + different timestamp -> identical id",
+    "[3] child id == recomputed SHA256({parent_ids,operator_id},payload,t,protocol)[:16]",
+    "[4] bitwise H_t: same seed declaration run twice -> identical (W,Z,S_A) digest",
+    "[5] sibling distinctness: children of one parent have distinct ids (child_index in operator_id)",
+    "[6] cross-run claim-id set stable: same octree regenerated -> identical id set",
+    "[7] no regression: leaf count matches EXP-505 maintenance octree",
+    "[8] carried S_A bitwise identical across two runs (Ghost #27 killed)",
+    "[9] seed_memory_hash_504 bitwise reproducible across runs (was 6-digit-coarsened workaround)",
+    "[10] H_t sensitivity: a different SEED_DECLARATION -> different digest"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] max|B_ent_fwd - B_ent_mir| == 0 (deterministic ids -> exact P_yz)",
+    "[3] max|lambda_2_fwd - lambda_2_mir| == 0",
+    "[4] claim-id set cardinality fwd == mir (structural correspondence under reflection)",
+    "[5] deterministic ids preserve P_yz at machine precision (<= 1e-14; observed 0.0)"
+  ],
+  "exp602_gate": {
+    "trigger": "bitwise H_t enables content-addressed reality store",
+    "target": "L2 semantic compiler determinism end-to-end (intent -> H_verified bit-stable)"
+  },
+  "declaration_hash": "f352e458d1e252f4af0fc555e8a76b4bfe7f7182c96d521d95341cfdf36d26fc"
+}

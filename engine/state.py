@@ -80,8 +80,19 @@ class Claim:
     K_bound: int = field(init=False)
 
     def __post_init__(self):
+        # EXP-601 deterministic seeding (Ghost #27): the claim id is a deterministic
+        # function of provenance.parent_ids (contains parent.id) + operator_id (encodes the
+        # child_index, e.g. "Gamma:octree_split:3") + payload + t + protocol. The wall-clock
+        # timestamp is EXCLUDED from the id hash so that the same SEED_DECLARATION yields
+        # bit-identical ids and H_t across runs. payload is the coordinate-free extents hash
+        # (_bbox_hash_payload_312, P_yz-invariant since EXP-312) -> isometric-aware id.
+        # timestamp is retained on Provenance for audit but is not part of identity.
+        prov_id = {
+            "parent_ids":  list(self.provenance.parent_ids),
+            "operator_id": self.provenance.operator_id,
+        }
         raw = json.dumps({
-            "provenance":       self.provenance.to_dict(),
+            "provenance":       prov_id,
             "payload":          self.payload,
             "t":                self.t,
             "protocol_version": PROTOCOL_VERSION,

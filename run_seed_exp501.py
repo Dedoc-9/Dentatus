@@ -128,8 +128,11 @@ for n in range(N_STEPS):
                   for cid in mu.active}
     bboxes_n   = {cid: mu.claims[cid].bbox for cid in mu.active}
 
-    # Reinitialize S_ent for new active set (cold reset each step per EXP-501 scope)
-    S_ent_prev_n = {cid: S_ent_prev.get(cid, 0.0) for cid in mu.active}
+    # Reinitialize S_ent for new active set (cold reset each step per EXP-501 scope).
+    # EXP-601 note: with deterministic Claim ids the octree keeps identical ids across steps,
+    # so .get(cid,0.0) would now CARRY S_ent (the old timestamp-churn cold-reset was accidental).
+    # EXP-501 scope is explicit cold-start reset, so force 0.0 each step.
+    S_ent_prev_n = {cid: 0.0 for cid in mu.active}
 
     G_ent_pc, S_ent_out, B_ent, N_edges, lam2, edges = phi_ent_observe(
         Z_claims_n, bboxes_n, S_ent_prev_n, alpha_ent=_ALPHA_ENT_501)

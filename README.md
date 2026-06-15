@@ -1,11 +1,11 @@
-# Reality Engine — Series 300–500 (Dentatus)
+# Reality Engine — Series 300–600 (Dentatus)
 
 Generative reality engine implementing a cellular sheaf state machine over a claim DAG.
 State evolution is governed by a fixed operator pipeline with immutable hash-indexed states,
 dual ghost channels, and preregistered validity predicates.
 
-**Author**: Daniel J. Dillberg — bigdilly95@gmail.com  
-**License**: GNU Affero General Public License v3.0 — see `AGPL-3.0`
+**Primary architect**: Daniel J. Dillberg — bigdilly95@gmail.com  
+**License**: core under GNU Affero General Public License v3.0 (sole copyright ⇒ dual-licensing available) — see `AGPL-3.0`, `DEV_NOTES_clean_room.md`
 
 ---
 
@@ -151,6 +151,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-503 | Spectral manifold feedback Phi_fb_manifold; β_Z_eff=f(B_A,B_D,B_ent_spectral); bounded Ω_ent_sp; Ghost #25 | `16f3e47232a3a84e` | **open** |
 | EXP-504 | Stateful Seed; temporal manifold smoothing; persist_scene_504; S_ent/B_ent_spectral memory; healing curve; Ghost #26/#27 | `93201baeac72aac9` | **open** |
 | EXP-505 | Persistent world-state across moving claims; motion-compensated world frame; track correspondence DAG; Ghost #28 | `6885720d383ca775` | **open** |
+| EXP-601 | Deterministic seeding; Claim.id timestamp-excluded; bitwise-reproducible H_t (Ghost #27 killed); P_yz exact | `f352e458d1e252f4` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -512,9 +513,39 @@ degree-normalized median ≈ 0.52; firewall ε_manifold = 0.8 (≈1.5× margin, 
 EXP-503 spectral feedback is scaffolded (`spectral_ent_project`, `build_L_sheaf_503`,
 observation-only): Fiedler modes [0.316, 0.808, 0.940], B_ent_spectral(k=3) ≈ 0.125.
 
-Fork results: EXP-501 A 10/10 · B 5/5 — EXP-502 A 10/10 · B 5/5 — EXP-503 A 10/10 · B 5/5 — EXP-504 A 10/10 · B 5/5 — EXP-505 A 10/10 · B 5/5 (P_yz δ ≤ 8.9e-15; EXP-505 exact 0.0).
+Fork results: EXP-501 A 10/10 · B 5/5 — EXP-502 A 10/10 · B 5/5 — EXP-503 A 10/10 · B 5/5 — EXP-504 A 10/10 · B 5/5 — EXP-505 A 10/10 · B 5/5 — EXP-601 A 10/10 · B 5/5 (P_yz δ ≤ 8.9e-15; EXP-505/601 exact 0.0).
 
 EXP-503 wires the spectral scaffold into the Zeeman field: `β_Z_eff = f(B_A, B_D, B_ent_spectral)` with a bounded restoring term `Ω_ent_sp = B_ent_spectral/(1+B_ent_spectral) ∈ [0,1)`, gated to the maintenance phase so the EXP-409 discovery latch stays byte-identical (Ghost #25 — manifold-induced latch evasion). EXP-504 lands the Stateful Seed: `SeedMemory` persists `{S_A,S_C,S_D, S_ent(spatial-keyed), bze_ema, maint_latched, B_ent_spectral}` across scene resets via the stateless `persist_scene_504`. A tectonic tear now **heals** on a geometric curve (excess decays ∝ α_persist=0.5 per scene) instead of being forgotten — temporal manifold smoothing (Ghost #26 lifted). The structural index `H_seed` is norm-based (Ghost #27: claim-id-order fp noise) and P_yz-invariant. EXP-505 lands moving-claim persistence: claims are re-referenced to a motion-compensated world frame (`estimate_global_motion_505` + `world_frame_key_505`), and a hash-indexed correspondence DAG (`track_correspondence_505`) links tracks across scenes. Under rigid world drift, localized `S_ent` memory and tear-healing follow moving claims (continuity 0→1 vs absolute keys); `H_dag` is P_yz-invariant. EXP-506 target: non-rigid / independent per-claim motion via nearest-neighbor association (Ghost #29).
+
+**Series 500 mechanisms (verified).** Sheaf Coboundary δ₀ (`G_ent = F_ij·stalk_j − stalk_i`)
+over face-adjacent octree leaves; the Sector D **XOR Sign Rule** (`l_pq` flips iff face axis ∈
+{p,q}) as the covariance-ellipsoid *Zusammenhang*; the **Manifold Firewall** `is_manifold_501`
+(ε = 0.8) as the elastic-limit validity gate; the Fiedler value λ₂ as algebraic-connectivity /
+fault-line observable. Series 500 is closed through EXP-505.
+
+---
+
+## Series-600 status (Interface & Agency — OPEN)
+
+The engine core (`engine/`) is frozen and treated as an immutable, black-box Physics Oracle.
+Series 600 builds the LLM-pilotable interface **above** it without modifying it.
+
+| Component | Role | Status |
+|-----------|------|--------|
+| EXP-601 | Deterministic seeding — `Claim.id` timestamp-excluded; bitwise-reproducible `H_t` (Ghost #27 killed); P_yz exact 0.0 | landed ✓ |
+| `dentatus.core` | Frozen oracle facade — the single deterministic import path over `engine/` | landed ✓ |
+| `dentatus.semantic` (L2) | Semantic Compiler — physical-property intent → SEED_DECLARATION; **invertible log-Cholesky** (Σ ↔ Sector D, round-trip 8.9e-16) | landed ✓ |
+| `dentatus.api` (L1) | Stateless Reality API — intent/DAG → observables + **firewall-gated verified hash** (`H_verified` only when `is_manifold_501` passes) | landed ✓ |
+| `dentatus_service.py` | Process-boundary handshake (stdio JSON) — license firewall for proprietary game layers | landed ✓ |
+
+**The Clean Room Protocol.** Every game lives in a decoupled `game/` layer that reaches the core
+*only* through the `dentatus.*` handshake (Intent JSON in, Verified State Hash out). No game
+semantics enter the engine; no stalk/operator detail leaks upward. The boundary is enforced
+programmatically (`game/tests/test_clean_room.py` forbids `import engine` under `game/`) and at
+the license level (AGPL-3.0 core; proprietary games via process boundary or commercial dual
+license). See `DEV_NOTES_clean_room.md` and `studies/series600_interface_agency/ROADMAP_series600.md`.
+
+EXP-602 target: end-to-end semantic-compiler determinism (intent → bit-stable `H_verified`).
 
 ---
 
