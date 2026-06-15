@@ -49,6 +49,7 @@ Cross-stage mutation outside the defined mapping is forbidden.
 | `apply_gamma_315` / `_recursive` | EXP-315 | Dual G_inject_A: mass-norm→S_A[0], kappa→S_A[3]; primary arccos path |
 | `apply_gamma_316` / `_recursive` | EXP-316 | 3-component G_inject_A: adds y-agg→S_A[1]; τ_opt range {1,2,3}; Series 300 final |
 | `apply_gamma_401` / `_recursive` | EXP-401 | d=18 stalk; log-Cholesky Σ (S_D); G_inject_D ∝ B̂⊗B̂·τ_norm; Σ_mir=R·Σ_fwd·Rᵀ |
+| `apply_gamma_402` / `_recursive` + `phi_fb` | EXP-402 | Ghost-Zeeman homeostasis; β_Z_eff=max(β_min, β_base·(1+γ_A·B_A−γ_D·B_D)); B_A=B_D equilibrium |
 
 ### Stalk schema — d=12
 
@@ -106,8 +107,13 @@ Dual arithmetic (forward Z space vs dual S/G space) is never collapsed.
 
 EXP-401 adds `S_D` (Sector D dual, d=6) tracking log-Cholesky covariance off-diagonals:
 ```
-B_D(t) = ‖S_D‖ / (‖Z_D‖ + ε)          sector D covariance ghost ratio
+B_D(t) = ‖S_D‖ / (‖Z_A‖ + ε)          sector D covariance ghost ratio (Z_A denom; Ghost #10)
 ```
+EXP-402 adds `Phi_fb` (declared operator between Z and Bτ):
+```
+β_Z_eff(t) = max(β_min, β_base·(1 + γ_A·B_A(t−1) − γ_D·B_D(t−1)))
+```
+Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field strength.
 
 ---
 
@@ -132,6 +138,8 @@ B_D(t) = ‖S_D‖ / (‖Z_D‖ + ε)          sector D covariance ghost ratio
 | EXP-315 | Dual G_inject_A; primary arccos path active; τ_opt varies with mass/kappa | `e16dd1a01735bc1d` | closed |
 | EXP-316 | 3-component G_inject_A; y-agg→S_A[1]; τ_opt range {1,2,3}; Series 300 final | `522ca73148485fdc` | **closed** |
 | EXP-401 | d=18 stalk; log-Cholesky Σ via S_D; G_inject_D ∝ B̂⊗B̂·τ_norm; Σ_mir=R·Σ_fwd·Rᵀ | `ff1fb75eb819cf1e` | **open** |
+| EXP-402 | Phi_fb dual pullback; β_Z_eff=max(β_min,β_base·(1+γ_A·B_A−γ_D·B_D)); B_A/B_D equilibrium | `d933ad3ba860b601` | **open** |
+| EXP-403 | Sequential scene refinement; EMA warmup across N=20 scenes; β_Z_eff* convergence; saturation gate | `b2cfdf2e16e1617e` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -407,8 +415,16 @@ claims that do not undergo full partition — they are accepted as-is into the a
 # Dependencies
 pip install numpy scipy
 
-# EXP-401 (current — Series 400 Exp 1)
-python run_seed_exp401.py        # Fork A: 10/10 PASS
+# EXP-403 (current — Series 400 Exp 3)
+python run_seed_exp403.py          # Fork A: 10/10 PASS
+python run_p_invariance_exp403.py  # Fork B: 5/5 PASS
+
+# EXP-402 (Series 400 Exp 2)
+python run_seed_exp402.py          # Fork A: 10/10 PASS
+python run_p_invariance_exp402.py  # Fork B: 5/5 PASS
+
+# EXP-401 (Series 400 Exp 1)
+python run_seed_exp401.py          # Fork A: 10/10 PASS
 python run_p_invariance_exp401.py  # Fork B: 10/10 PASS
 
 # EXP-316 (Series 300 final)
@@ -524,12 +540,79 @@ Extended to handle 18×18 F matrices: ABC cross-blocks + Sector D cross-terms mu
 Edit tool truncated after replacement boundary. Fixed via Python append script targeting
 the truncation marker; forced recompile with `py_compile.compile()`.
 
-### EXP-402 gate — Ghost-Zeeman homeostasis
+### EXP-402 gate — COMPLETE
+
+EXP-402 implemented and verified. See EXP-402 section below.
+---
+
+## EXP-402 — Ghost-Zeeman Homeostasis (Series 400 Exp 2)
+
+**Status: open** | declaration_hash: `d933ad3ba860b601137cf7159b2485b2e86e1fc12b8939bce9bc1a08c3678407`
+
+### Operator Phi_fb
+
+Stateless operator inserted between Z-computation and Bτ (Zeeman weights).
 
 ```
-β_Z_eff(t) = β_Z_base · (1 + γ_fb · B_A(t−1))
-B_A(t−1)   = ‖S_A(t−1)‖ / (‖Z_A(t−1)‖ + ε)
+Phi_fb: (S_A_prev, Z_A_prev, S_D_prev, params) → β_Z_eff  (scalar)
+
+B_A = ‖S_A‖ / (‖Z_A‖ + ε)                  [precession ghost ratio]
+B_D = ‖S_D‖ / (‖Z_A‖ + ε)                  [covariance ghost ratio; Z_A denom]
+β_Z_eff = max(β_Z_min, β_Z_base · (1 + γ_A·B_A − γ_D·B_D))
 ```
-Operator Φ_fb: declared I/O `(S_A_prev, Z_A_prev, β_Z_base, γ_fb) → β_Z_eff`.
-P_yz-invariant. Uses S (EMA), not G. Stability: γ_fb ∈ (0, 2.0), β_Z_base=2.0.
-Extension: `β_Z_eff_D(t) = β_Z_base·(1 + γ_fb_D·B_D(t−1))` using Sector D ghost ratio.
+
+Parameters (locked): `β_Z_base=2.0`, `γ_A=0.5`, `γ_D=0.5`, `β_Z_min=0.5`.
+
+### Homeostatic balance
+
+B_A ("desire") and B_D ("cost") form a push-pull pair:
+- B_A > B_D → β_Z_eff > β_Z_base → tighter Zeeman → more focused partitioning → reduces B_A
+- B_D > B_A → β_Z_eff < β_Z_base → looser Zeeman → more diffuse partitioning → reduces B_D
+
+Equilibrium: B_A* = B_D* (equal ghost ratios). At γ_A = γ_D = 0.5:
+engine "inhales" when scene is simple, "exhales" when covariance stress is high.
+
+**Ghost #10 prevention:** `Z_D = stalk[12:18] = 0` in all partition children.
+Using ε alone gives B_D = ‖S_D‖/ε → ∞ at t=1. Fix: B_D uses ‖Z_A‖ denominator.
+B_D ∈ [0, 1) at seed depth; homeostasis arms after EMA warmup (S_A, S_D ≠ 0).
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp402.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp402.py`) | 5/5 | **PASS** |
+
+```
+phi_fb(B_A active): β_Z_eff = 2.057879  (amplification ✓)
+phi_fb(B_D active): β_Z_eff = 1.942121  (pullback ✓)
+beta_Z_eff P_yz-invariant: delta = 0.00e+00  (Fork B ✓)
+EXP-401 regression: 92 leaves at feedback-off ✓
+```
+
+### EXP-403 gate — COMPLETE
+
+EXP-403 implemented and verified.
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp403.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp403.py`) | 5/5 | **PASS** |
+
+```
+β_Z_eff trajectory (N=20): 2.000 → 5.303 → 7.139 → 6.813 → ... → 6.809 (converged)
+B_A*=4.811  B_D*=0.0013  Ω_fb(∞)=2.405  (240% backreaction)
+leaf_count: 92 (cold) → 113 (n=1) → 106 (n≥2, stable)
+Ghost #11: np.array copy on S_A/S_D inheritance ✓
+Ghost #12: n=0 cold start, n≥1 inherits terminal EMA ✓
+Ghost #13: B_A>>B_D scene-structural; equilibrium=EMA channel stability ✓
+Saturation gate: forced (S_D_init=[2]*6, γ_D=2.0) → sat_ratio=0.60 ✓
+P_yz: max|β_Z_eff_fwd−mir|=2.66e-15 ✓
+```
+
+### EXP-404 gate
+
+Trigger: `saturation_ratio > 0.5` in production.
+Proposed: `β_Z_eff_exp = β_Z_base · exp(γ_A·B_A − γ_D·B_D)` — always positive; fixed point β_Z_base when γ_A=γ_D and B_A=B_D; linearises to EXP-402 for small ghost ratios.

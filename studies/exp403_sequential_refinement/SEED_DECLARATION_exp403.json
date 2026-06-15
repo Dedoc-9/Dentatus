@@ -1,0 +1,79 @@
+{
+  "experiment": "EXP-403",
+  "title": "Sequential Scene Refinement \u2014 EMA Warmup and Homeostatic Convergence",
+  "protocol_version": "exp403-v1",
+  "inherits": [
+    "exp402-v1",
+    "exp401-v1",
+    "exp313-v1"
+  ],
+  "author": "Daniel J. Dillberg \u2014 bigdilly95@gmail.com",
+  "date": "2026-06-14",
+  "operator_pipeline": "mu -> L\u03c4 -> [Phi_fb -> B\u03c4] -> R\u03c4 -> Z -> S -> W -> OBS",
+  "phi_fb_insertion": "Phi_fb reads (S_A_{n-1}, S_D_{n-1}) from prior SCENE terminal state, not prior depth",
+  "experiment_design": {
+    "N_steps": 20,
+    "scene_type": "fixed_stalk_new_root_claim",
+    "inheritance": "S_A, S_C, S_D, S carried forward from terminal mu of step n-1 to initial mu of step n",
+    "stalk": "d=18, Sector A=mass/r/g/b, B=x/y/z/w, C=nx/ny/nz/kappa, D=log_l11/log_l22/log_l33/l21/l31/l32",
+    "phi_fb_params": {
+      "beta_Z_base": 2.0,
+      "gamma_fb_A": 0.5,
+      "gamma_fb_D": 0.5,
+      "beta_Z_min": 0.5,
+      "eps": 1e-15
+    }
+  },
+  "equilibrium_analysis": {
+    "symmetric_condition": "gamma_A == gamma_D => B_A*(inf) == B_D*(inf)",
+    "beta_Z_equilibrium": "beta_Z_eff(inf) = beta_Z_base * (1 + (gamma_A - gamma_D) * B*)",
+    "symmetric_result": "at gamma_A == gamma_D: beta_Z_eff(inf) = beta_Z_base (returns to base)",
+    "convergence_observable": "|B_A(n) - B_D(n)| -> 0 as n -> N",
+    "gravitational_backreaction": "S_A/S_D modify effective Zeeman field beta_Z_eff (background), quantified by Omega_fb(n) = |beta_Z_eff(n) - beta_Z_base| / beta_Z_base"
+  },
+  "saturation_gate": {
+    "definition": "saturation_ratio = steps_with_beta_Z_eff_at_min / N_steps",
+    "gate_threshold": 0.5,
+    "trigger_action": "if saturation_ratio > 0.5: log EXP-404 trigger (exponential phi_fb)",
+    "exp404_formula": "beta_Z_eff_exp = beta_Z_base * exp(gamma_A*B_A - gamma_D*B_D)",
+    "exp404_properties": "always positive; equilibrium at exp(0)=1 fixed point when gamma_A==gamma_D",
+    "saturation_test": "secondary test with gamma_A=0, gamma_D=2.0 forces saturation; verifies gate fires"
+  },
+  "ghost_notes": {
+    "Ghost_11": "S_A/S_D inheritance across top-level calls requires explicit copy; mu init must use np.array(S_A_prev) to avoid aliasing between steps",
+    "Ghost_12": "phi_fb at step n=0 must use inherited S_A/S_D from prior terminal state (not zero); zero-init breaks EMA continuity across scenes"
+  },
+  "assertions": {
+    "fork_A_count": 10,
+    "fork_A": [
+      "declaration_hash verified",
+      "beta_Z_eff(n=0) == beta_Z_base when S_A=S_D=0 (cold start, step 0)",
+      "beta_Z_eff deviates from beta_Z_base for n >= 1 (EMA warmed)",
+      "all beta_Z_eff(n) >= beta_Z_min for all n (clamp invariant)",
+      "|beta_Z_eff_trajectory| non-trivial: max-min > 0 over N steps",
+      "leaf_count(n) == 92 for all n (regression EXP-401)",
+      "|B_A(final) - B_D(final)| < 0.5 (homeostasis converging)",
+      "saturation_ratio in [0.0, 1.0] (bounded)",
+      "saturation_ratio < 0.5 for standard params (EXP-404 gate NOT triggered)",
+      "forced_saturation_test: gamma_D=2.0 -> saturation_ratio >= 0.5 (EXP-404 gate fires)"
+    ],
+    "fork_B_count": 5,
+    "fork_B": [
+      "declaration_hash verified",
+      "beta_Z_eff_fwd(n) == beta_Z_eff_mir(n) for all n (phi_fb P_yz-invariant across warmup)",
+      "B_A_fwd(n) == B_A_mir(n) for all n (S_A P_yz-invariant)",
+      "B_D_fwd(n) == B_D_mir(n) for all n (S_D P_yz-invariant)",
+      "leaf_count_fwd(n) == leaf_count_mir(n) for all n (expansion P_yz-symmetric)"
+    ]
+  },
+  "forbidden_operators": [
+    "ghost_direct_control",
+    "stalk_collapse",
+    "retroactive_confluence_cert",
+    "budget_retroactive_adjustment",
+    "validity_predicate_shift",
+    "post_hoc_rewrite_rule_addition"
+  ],
+  "exp404_gate": "EXP-404: if saturation_ratio > 0.5 in production: replace linear phi_fb with exponential phi_fb_exp",
+  "declaration_hash": "b2cfdf2e16e1617e464aca7a9e773f1de2b74f507b48c821f818f1ddb438b626"
+}
