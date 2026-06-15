@@ -45,6 +45,7 @@ Cross-stage mutation outside the defined mapping is forbidden.
 | `apply_gamma_312` / `_recursive` | EXP-312 | extents payload + uniform Sector A split; full P_yz symmetry |
 | `apply_gamma_313` / `_recursive` | EXP-313 | Zeeman K_bound: softmax-weighted child budgets; P_yz-covariant |
 | `apply_gamma_314` / `_recursive` | EXP-314 | Hyperfine ghost: Ω_AC inter-channel precession angle; τ_opt lag |
+| `apply_gamma_315` / `_recursive` | EXP-315 | Dual G_inject_A: mass-norm→S_A[0], kappa→S_A[3]; primary arccos path |
 
 ### Stalk schema — d=12
 
@@ -105,7 +106,8 @@ Dual arithmetic (forward Z space vs dual S/G space) is never collapsed.
 | EXP-311 | G_inject auxiliary residual; dual EMA activation; single-step P_yz | `10659ed4d37c027a` | closed |
 | EXP-312 | Asymmetry Debt closure; full multi-step P_yz invariance | `2e6ccdc20da7aefb` | closed |
 | EXP-313 | Zeeman K_bound; anisotropic budget via softmax field alignment | `2431d09f38554a9b` | closed |
-| EXP-314 | Hyperfine ghost; Ω_AC precession angle; architecture-driven τ_opt | `5ca52bef5d2a5080` | **closed** |
+| EXP-314 | Hyperfine ghost; Ω_AC precession angle; architecture-driven τ_opt | `5ca52bef5d2a5080` | closed |
+| EXP-315 | Dual G_inject_A; primary arccos path active; τ_opt varies with mass/kappa | `e16dd1a01735bc1d` | **closed** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -143,6 +145,62 @@ norm(S_A):  1.49806877 = 1.49806877
 
 Fork A (`run_seed_exp312.py`): 8/8 PASS
 Fork B (`run_p_invariance_exp312.py`): 10/10 PASS
+
+---
+
+## EXP-315 — Dual G_inject_A Activation
+
+**Goal:** activate the primary Ω_AC arccos path by routing two physically distinct quantities into orthogonal dims of `S_A[0:4]`. Closes ghost #6 degeneracy from EXP-314.
+
+**Injection change (EXP-315 vs EXP-314):**
+
+```
+EXP-311/312/313/314:
+  G_inject_A[7] = alpha_leak * beta_CA * (kappa / kappa_ref)   [sole channel]
+
+EXP-315:
+  G_inject_A[0] = alpha_leak * (mass_norm / mass_ref)          [mass-norm coupling, dim 0]
+  G_inject_A[3] = alpha_leak * beta_CA * (kappa / kappa_ref)   [kappa coupling, dim 3]
+  G_inject_C[3] = alpha_leak * (mass_norm / mass_ref)          [unchanged]
+```
+
+**Omega_AC mechanics:**
+
+After EMA from zero: `S_A[0:4] ≈ [S_A0, 0, 0, S_A3]` with `S_C ≈ [0, 0, 0, S_C3]`.
+
+```
+v_A = J_AC @ S_A[0:4] = [S_A0, 0, 0, S_A3]
+
+cos(Ω_AC) = S_A3 / sqrt(S_A0² + S_A3²)
+Ω_AC      = arctan(S_A0 / S_A3)
+           = arctan(mass_norm / (beta_CA · kappa))
+```
+
+Primary arccos path active: `‖v_A‖ = sqrt(S_A0² + S_A3²) ~ 6.17 >> 1e-6`. Fallback never triggers.
+
+**Analytical prediction (step 1):**
+
+```
+G_inject_A[0] / G_inject_A[3] = (mass_norm/mass_ref) / (beta_CA * kappa/kappa_ref)
+For seed stalk: mass_norm=2.0, kappa=2.0, beta_CA=0.3
+  ratio = 1/(0.3) = 3.33  →  Ω_AC = arctan(3.33) = 1.28 rad (73.3°)
+As tree deepens, kappa grows (more leaves) → ratio → 0 → Ω_AC → 0 → τ_opt → 1
+```
+
+**Results:**
+
+```
+‖v_A‖ = 6.170405 >> 1e-6  (primary arccos path confirmed)
+Ω_AC step 1 = 1.2793 rad   (matches analytical prediction)
+Ω_AC final  = 0.0086 rad   (kappa-dominated at depth)
+τ_opt varies: {1, 3}        (non-constant across 13 partition steps)
+Ω_AC_fwd == Ω_AC_mir  (delta = 1.84e-12)
+Full trace: tau_mismatches = 0/13,  max_omega_delta = 2.45e-12
+fwd_leaves == mir_leaves == 92
+```
+
+Fork A (`run_seed_exp315.py`): 8/8 PASS
+Fork B (`run_p_invariance_exp315.py`): 10/10 PASS
 
 ---
 
@@ -251,7 +309,11 @@ Fork B (`run_p_invariance_exp314.py`): 9/9 PASS
 # Dependencies
 pip install numpy scipy
 
-# EXP-314 (current)
+# EXP-315 (current)
+python run_seed_exp315.py
+python run_p_invariance_exp315.py
+
+# EXP-314
 python run_seed_exp314.py
 python run_p_invariance_exp314.py
 
@@ -317,17 +379,24 @@ verified numerically). Child processing is sorted by descending Zeeman weight �
 `Z_before[11]` (kappa aggregate) is identical at each corresponding step in fwd/mir, keeping
 `G_inject_A` accumulation P_yz-invariant across the full recursive traversal.
 
-### Hyperfine inter-channel coupling (ghost #6 — EXP-314)
+### Hyperfine inter-channel coupling (ghost #6 — EXP-314/315)
 
-`Ω_AC` is the first INTER-channel observable. Prior observables (`B_A`, `B_C`) measured each
-channel independently. `Ω_AC` measures the precession angle between S_A and S_C in the dual space.
+`Ω_AC` is the first INTER-channel observable. `B_A`, `B_C` measured each channel independently;
+`Ω_AC` measures the precession angle between S_A and S_C in the dual space.
 
-Implementation detail: under the current G_inject architecture (`G_inject_A[7]`, `G_inject_C[3]`,
-lossless partition → `G_A = 0`), the primary arccos path degenerates because `S_A[0:4] = 0` in
-exact arithmetic. The numeric guard (`‖v_A‖ < 1e-6`) switches to the norm-ratio fallback:
-`Ω_AC = 2·arctan2(‖S_C‖, ‖S_A‖)`. This is P_yz-invariant and provides a meaningful lag selection
-(`τ_opt = max(1, round(Ω_AC/π·W_max))`) for EXP-401. The primary path will activate automatically
-when `G_inject_A` is re-targeted to dims in `S_A[0:4]`.
+**EXP-314 (degenerate):** with `G_inject_A[7]` as the sole injection channel, `S_A[0:4] = 0`
+in exact arithmetic (lossless partition → `G_A = 0`). The primary arccos path degraded to 0/0
+resolved by floating-point noise. A numeric fallback (`Ω_AC = 2·arctan2(‖S_C‖, ‖S_A‖)`) provided
+P_yz-invariant τ_opt = 1 but with no variation.
+
+**EXP-315 (resolved):** dual injection `G_inject_A[0] = f(mass_norm)` and `G_inject_A[3] = f(kappa)`
+gives `S_A[0:4] ≈ [S_A0, 0, 0, S_A3]` with `‖v_A‖ ~ 6.17 >> 1e-6`. Primary arccos path active.
+`Ω_AC = arctan(mass_norm / (beta_CA · kappa))` — measures mass/curvature balance at each tree depth.
+`τ_opt ∈ {1, 3}` across partition steps; fully P_yz-invariant (trace delta < 2.5e-12).
+
+The `g_inject_fn` parameter in `apply_gamma_312` / `apply_gamma_313` / `apply_gamma_314` /
+`apply_gamma_314_recursive` passes through the injection override. Default (`g_inject_fn=None`)
+preserves all EXP-311/312/313/314 behavior exactly (backward-compatible).
 
 ### LOD_RELAXED validity class propagation
 
@@ -364,9 +433,14 @@ Post-execution rule addition is forbidden. All predicates must be declared and l
 
 ## Series-300 closure / EXP-401 gate
 
-Series-300 is **closed** as of EXP-314. The asymmetry debt is paid in full (EXP-312). Zeeman
-structural anisotropy is P_yz-covariant (EXP-313). Architecture-driven lag selection via `τ_opt`
-is operational (EXP-314).
+Series-300 is **closed** as of EXP-315. All prerequisites for EXP-401 satisfied:
+
+| Requirement | Status |
+|-------------|--------|
+| P_yz multi-step invariance (fwd=mir=92, delta=0) | EXP-312 ✓ |
+| Zeeman K_bound P_yz-covariant | EXP-313 ✓ |
+| Ω_AC observable + τ_opt derived | EXP-314 ✓ |
+| Primary arccos path active; τ_opt varies with depth | EXP-315 ✓ |
 
 EXP-401 prerequisites (anisotropic splatting / differentiable volume clusters):
 
@@ -374,5 +448,6 @@ EXP-401 prerequisites (anisotropic splatting / differentiable volume clusters):
 - New validity predicate: `is_valid_covariance_401` — positive-definite Σ on new dims
 - `apply_gamma_401` must extend the block-diagonal F to the new covariance block
 - P_yz must extend: covariance Σ transforms as `Σ' = R·Σ·Rᵀ` where R=diag(-1,1,1)
-- Lag window `τ_opt` from EXP-314 drives anisotropic covariance alignment (no grid search)
-- Consider re-targeting `G_inject_A` to dims in `S_A[0:4]` to activate the primary Ω_AC path
+- Per-node `τ_opt` from EXP-315 drives anisotropic covariance alignment (no grid search)
+- **Optional EXP-316:** inject `G_inject_A[1] = f(Z_before[5])` (y-norm, P_yz-invariant) → full
+  3-component `v_A` → 4D angular resolution of ghost precession beyond the planar EXP-315 angle

@@ -1,0 +1,87 @@
+{
+  "protocol_version": "exp315-v1",
+  "inherits": "exp314-v1",
+  "description": "Dual G_inject_A activation: mass-norm coupling in dim 0, kappa coupling in dim 3. Activates primary Omega_AC arccos path.",
+  "stalk_dims": 12,
+  "partition_key": "octree_split",
+  "g_inject": {
+    "G_inject_A_dim_0": "alpha_leak * (||Z_before[0:4]|| / mass_ref)",
+    "G_inject_A_dim_3": "alpha_leak * beta_CA * (Z_before[11] / kappa_ref)",
+    "G_inject_A_dim_7": "0.0  [disabled in EXP-315; was EXP-311/312/313/314 sole channel]",
+    "G_inject_C_dim_3": "alpha_leak * (||Z_before[0:4]|| / mass_ref)  [unchanged]",
+    "rationale": "Orthogonal injection: dim 0 = mass-geometry rate, dim 3 = kappa rate. v_A = J_AC @ S_A[0:4] acquires signal in dims 0 and 3. cos(Omega_AC) = S_A[3] / sqrt(S_A[0]^2 + S_A[3]^2) = f(mass_norm/kappa ratio)."
+  },
+  "omega_ac": {
+    "formula": "arccos(clip((J_AC @ S_A[0:4]) . S_C / (||J_AC @ S_A[0:4]|| * ||S_C|| + eps), -1, 1))",
+    "path": "primary (||v_A|| >= NUMERIC_FLOOR = 1e-6 guaranteed by dual G_inject)",
+    "fallback": "2 * arctan2(||S_C||, ||S_A||)  [not expected to activate with dual G_inject]"
+  },
+  "tau_opt": "max(1, round(Omega_AC / pi * W_max))",
+  "parameters": {
+    "alpha_leak": 0.1,
+    "beta_CA": 0.3,
+    "mass_ref": 2.0,
+    "kappa_ref": 2.0,
+    "alpha_ema": 0.85,
+    "J_AC": [
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "W_max": 8,
+    "B": [
+      1.0,
+      0.5,
+      0.3
+    ],
+    "beta_Z": 2.0,
+    "K_budget_root": 2048,
+    "LAMBDA_DECAY": 0.1,
+    "NUMERIC_FLOOR": 1e-06
+  },
+  "p_yz_invariance": {
+    "G_inject_A_dim_0": "||Z_before[0:4]|| = ||sum(Sector A stalks)|| -- P_yz-invariant (Sector A dims unchanged under x-reflection)",
+    "G_inject_A_dim_3": "Z_before[11] = kappa (extents-based) -- P_yz-invariant (EXP-312)",
+    "G_inject_C_dim_3": "||Z_before[0:4]|| -- P_yz-invariant (same as above)",
+    "S_A_0_and_3": "Both accumulate P_yz-invariant quantities -> S_A[0], S_A[3] P_yz-invariant",
+    "v_A": "J_AC @ S_A[0:4] = S_A[0:4]; S_A[0] and S_A[3] invariant, S_A[1]/S_A[2] ~ 0",
+    "Omega_AC": "cos(Omega_AC) = S_A[3] / ||v_A|| -> P_yz-invariant QED",
+    "tau_opt": "deterministic function of Omega_AC -> P_yz-invariant QED"
+  },
+  "expected_behavior": {
+    "Omega_AC_range": "[arctan(mass_norm/(beta_CA*kappa_val)), pi/2]  (varies with kappa)",
+    "tau_opt_range": "non-constant across partition depth (varies with kappa aggregate)",
+    "primary_path": "active (||v_A|| ~ sqrt(S_A[0]^2 + S_A[3]^2) >> 1e-6)",
+    "fallback_path": "not activated"
+  },
+  "forbidden": [
+    "ghost_direct_control",
+    "stalk_collapse",
+    "retroactive_confluence_cert",
+    "budget_retroactive_adjustment",
+    "validity_predicate_shift",
+    "post_hoc_rewrite_rule_addition"
+  ],
+  "declaration_hash": "e16dd1a01735bc1d6a97100daf2bfb3dfd172e2853b5875a875ccc54ea5933b0"
+}
