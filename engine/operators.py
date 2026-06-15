@@ -4416,3 +4416,127 @@ def apply_gamma_407_recursive(mu, claim_id,
             pass
 
     return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXP-408 — Ascending α_bze Schedule: Bootstrap to Maintenance
+# phi_fb_ascending_ema + apply_gamma_408_recursive
+# alpha_eff(n) = alpha_max - (alpha_max - alpha_min)*exp(-n/tau_alpha)  [ramps UP]
+# tau_alpha=2.0 DECOUPLED from tau_warmup=5.0: maintenance lock precedes bistable
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_ALPHA_MIN_408   = 0.2     # cold: loose (fast bootstrap); α < α_crit safe for n<2.2 (raw≈base)
+_ALPHA_MAX_408   = 0.9     # warm: tight (maintenance lock); 2-cycle ratio=(0.1/1.9)=0.053
+_TAU_ALPHA_408   = 2.0     # fast lock: α crosses α_crit at n≈2.2 < n_bistable≈4
+_GAMMA_INF_A_408 = 0.5
+_GAMMA_INF_D_408 = 0.5
+_TAU_WARMUP_408  = 5.0
+_BETA_Z_MIN_408  = 0.1
+_EPS_FB_408      = 1e-15
+
+
+def phi_fb_ascending_ema(S_A, Z_A, S_D, scene_n, bze_ema_prev,
+                         beta_Z_base=_BETA_Z_313,
+                         gamma_inf_A=_GAMMA_INF_A_408, gamma_inf_D=_GAMMA_INF_D_408,
+                         tau_warmup=_TAU_WARMUP_408,
+                         alpha_min=_ALPHA_MIN_408, alpha_max=_ALPHA_MAX_408,
+                         tau_alpha=_TAU_ALPHA_408,
+                         beta_Z_min=_BETA_Z_MIN_408, eps=_EPS_FB_408):
+    """
+    EXP-408: Ascending alpha schedule — loose during discovery, tight during maintenance.
+
+    alpha_eff(n) = alpha_max - (alpha_max - alpha_min)*exp(-n/tau_alpha)  [ramps UP]
+    gamma_eff(n) = gamma_inf * (1 - exp(-n/tau_warmup))                   [ramps UP]
+
+    tau_alpha=2.0 < tau_warmup=5.0: alpha locks above alpha_crit=0.667 at n≈2.2,
+    before bistable region activates at n≈4 (beta_raw > 7).
+
+    Ghost #19 candidate: alpha < alpha_crit for n < 2.2. Safe: beta_raw ≈ beta_Z_base
+    at these steps (gamma_eff≈0, no bistable risk).
+
+    Dual arithmetic: B_A, B_D from dual norms; alpha_eff, bze_ema_prev in primary space.
+    """
+    import numpy as np
+    n = scene_n
+    # Norms — P_yz-invariant
+    norm_SA = np.linalg.norm(S_A)
+    norm_ZA = np.linalg.norm(Z_A)
+    norm_SD = np.linalg.norm(S_D)
+    B_A = norm_SA / (norm_ZA + eps)
+    B_D = norm_SD / (norm_ZA + eps)
+    # Gamma ramp UP (inherits EXP-405 schedule)
+    ramp = (1.0 - np.exp(-n / tau_warmup)) if n > 0 else 0.0
+    g_A = gamma_inf_A * ramp
+    g_D = gamma_inf_D * ramp
+    # Raw signal (primary space)
+    import math
+    beta_raw = max(beta_Z_min, beta_Z_base * math.exp(g_A * B_A - g_D * B_D))
+    # Alpha ramp UP: loose -> tight
+    alpha_eff = alpha_max - (alpha_max - alpha_min) * math.exp(-n / tau_alpha)
+    # EMA with ascending alpha (primary scalar)
+    beta_Z_eff = max(beta_Z_min, alpha_eff * bze_ema_prev + (1.0 - alpha_eff) * beta_raw)
+    return beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff
+
+
+def apply_gamma_408_recursive(mu, claim_id,
+                              partition_key="octree_split",
+                              beta=1.0, budget=1e9, spent=0.0,
+                              K_budget=2048, depth=0,
+                              focal_point=None,
+                              B=None, J_AC=None, W_max=8,
+                              beta_Z_base=_BETA_Z_313,
+                              gamma_inf_A=_GAMMA_INF_A_408, gamma_inf_D=_GAMMA_INF_D_408,
+                              tau_warmup=_TAU_WARMUP_408,
+                              alpha_min=_ALPHA_MIN_408, alpha_max=_ALPHA_MAX_408,
+                              tau_alpha=_TAU_ALPHA_408,
+                              beta_Z_min=_BETA_Z_MIN_408,
+                              scene_n=0, bze_ema_prev=None):
+    """
+    EXP-408 recursive operator. Calls phi_fb_ascending_ema then apply_gamma_401_recursive.
+    bze_ema_prev: caller-tracked primary scalar (cold start = beta_Z_base).
+    Returns: (mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff)
+    """
+    import numpy as np
+    if bze_ema_prev is None:
+        bze_ema_prev = beta_Z_base
+
+    # Read dual state (method call — NOT getattr)
+    Z_prev = mu.Z()
+    Z_A = Z_prev[:4] if len(Z_prev) >= 4 else Z_prev
+    S_A = np.array(mu.S_A) if hasattr(mu, 'S_A') else np.zeros(8)
+    S_D = np.array(mu.S_D) if hasattr(mu, 'S_D') else np.zeros(6)
+
+    beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff = phi_fb_ascending_ema(
+        S_A, Z_A, S_D, scene_n, bze_ema_prev,
+        beta_Z_base=beta_Z_base,
+        gamma_inf_A=gamma_inf_A, gamma_inf_D=gamma_inf_D,
+        tau_warmup=tau_warmup,
+        alpha_min=alpha_min, alpha_max=alpha_max,
+        tau_alpha=tau_alpha,
+        beta_Z_min=beta_Z_min,
+    )
+
+    # Forward pass — NO alpha_leak kwarg (Ghost #15 prevention)
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu, claim_id=claim_id,
+        partition_key=partition_key,
+        beta=beta, budget=budget, spent=spent,
+        K_budget=K_budget, depth=depth,
+        focal_point=focal_point,
+        B=B, J_AC=J_AC, W_max=W_max,
+        beta_Z=beta_Z_eff,
+    )
+
+    # Ghost history annotation (non-blocking)
+    try:
+        gh = list(getattr(mu_next, 'ghost_history', []) or [])
+    except Exception:
+        gh = []
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return mu_next, total_cost, K_weights, beta_Z_eff, beta_raw, B_A, B_D, g_A, g_D, alpha_eff

@@ -1,0 +1,49 @@
+{
+  "experiment_id": "EXP-408",
+  "protocol_version": "exp408-v1",
+  "parent_protocol": "exp407-v1",
+  "title": "Ascending alpha_bze Schedule \u2014 Bootstrap to Maintenance",
+  "gate_source": "EXP-407: bze_407[-1]=11.18 < bze_406[-1]=17.13 (convergence lag from alpha_min=0.7 floor)",
+  "hypothesis": "Ascending alpha [loose->tight]: alpha_eff(n)=alpha_max-(alpha_max-alpha_min)*exp(-n/tau_alpha). Fast bootstrap gives bze_408[-1] > bze_407[-1]=11.18; alpha_max=0.9 at equilibrium gives tail_range_408 < tail_range_406=9.17.",
+  "operator": "phi_fb_ascending_ema",
+  "parameters": {
+    "alpha_min": 0.2,
+    "alpha_max": 0.9,
+    "tau_alpha": 2.0,
+    "gamma_inf_A": 0.5,
+    "gamma_inf_D": 0.5,
+    "tau_warmup": 5.0,
+    "beta_Z_base": 2.0,
+    "beta_Z_min": 0.1,
+    "eps": 1e-15
+  },
+  "timescale_decoupling": {
+    "tau_alpha": 2.0,
+    "tau_warmup": 5.0,
+    "note": "tau_alpha < tau_warmup: inertia locks BEFORE gamma reaches bistable range"
+  },
+  "safety_constraint": {
+    "alpha_crit": 0.6667,
+    "n_bistable_approx": 4,
+    "alpha_at_n4": 0.806,
+    "n_alpha_cross_crit": 2.2,
+    "safety_margin_steps": 1.8,
+    "condition": "n_cross < n_bistable => alpha > alpha_crit before 2-cycle risk"
+  },
+  "ghost_candidates": {
+    "Ghost_19": "Subcritical alpha during warmup (n < 2.20, alpha < alpha_crit=0.667). Safe: beta_raw approx beta_Z_base at these steps (bistable not active). Distinct from Ghost #18 (subcritical AT equilibrium)."
+  },
+  "assertions_Fork_A": [
+    "[1] declaration_hash",
+    "[2] cold start: bze=base; alpha_eff(0)=alpha_min",
+    "[3] n=1: bze_408 > bze_407 (bootstrap more responsive)",
+    "[4] n=100: alpha_eff -> alpha_max (maintenance lock)",
+    "[5] bze_408[-1] > bze_407[-1]=11.18 (faster convergence)",
+    "[6] tail_range_408 < tail_range_406=9.17 (2-cycle suppressed by alpha_max=0.9)",
+    "[7] lc_408_tail bounded [30,200]",
+    "[8] saturation_ratio_408 < 0.5",
+    "[9] overshoot_408 < overshoot_404=1.33",
+    "[10] gradient monotone"
+  ],
+  "declaration_hash": "d1945e6736a284a33cf648ac0d7d06491e0bea704bd6fa69ca7beac277562055"
+}
