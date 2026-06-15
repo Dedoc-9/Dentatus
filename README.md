@@ -140,6 +140,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-401 | d=18 stalk; log-Cholesky Σ via S_D; G_inject_D ∝ B̂⊗B̂·τ_norm; Σ_mir=R·Σ_fwd·Rᵀ | `ff1fb75eb819cf1e` | **open** |
 | EXP-402 | Phi_fb dual pullback; β_Z_eff=max(β_min,β_base·(1+γ_A·B_A−γ_D·B_D)); B_A/B_D equilibrium | `d933ad3ba860b601` | **open** |
 | EXP-403 | Sequential scene refinement; EMA warmup across N=20 scenes; β_Z_eff* convergence; saturation gate | `b2cfdf2e16e1617e` | **open** |
+| EXP-404 | Exponential phi_fb; saturation_ratio 0.60→0.20; β_Z_eff*=17.19; Ω_fb=760%; Ghost #14/#15 | `e7447ec6a65022a2` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -415,7 +416,11 @@ claims that do not undergo full partition — they are accepted as-is into the a
 # Dependencies
 pip install numpy scipy
 
-# EXP-403 (current — Series 400 Exp 3)
+# EXP-404 (current — Series 400 Exp 4)
+python run_seed_exp404.py          # Fork A: 10/10 PASS
+python run_p_invariance_exp404.py  # Fork B: 5/5 PASS
+
+# EXP-403 (Series 400 Exp 3)
 python run_seed_exp403.py          # Fork A: 10/10 PASS
 python run_p_invariance_exp403.py  # Fork B: 5/5 PASS
 
@@ -612,7 +617,61 @@ Saturation gate: forced (S_D_init=[2]*6, γ_D=2.0) → sat_ratio=0.60 ✓
 P_yz: max|β_Z_eff_fwd−mir|=2.66e-15 ✓
 ```
 
-### EXP-404 gate
+### EXP-404 gate — COMPLETE
 
-Trigger: `saturation_ratio > 0.5` in production.
-Proposed: `β_Z_eff_exp = β_Z_base · exp(γ_A·B_A − γ_D·B_D)` — always positive; fixed point β_Z_base when γ_A=γ_D and B_A=B_D; linearises to EXP-402 for small ghost ratios.
+EXP-404 implemented and verified.
+
+---
+
+## EXP-404 — Exponential Phi_fb (Series 400 Exp 4)
+
+**Status: open** | declaration_hash: `e7447ec6a65022a25d426a8f0b796ef18292d6cf3f85047c2239b004d225e67c`
+
+**Gate:** EXP-403 Fork A [10] forced sat_ratio=0.60 > 0.50
+
+### Operator phi_fb_exp
+
+```
+β_Z_eff = max(β_Z_min_exp, β_Z_base · exp(γ_A·B_A − γ_D·B_D))
+β_Z_min_exp = 0.1   (vs linear β_Z_min = 0.5)
+```
+
+Properties: always positive; fixed point β_Z_base at γ_A·B_A=γ_D·B_D; linearises to EXP-402 for |x|≪1.
+
+### Saturation comparison (forced: γ_A=0, γ_D=2.0, S_D=[2]×6)
+
+| Operator | sat_ratio | resolved? |
+|---|---|---|
+| EXP-402 linear | 0.60 | no (gate source) |
+| EXP-404 exponential | 0.20 | **yes** ✓ |
+
+### Ghost #14 — Exponential amplification
+
+B_A*=4.81 (scene-structural) → `exp(0.5×4.81)=11.07 → β_Z_eff*=17.19` (vs EXP-402: 6.81).
+Leaf count drops 106→71 (stronger Zeeman → tighter budget → fewer but more focused leaves).
+Ω_fb=760% backreaction (vs 240% linear).
+
+### Ghost #15 — Transient overshoot
+
+β_Z_eff trajectory: [2.00, 10.43, 12.64, 15.13, **22.88**, 17.38, 17.19, ...]
+Peak at n=4 (33% overshoot before settling). EXP-405 gate: if overshoot_ratio > 1.5.
+
+### Verified results
+
+| Fork | Assertions | Result |
+|------|-----------|--------|
+| Fork A (`run_seed_exp404.py`) | 10/10 | **PASS** |
+| Fork B (`run_p_invariance_exp404.py`) | 5/5 | **PASS** |
+
+```
+phi_fb_exp neutral=2.000; floor=0.100; linearisation err=6.26e-6 ✓
+sat_ratio_404=0.20 < sat_ratio_402=0.60 (gate resolved ✓)
+bze*=17.19  leaf*=71  Omega_fb=7.60 (760%)
+overshoot_ratio=1.33 (EXP-405 gate inactive)
+P_yz: max|bze_fwd−mir|=2.13e-14 ✓
+```
+
+### EXP-405 gate
+
+Trigger: `overshoot_ratio = max(β_Z_eff) / β_Z_eff* > 1.5` (currently 1.33, inactive).
+Options: damped exponential, adaptive γ schedule, or second-order EMA smoothing of β_Z_eff.

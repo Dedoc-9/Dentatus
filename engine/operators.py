@@ -3967,3 +3967,105 @@ def apply_gamma_402_recursive(
             pass
 
     return mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D
+
+
+# =============================================================================
+# EXP-404 — Exponential Phi_fb (Saturation Resolution)
+# Gate trigger: saturation_ratio > 0.5 (EXP-403 Fork A [10])
+# beta_Z_eff_exp = max(beta_Z_min_exp, beta_Z_base * exp(gamma_A*B_A - gamma_D*B_D))
+# Properties: always positive; fixed point at beta_Z_base; linearises to EXP-402 for |x|<<1
+# Ghost #14: exp amplification with B_A>>B_D gives ~22x beta_Z vs base; monitor leaf_count.
+# declaration_hash: e7447ec6a65022a25d426a8f0b796ef18292d6cf3f85047c2239b004d225e67c
+# =============================================================================
+
+_GAMMA_FB_A_404  = 0.5
+_GAMMA_FB_D_404  = 0.5
+_BETA_Z_MIN_404  = 0.1    # lower floor: exp always positive; 2x more headroom than linear
+_EPS_FB_404      = 1e-15
+
+
+def phi_fb_exp(S_A, Z_A, S_D,
+               beta_Z_base=_BETA_Z_313,
+               gamma_fb_A=_GAMMA_FB_A_404,
+               gamma_fb_D=_GAMMA_FB_D_404,
+               beta_Z_min=_BETA_Z_MIN_404,
+               eps=_EPS_FB_404):
+    """Exponential Ghost-Zeeman feedback operator (EXP-404).
+
+    beta_Z_eff = max(beta_Z_min, beta_Z_base * exp(gamma_A * B_A - gamma_D * B_D))
+
+    B_A = norm(S_A) / (norm(Z_A) + eps)   [precession ghost ratio]
+    B_D = norm(S_D) / (norm(Z_A) + eps)   [covariance ghost ratio; Z_A denom]
+
+    Fixed point: gamma_A * B_A == gamma_D * B_D -> beta_Z_eff == beta_Z_base.
+    Linearisation: exp(x) ~ 1+x for |x|<<1 -> reduces to EXP-402 phi_fb.
+    Saturation floor raised: exp floor at ln(beta_Z_base/beta_Z_min)=ln(20)~3.0
+      vs linear floor at (1 - beta_Z_min/beta_Z_base)/gamma_D = 1.5/gamma_D.
+
+    Ghost #14: with B_A>>B_D (scene-structural), exp(gamma_A*B_A) amplifies
+    exponentially. B_A*=4.81 -> exp(0.5*4.81)=11.07 -> beta_Z_eff*~22.
+    """
+    import numpy as _np404
+    import math as _math404
+    S_A_arr = _np404.asarray(S_A, dtype=float)
+    Z_A_arr = _np404.asarray(Z_A, dtype=float)
+    S_D_arr = _np404.asarray(S_D, dtype=float) if S_D is not None else _np404.zeros(6)
+    norm_Z_A = float(_np404.linalg.norm(Z_A_arr))
+    B_A = float(_np404.linalg.norm(S_A_arr)) / (norm_Z_A + eps)
+    B_D = float(_np404.linalg.norm(S_D_arr)) / (norm_Z_A + eps)
+    exponent = float(gamma_fb_A) * B_A - float(gamma_fb_D) * B_D
+    beta_raw  = float(beta_Z_base) * _math404.exp(exponent)
+    return float(max(float(beta_Z_min), beta_raw)), B_A, B_D
+
+
+def apply_gamma_404_recursive(mu, claim_id, partition_key, beta, budget, spent, K_budget,
+        depth=0, focal_point=None, B=None, beta_Z_base=_BETA_Z_313, J_AC=None,
+        W_max=_W_MAX_314, thresholds=None, alpha_leak=_ALPHA_LEAK_311, beta_CA=_BETA_CA_311,
+        mass_ref=_MASS_REF_311, kappa_ref=_KAPPA_REF_311, y_ref=_Y_REF_316_,
+        alpha_D=_ALPHA_D_401,
+        gamma_fb_A=_GAMMA_FB_A_404, gamma_fb_D=_GAMMA_FB_D_404,
+        beta_Z_min=_BETA_Z_MIN_404):
+    """EXP-404: wrap apply_gamma_401_recursive with exponential Phi_fb.
+
+    Operator pipeline position: Phi_fb_exp inserted between Z-read and Bτ.
+    Reads (S_A_prev, Z_A_prev, S_D_prev) from mu BEFORE partition.
+    Passes beta_Z_eff_exp to apply_gamma_401_recursive as beta_Z parameter.
+
+    Returns: (mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D)
+    """
+    import numpy as _np404r
+    # Phi_fb_exp: read prior state BEFORE partition
+    S_A_prev = mu.S_A if (hasattr(mu, 'S_A') and mu.S_A is not None) else _np404r.zeros(8)
+    S_D_prev = mu.S_D if (hasattr(mu, 'S_D') and mu.S_D is not None) else _np404r.zeros(6)
+    Z_prev   = mu.Z()
+    Z_A_prev = Z_prev[0:4] if len(Z_prev) >= 4 else _np404r.zeros(4)
+
+    beta_Z_eff, B_A, B_D = phi_fb_exp(
+        S_A=S_A_prev, Z_A=Z_A_prev, S_D=S_D_prev,
+        beta_Z_base=beta_Z_base,
+        gamma_fb_A=gamma_fb_A,
+        gamma_fb_D=gamma_fb_D,
+        beta_Z_min=beta_Z_min,
+    )
+
+    mu_next, total_cost, K_weights = apply_gamma_401_recursive(
+        mu=mu, claim_id=claim_id,
+        partition_key=partition_key, beta=beta,
+        budget=budget, spent=spent, K_budget=K_budget,
+        depth=depth, focal_point=focal_point, B=B,
+        beta_Z=beta_Z_eff, J_AC=J_AC, W_max=W_max,
+        thresholds=thresholds, alpha_leak=alpha_leak, beta_CA=beta_CA,
+        mass_ref=mass_ref, kappa_ref=kappa_ref, y_ref=y_ref, alpha_D=alpha_D,
+    )
+
+    # Annotate ghost_history 4-tuple -> 7-tuple with (beta_Z_eff, B_A, B_D)
+    gh = list(getattr(mu_next, 'ghost_history', None) or [])
+    if gh and len(gh[-1]) == 4:
+        last = gh[-1]
+        gh[-1] = (last[0], last[1], last[2], last[3], beta_Z_eff, B_A, B_D)
+        try:
+            mu_next.ghost_history = gh
+        except AttributeError:
+            pass
+
+    return mu_next, total_cost, K_weights, beta_Z_eff, B_A, B_D

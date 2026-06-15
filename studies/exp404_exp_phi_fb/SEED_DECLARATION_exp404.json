@@ -1,0 +1,84 @@
+{
+  "experiment": "EXP-404",
+  "title": "Exponential Phi_fb \u2014 Ghost-Zeeman Homeostasis (Saturation Resolution)",
+  "protocol_version": "exp404-v1",
+  "inherits": [
+    "exp403-v1",
+    "exp402-v1",
+    "exp401-v1"
+  ],
+  "author": "Daniel J. Dillberg \u2014 bigdilly95@gmail.com",
+  "date": "2026-06-14",
+  "gate_condition": "saturation_ratio = count(beta_Z_eff == beta_Z_min) / N_steps > 0.50",
+  "gate_source": "EXP-403 Fork A [10]: forced (gamma_D=2.0, S_D=[2]*6) -> sat_ratio=0.60",
+  "operator": {
+    "name": "phi_fb_exp",
+    "formula": "beta_Z_eff = max(beta_Z_min_exp, beta_Z_base * exp(gamma_A * B_A - gamma_D * B_D))",
+    "B_A": "norm(S_A) / (norm(Z_A) + eps)",
+    "B_D": "norm(S_D) / (norm(Z_A) + eps)",
+    "properties": [
+      "always positive: exp(x) > 0 for all x in R",
+      "fixed point: beta_Z_base * exp(0) = beta_Z_base when gamma_A*B_A == gamma_D*B_D",
+      "linearisation: exp(x) ~ 1+x for |x|<<1 -> reduces to EXP-402 linear form",
+      "no saturation at positive floor: max clamp redundant but retained for numerical safety",
+      "gradient dBeta/dB_A = beta_Z_base * gamma_A * exp(...) > 0 (amplification monotone)",
+      "gradient dBeta/dB_D = -beta_Z_base * gamma_D * exp(...) < 0 (pullback monotone)"
+    ]
+  },
+  "parameters": {
+    "gamma_fb_A": 0.5,
+    "gamma_fb_D": 0.5,
+    "beta_Z_min_exp": 0.1,
+    "beta_Z_base": 2.0,
+    "eps": 1e-15
+  },
+  "equilibrium_analysis": {
+    "fixed_point": "gamma_A * B_A* = gamma_D * B_D* -> beta_Z_eff* = beta_Z_base",
+    "symmetric_case": "gamma_A == gamma_D -> fixed point at B_A* == B_D*",
+    "asymmetric_case": "gamma_A != gamma_D -> fixed point at gamma_A*B_A* == gamma_D*B_D*",
+    "EXP402_vs_EXP404_linearisation": "for |gamma_A*B_A - gamma_D*B_D| < 0.1, phi_fb_exp ~ phi_fb to O(x^2)"
+  },
+  "saturation_comparison": {
+    "linear_floor": "beta_Z_min = 0.5 (EXP-402)",
+    "exp_floor": "beta_Z_min_exp = 0.1 (EXP-404)",
+    "linear_saturation_threshold": "B_D - B_A > 1.5 / gamma_D (with gamma_A=gamma_D)",
+    "exp_saturation_threshold": "none (exp always > 0; floor hit only if beta_Z_base * exp(...) < 0.1)",
+    "exp_floor_threshold": "gamma_D*B_D - gamma_A*B_A > ln(beta_Z_base / beta_Z_min_exp) = ln(20) ~ 3.0",
+    "improvement": "saturation threshold moves from 1.5 (linear) to 3.0 (exp) -> 2x headroom"
+  },
+  "ghost_notes": {
+    "Ghost_14": "phi_fb_exp overcorrection risk: with B_A>>B_D (scene-structural), exp(gamma_A*B_A) grows exponentially. For B_A=4.81: exp(0.5*4.81)=exp(2.405)=11.07 -> beta_Z_eff=2.0*11.07=22.1. This is a 10x amplification vs EXP-402 6.8. Monitor leaf_count growth under exponential regime."
+  },
+  "assertions": {
+    "fork_A_count": 10,
+    "fork_A": [
+      "declaration_hash verified",
+      "phi_fb_exp(B_A=0, B_D=0) == beta_Z_base (neutral: exp(0)=1)",
+      "phi_fb_exp(B_A>0, B_D=0) > beta_Z_base (amplification)",
+      "phi_fb_exp(B_A=0, B_D>0) < beta_Z_base and > 0 (pullback, no negative)",
+      "phi_fb_exp always >= beta_Z_min_exp (floor holds)",
+      "phi_fb_exp linearisation: |phi_fb_exp - phi_fb| < 0.01 for |x| < 0.05 (small ghost regime)",
+      "EXP-401 regression: 92 leaves at cold start (beta_Z_eff = beta_Z_base)",
+      "sequential N=20: saturation_ratio_exp < saturation_ratio_linear for forced params (gamma_D=2.0, S_D=[2]*6)",
+      "sequential N=20 standard: beta_Z_eff* > beta_Z_base (B_A>>B_D amplifies more under exp)",
+      "gradient check: phi_fb_exp monotone in B_A (increasing) and B_D (decreasing)"
+    ],
+    "fork_B_count": 5,
+    "fork_B": [
+      "declaration_hash verified",
+      "phi_fb_exp P_yz-invariant: beta_Z_eff_fwd(n) == beta_Z_eff_mir(n) for N=20 sequential",
+      "B_A_fwd(n) == B_A_mir(n) for all n",
+      "B_D_fwd(n) == B_D_mir(n) for all n",
+      "leaf_count_fwd(n) == leaf_count_mir(n) for all n"
+    ]
+  },
+  "forbidden_operators": [
+    "ghost_direct_control",
+    "stalk_collapse",
+    "retroactive_confluence_cert",
+    "budget_retroactive_adjustment",
+    "validity_predicate_shift",
+    "post_hoc_rewrite_rule_addition"
+  ],
+  "declaration_hash": "e7447ec6a65022a25d426a8f0b796ef18292d6cf3f85047c2239b004d225e67c"
+}
