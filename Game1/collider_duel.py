@@ -25,6 +25,7 @@ module adds the three things that make it a GAME, all enforced server-authoritat
     python3 collider_duel.py     # open  http://localhost:8782/?player=A   and   /?player=B
 """
 import os, sys, json, time, math, threading, hashlib
+from collections import deque
 if os.environ.get("PYTHONHASHSEED") != "0":
     os.environ["PYTHONHASHSEED"] = "0"; os.execv(sys.executable, [sys.executable] + sys.argv)
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -56,6 +57,7 @@ ANNEAL_GAIN = 1.0
 REBASE_WINDOW = 3
 MOVE_SPEED = 0.55              # tiles per /move pulse (body drift)
 BREACH_SHIELD = 0.18          # shield (local cover fraction) at/below which the firewall breaches the combatant
+BOT_B_DEFAULT = os.environ.get("DENTATUS_BOT_B", "0") == "1"   # scripted server-side opponent (iteration lab)
 PORT = int(os.environ.get("DUEL_PORT", "8782"))
 SERVER_SECRET = os.environ.get("DENTATUS_SERVER_SECRET", "DEV_INSECURE_KEY").encode()
 
@@ -86,7 +88,9 @@ class Duel:
         self.clamps = active_clamps()                   # EXP-530.L licensed guards {name:(field,pred,enf)}
         self.nonces = NonceChain(os.environ.get("DENTATUS_SESSION", "duel-default"))
         self.last_valid_H = self.world_H()
-        self.last = "DUEL ONLINE · 48 tiles · A vs B"
+        self.tick_ms = deque(maxlen=300)               # frame-time profiler (the empirical instrument)
+        self.bot_b = BOT_B_DEFAULT
+        self.last = "DUEL ONLINE · 48 tiles · A vs B" + (" · BOT_B" if BOT_B_DEFAULT else "")
 
     # ---- geometry / material (mirrors collider_arena, verified) ----
     def chi(self, t): return float(core.material_compliance_chi_514(stalk=t["stalk"])["chi"])
@@ -209,7 +213,9 @@ class Duel:
     # ---- the Truth Tick ----
     def tick(self):
         with self.lock:
+            _t0 = time.perf_counter()
             self.frame += 1
+            if self.bot_b: self._bot_step()           # authoritative B policy enqueues its intents this tick
             pend = self.pending; self.pending = []
             bysec = {}
             for it in pend:
@@ -221,6 +227,51 @@ class Duel:
             if bysec or self.frame % 8 == 0:
                 self.signs = self._fiedler()
             self._evaluate_breach()
+            self.tick_ms.append((time.perf_counter() - _t0) * 1000.0)
+
+    def _bot_step(self):
+        # Deterministic server-side B policy (state -> intents). Runs inside the locked tick; appends to
+        # self.pending exactly like a human combatant, so EXP-520 replay reproduces the round bit-for-bit.
+        B = self.players["B"]
+        if not B["alive"] or self.round["over"] or (self.frame % 2): return
+        bx, by = B["pos"]; ax, ay = self.players["A"]["pos"]; B["aim"] = [ax, ay]
+        sh = self._shield("B")
+        if sh < 0.45:                                  # REBUILD: anneal nearest local fluid back to cover
+            cand = sorted((t for t in self.tiles if math.hypot(t["gx"] - bx, t["gy"] - by) <= FOCUS_R
+                           and self.phase_of(self.chi(t)) == "fluid"), key=lambda t: math.hypot(t["gx"] - bx, t["gy"] - by))
+            for t in cand[:2]:
+                self.pending.append({"player": "B", "kind": "anneal", "section": t["id"], "wi": 0.0,
+                                     "synced": False, "gs": {"bot": 1}, "recv": self.frame})
+            self.last = "BOT B · REBUILD shield %.0f%%" % (100 * sh); return
+        dx, dy = ax - bx, ay - by; n = math.hypot(dx, dy) or 1.0   # ADVANCE toward A (push the bubble)
+        if n > 2.0:
+            B["pos"][0] = min(GX - 0.5, max(-0.5, bx + dx / n * MOVE_SPEED * 0.6))
+            B["pos"][1] = min(GY - 0.5, max(-0.5, by + dy / n * MOVE_SPEED * 0.6))
+        los = self._los_pair()
+        if not los["clear"] and los["block"] is not None:          # DRILL the wall blocking the lane
+            self.pending.append({"player": "B", "kind": "shear", "section": los["block"], "wi": 0.10,
+                                 "synced": False, "gs": {"bot": 1}, "recv": self.frame})
+            self.last = "BOT B · DRILL tile %d" % los["block"]; return
+        cov = sorted((t for t in self.tiles if math.hypot(t["gx"] - ax, t["gy"] - ay) <= FOCUS_R
+                      and self.phase_of(self.chi(t)) in ("solid", "glass")), key=lambda t: math.hypot(t["gx"] - ax, t["gy"] - ay))
+        for t in cov:                                              # ASSAULT A's cover (a tile B can see)
+            blk, _b = self._los_blocked(B["pos"], t["id"])
+            if not blk:
+                self.pending.append({"player": "B", "kind": "shear", "section": t["id"], "wi": 0.10,
+                                     "synced": False, "gs": {"bot": 1}, "recv": self.frame})
+                self.last = "BOT B · ASSAULT tile %d" % t["id"]; break
+
+    def profile(self):
+        a = sorted(self.tick_ms)
+        if not a: return {"n": 0}
+        n = len(a)
+        return {"n": n, "mean_ms": round(sum(a) / n, 3), "p50_ms": round(a[n // 2], 3),
+                "p95_ms": round(a[min(n - 1, int(0.95 * n))], 3), "max_ms": round(a[-1], 3),
+                "headroom_hz": round(1000.0 / max(a[-1], 1e-3), 0), "tick_budget_ms": round(1000.0 / TICK_HZ, 1)}
+
+    def set_bot(self, on):
+        with self.lock:
+            self.bot_b = bool(on); return {"ok": True, "bot_b": self.bot_b}
 
     def _evaluate_breach(self):
         if self.round["over"]: return
@@ -323,6 +374,7 @@ class Duel:
                     "resolutions": self.resolutions[-6:], "H_verified": self.world_H(),
                     "pulse_ph": round(ph, 4), "pulse_val": round(pv, 4),
                     "red": int(red), "blue": int(blue), "los_AB": self._los_pair(),
+                    "tick_ms": self.profile(), "bot_b": self.bot_b,
                     "event": self.last, "bpm": SEED["bpm"], "seed": SEED["hash"]}
 
 
@@ -369,6 +421,7 @@ class H(BaseHTTPRequestHandler):
         if path == "/move":  return self._json(WORLD.move(req.get("player", "A"), float(req.get("dx", 0)), float(req.get("dy", 0))))
         if path == "/aim":   return self._json(WORLD.aim(req.get("player", "A"), req.get("ax", 0), req.get("ay", 0), req.get("look_h")))
         if path == "/reset": return self._json(WORLD.reset())
+        if path == "/bot":   return self._json(WORLD.set_bot(req.get("on", True)))
         if path == "/call/shear_fire":
             return self._json(WORLD.enqueue(req.get("player", "A"), "shear", req.get("section"),
                                             req.get("wi", 0.07), bool(req.get("synced")), req.get("game_stats")))
