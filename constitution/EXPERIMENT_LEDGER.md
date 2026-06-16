@@ -134,3 +134,14 @@ entropic tax · `ξ` re-crysta
 - **Correction of record:** a blueprint claimed a 256-leaf (16x16) sector runs at 2.9 ms with 7x headroom. Real is ≈57 ms / 1.3x — off by ~20x. The honest comfortable sector on the current code is ~12x12 (144 tiles); 16x16 is viable but tight; ≥400 tiles is over budget.
 - **Single-writer caveat:** all active sectors share ONE 10 Hz thread, so TOTAL live tiles across loaded sectors must fit the 100 ms budget — at ~144 tiles/25 ms that's ~3-4 active sectors before the budget is gone. "32-64 players across a 10x10 matrix" requires EITHER the EXP-507 stitched Fiedler (O(sections x leaf_cap^3), per-section cheap) wired into the duel, OR sharding sectors across processes. The current path cannot do it.
 - **This now LICENSES the stitched-Fiedler wiring** (EXP-506/507 → duel): the profiler has empirically bent past budget (400 tiles), there's a concrete target, the tool already exists and is verified in isolation, and it can be differentially validated against the full-grid Fiedler as oracle. First optimization this session justified by data rather than assumed.
+
+### Scaling Research · Where the tick ms actually go (corrects "better math = eigensolver")
+- **Profiled** one loaded 256-tile tick (68 ms total):
+  - `world_H` called **31x/tick** (once per resolved tile via `_receipt`), each rebuilds all 256 claims + seal (~1.66 ms) → **~51 ms = 75% of the tick. THE bottleneck.**
+  - `chi()` ~311 calls (~1.2 redundant passes) → ~4 ms.
+  - `_fiedler` (full dense eigh) ~7 ms, called ONCE. NOT the bottleneck at this scale.
+- **Verdict:** the dominant cost is redundant O(N) re-hashing of the whole world per resolved tile, not linear algebra. The highest-value optimization is ALGORITHMIC, not a better eigensolver:
+  1. **Seal once per tick** — in a tick-batched model the authoritative committed hash is a TICK-BOUNDARY object; sealing 31x mid-tick on partially-resolved state is both wasteful and semantically wrong. Compute `world_H` once after all resolutions; receipts reference it. Est. 68 ms → ~18 ms (~3.7x), moving the over-budget point from ~400 to ~800+ tiles. Zero dependencies; needs re-validation against `forge/duel_determinism_proof.py` (cmdlog becomes one H/tick).
+  2. **Memoize chi per tile per tick** — small (~4 ms), trivial.
+  3. **Sparse/Lanczos Fiedler (eigsh, k=2)** — real but TERTIARY: only matters at >=400 tiles and only after (1); needs scipy or a hand-rolled Lanczos. The eigensolver was the assumed villain; it is the least of the three.
+- **Status:** research only, UN-WIRED (play-first; the 48-tile game runs at ~4 ms and needs none of this). Holstered alongside the stitched-Fiedler scaling.
