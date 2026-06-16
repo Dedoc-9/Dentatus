@@ -34,6 +34,10 @@
   #recv{position:absolute;right:13px;bottom:12px;text-align:right;font-size:11px;line-height:1.5;text-shadow:0 0 8px #000}
   #recv .big{font-size:13px;font-weight:700}
   #conn{position:absolute;top:34px;right:13px;font-size:10px;color:var(--ink3)}
+  #danger{position:absolute;inset:0;pointer-events:none;z-index:4;box-shadow:inset 0 0 0 0 rgba(255,60,70,0);transition:box-shadow .12s}
+  #yield{position:absolute;left:50%;top:23%;transform:translateX(-50%);z-index:4;display:none;
+         font-size:15px;font-weight:800;letter-spacing:2px;color:#fff;background:rgba(255,60,70,.85);
+         padding:5px 16px;border-radius:5px;text-shadow:0 0 8px #000;box-shadow:0 0 22px rgba(255,60,70,.5)}
   /* breach overlay */
   #breach{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;
           background:radial-gradient(ellipse at center,rgba(8,10,14,.72),rgba(4,5,8,.93));pointer-events:auto}
@@ -50,6 +54,8 @@
 <div id="wrap">
   <canvas id="cv"></canvas>
   <div id="scan"></div>
+  <div id="danger"></div>
+  <div id="yield">⚠ CRITICAL YIELD</div>
   <div id="hud">
     <div class="corner" id="tl">
       <div class="me" id="meTag">COMBATANT A</div>
@@ -144,8 +150,11 @@ function draw(){
   if(aimTile>=0){var agx=aimTile%GX,agy=(aimTile/GX|0),mp=cellPx(myPred.x,myPred.y,b),ap=cellPx(agx,agy,b),blk=losBlocked(myPred.x,myPred.y,agx,agy);
     if(blk){window._aimBlocked=true;var bp2=cellPx(blk[0],blk[1],b);cx.strokeStyle="rgba(255,70,80,0.8)";cx.lineWidth=2;cx.setLineDash([4,4]);cx.beginPath();cx.moveTo(mp[0],mp[1]);cx.lineTo(bp2[0],bp2[1]);cx.stroke();cx.setLineDash([]);}
     else{cx.strokeStyle="rgba(57,217,138,0.55)";cx.lineWidth=1.5;cx.beginPath();cx.moveTo(mp[0],mp[1]);cx.lineTo(ap[0],ap[1]);cx.stroke();}
-    cx.strokeStyle=meColor;cx.lineWidth=2;cx.beginPath();cx.arc(ap[0],ap[1],cs*0.4,0,7);cx.stroke();
-    cx.beginPath();cx.moveTo(ap[0]-8,ap[1]);cx.lineTo(ap[0]+8,ap[1]);cx.moveTo(ap[0],ap[1]-8);cx.lineTo(ap[0],ap[1]+8);cx.stroke();}
+    var atile=St.tiles[aimTile],pc=atile?phaseColor(atile.phase):null;
+    cx.strokeStyle=pc?("rgb("+pc[0]+","+pc[1]+","+pc[2]+")"):meColor;cx.lineWidth=atile&&atile.critical?3:2;
+    cx.beginPath();cx.arc(ap[0],ap[1],cs*0.4,0,7);cx.stroke();
+    cx.beginPath();cx.moveTo(ap[0]-8,ap[1]);cx.lineTo(ap[0]+8,ap[1]);cx.moveTo(ap[0],ap[1]-8);cx.lineTo(ap[0],ap[1]+8);cx.stroke();
+    if(atile&&atile.critical){cx.strokeStyle="rgba(255,70,80,"+(0.5+0.5*Math.sin(St.frame*0.6))+")";cx.lineWidth=2;cx.beginPath();cx.arc(ap[0],ap[1],cs*0.55,0,7);cx.stroke();}}
 }
 function drawBody(gx,gy,c,lab,b,alive){var p=cellPx(gx,gy,b);
   cx.strokeStyle=c;cx.globalAlpha=alive?0.25:0.1;cx.lineWidth=1;cx.beginPath();cx.arc(p[0],p[1],FOCUS_R*b.cs,0,7);cx.stroke();cx.globalAlpha=1;
@@ -177,6 +186,11 @@ function hud(){
   if(r&&r.net_stress){var vc={NET_MELT:"#4c7dff",NET_ANNEAL:"#39d98a",STABLE_GLASS:"#ffb454",BLOCKED:"#8a9bb6",CLAMP_REJECT:"#ff5c6c"}[r.net_stress.verdict]||"#e8f0ff";
     document.getElementById("recv").innerHTML='<div class="big" style="color:'+vc+'">'+r.net_stress.verdict+' · tile '+r.tile_id+'</div>'+
       '<div style="color:#8a9bb6">⊕ '+(r.composite||"").slice(0,16)+'</div><div style="color:#4a5a72">sig '+(r.attestation||"").slice(0,18)+'…</div>';}
+  // critical-yield banner (aimed tile within 10% of a melt event) + my-shield danger vignette
+  var atile=St.tiles[aimTile];
+  document.getElementById("yield").style.display=(atile&&atile.critical)?"block":"none";
+  var sh=St.players[ME].shield, danger=Math.max(0,Math.min(1,(BREACH+0.18-sh)/0.18));
+  document.getElementById("danger").style.boxShadow="inset 0 0 "+(70*danger)+"px "+(14*danger)+"px rgba(255,60,70,"+(0.55*danger)+")";
   // breach overlay
   var ov=document.getElementById("breach");
   if(St.round.over){ov.style.display="flex";

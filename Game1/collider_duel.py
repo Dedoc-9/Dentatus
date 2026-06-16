@@ -56,7 +56,7 @@ ANNEAL_BASE = 0.06
 ANNEAL_GAIN = 1.0
 REBASE_WINDOW = 3
 MOVE_SPEED = 0.55              # tiles per /move pulse (body drift)
-BREACH_SHIELD = 0.18          # shield (local cover fraction) at/below which the firewall breaches the combatant
+BREACH_SHIELD = 0.30          # shield (local cover fraction) at/below which the firewall breaches the combatant (EXP: decisive fights)
 BOT_B_DEFAULT = os.environ.get("DENTATUS_BOT_B", "0") == "1"   # scripted server-side opponent (iteration lab)
 CREST = 0.78               # deterministic crest window: a shear is "synced" only if the tick-pulse confirms it
 PORT = int(os.environ.get("DUEL_PORT", "8782"))
@@ -244,7 +244,7 @@ class Duel:
         if not B["alive"] or self.round["over"] or (self.frame % 2): return
         bx, by = B["pos"]; ax, ay = self.players["A"]["pos"]; B["aim"] = [ax, ay]
         sh = self._shield("B")
-        if sh < 0.45:                                  # REBUILD: anneal nearest local fluid back to cover
+        if sh < 0.32:                                  # REBUILD only when genuinely exposed (was 0.45 -> too defensive)
             cand = sorted((t for t in self.tiles if math.hypot(t["gx"] - bx, t["gy"] - by) <= FOCUS_R
                            and self.phase_of(self.chi(t)) == "fluid"), key=lambda t: math.hypot(t["gx"] - bx, t["gy"] - by))
             for t in cand[:2]:
@@ -252,7 +252,7 @@ class Duel:
                                      "synced": False, "gs": {"bot": 1}, "recv": self.frame})
             self.last = "BOT B · REBUILD shield %.0f%%" % (100 * sh); return
         dx, dy = ax - bx, ay - by; n = math.hypot(dx, dy) or 1.0   # ADVANCE toward A (push the bubble)
-        if n > 2.0:
+        if n > 1.6:                                    # engage at close range so combat concentrates and resolves
             B["pos"][0] = min(GX - 0.5, max(-0.5, bx + dx / n * MOVE_SPEED * 0.6))
             B["pos"][1] = min(GY - 0.5, max(-0.5, by + dy / n * MOVE_SPEED * 0.6))
         los = self._los_pair()
