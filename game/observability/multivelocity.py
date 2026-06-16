@@ -95,6 +95,11 @@ def step(state, leaves, grid=(2, 2, 2), dt=1.0,
     cur, _sid = section_centroids(leaves, grid)
     cur_keys = sorted(cur.keys())                      # deterministic order
     gate = gate_k * _spacing(cur) if cur else 1.0
+    # MASS = integrated measure (sum of leaf VOLUMES), NOT leaf-count -> LOD/coarsening-invariant
+    _sz = np.array([l["size"] for l in leaves], float)
+    massvol = {}
+    for i, k in enumerate(_sid):
+        massvol[k] = massvol.get(k, 0.0) + float(np.prod(_sz[i]))
 
     # PRED: predicted centroid per existing track  Ĉ = C_prev + v*dt
     pred = {tid: tuple(_r(t["centroid"][d] + t["v"][d] * dt) for d in range(3))
@@ -136,7 +141,8 @@ def step(state, leaves, grid=(2, 2, 2), dt=1.0,
             v = tuple(_r(alpha_v * t["v"][d] + (1 - alpha_v) * obs_v[d]) for d in range(3))
             g = tuple(_r(c[d] - pred[tid][d]) for d in range(3))                  # Ghost #44 resid.
             skin = tuple(_r(alpha_g * t["Skin"][d] + (1 - alpha_g) * g[d]) for d in range(3))
-            new_tracks[tid] = {"centroid": c, "v": v, "Skin": skin,
+            mass = _r(alpha_g * float(t.get("mass", massvol[sk])) + (1 - alpha_g) * massvol[sk])
+            new_tracks[tid] = {"centroid": c, "v": v, "Skin": skin, "mass": mass,
                                "age": int(t["age"]) + 1, "last_seen": int(state["frame"]) + 1}
             matched += 1
             G_norms.append(_r(np.sqrt(sum(x * x for x in g))))
@@ -144,6 +150,7 @@ def step(state, leaves, grid=(2, 2, 2), dt=1.0,
             tid = next_id
             next_id += 1
             new_tracks[tid] = {"centroid": c, "v": (0.0, 0.0, 0.0), "Skin": (0.0, 0.0, 0.0),
+                               "mass": _r(massvol[sk]),
                                "age": 1, "last_seen": int(state["frame"]) + 1}
             births += 1
             G_norms.append(0.0)
@@ -167,6 +174,7 @@ def step(state, leaves, grid=(2, 2, 2), dt=1.0,
         "mean_speed": _r(mean_speed),
         "ghost_kin_mean": _r(np.mean(G_norms)) if G_norms else 0.0,
         "skin_norm_total": _r(np.sqrt(sum(sum(x * x for x in t["Skin"]) for t in new_tracks.values()))),
+        "mass_total": _r(sum(t["mass"] for t in new_tracks.values())),
         "speeds": [float(s) for s in speeds],
         "section_keys": [list(k) for k in cur_keys],
     }
@@ -265,3 +273,122 @@ def run(frames, grid=(2, 2, 2), dt=1.0):
         hashes.append(multivelocity_hash(rec))
         fields.append((sf["field"], sid))
     return st, recs, hashes, fields
+
+
+# ============================================================
+# EXP-511 — Boundary velocity smoothing + strain field (dual -> dual, reported-only)
+# ============================================================
+# Smooth v_s across section boundaries BEFORE computing strain, so the strain that gates the
+# EXP-506 halo is stable (no "shimmer" from noisy EMA deltas). Smoothing is MASS-MOMENTUM weighted:
+# weight each neighbour by its integrated VOLUME (mass m_s), so a small sliver cannot shear-drag a
+# massive bulk (momentum conservation). Mass is EMA-stabilised (track["mass"]) so octant churn does
+# not make the weight itself shimmer. This whole layer is dual->dual: it never mutates forward
+# geometry (A6 backreaction firewall) and is reported only.
+
+def section_neighbors(leaves, grid=(2, 2, 2)):
+    """Section adjacency from leaf face-adjacency crossing octant boundaries.
+    Returns dict[octant_key -> set(neighbor octant_keys)] (keys match section_centroids)."""
+    from sectioned_fiedler import build_adjacency
+    ctr, siz, edges, _ = build_adjacency(leaves)
+    sid = [tuple(min(grid[d] - 1, int(ctr[i, d] * grid[d])) for d in range(3))
+           for i in range(len(leaves))]
+    nb = {}
+    for i, j in edges:
+        a, b = sid[i], sid[j]
+        if a != b:
+            nb.setdefault(a, set()).add(b)
+            nb.setdefault(b, set()).add(a)
+    for k in set(sid):
+        nb.setdefault(k, set())
+    return nb
+
+
+def smooth_velocities(state, leaves, grid=(2, 2, 2), mode="mass", sigma_scale=1.0):
+    """Boundary smoothing of v_s. mode in {"mass","distance"}.
+        w_{ss'} = exp(-||c_s - c_s'||^2 / (2 sig^2)) * (m_s'  if mode=="mass" else 1)
+        v_bar_s = (m_s v_s + sum_{s'} m_s' w_d(s,s') v_s') / (m_s + sum_{s'} m_s' w_d)   [mass mode]
+    Returns dict[octant_key -> smoothed velocity]. Pure; does not modify state.
+    """
+    tracks = state["tracks"]
+    cur, _sid = section_centroids(leaves, grid)
+    nb = section_neighbors(leaves, grid)
+    # map octant_key -> track (by nearest centroid; tracks carry centroid+v+mass)
+    by_centroid = {}
+    for tid, t in tracks.items():
+        by_centroid[tuple(_r(x) for x in t["centroid"])] = t
+    def track_at(k):
+        c = cur[k]
+        best = None; bd = None
+        for tc, t in by_centroid.items():
+            d = sum((c[i] - tc[i]) ** 2 for i in range(3))
+            if bd is None or (d, ) < (bd, ):
+                bd = d; best = t
+        return best
+    pts = np.array(list(cur.values()), float)
+    spacing = _spacing(cur) if len(cur) >= 2 else 1.0
+    sig = max(sigma_scale * spacing, 1e-9)
+    out = {}
+    for k in sorted(cur.keys()):
+        tk = track_at(k)
+        c = cur[k]
+        vk = np.array(tk["v"], float) if tk else np.zeros(3)
+        # momentum averaging: every contributor (incl. SELF) enters as p = m*v; self distance-weight=1
+        wsum = (float(tk.get("mass", 1.0)) if (tk and mode == "mass") else 1.0)
+        acc = vk * wsum
+        for k2 in sorted(nb.get(k, ())):
+            t2 = track_at(k2)
+            if t2 is None:
+                continue
+            c2 = cur[k2]
+            d2 = sum((c[i] - c2[i]) ** 2 for i in range(3))
+            w = float(np.exp(-d2 / (2.0 * sig * sig)))
+            if mode == "mass":
+                w *= float(t2.get("mass", 1.0))      # volumetric mass (momentum weighting)
+            acc = acc + w * np.array(t2["v"], float)
+            wsum += w
+        out[k] = tuple(_r(x) for x in (acc / max(wsum, 1e-12)))
+    return out
+
+
+def local_strain(smoothed_v, leaves, grid=(2, 2, 2)):
+    """Per-section strain ||Sym(L_s)||_F from the SMOOTHED velocity field.
+        L_s = sum_{s'in N(s)} w_{ss'} (v_s' - v_s) (x) (c_s' - c_s) / ||c_s'-c_s||^2   (w = 1/|N|)
+        strain_s = ||1/2 (L_s + L_s^T)||_F
+    Returns dict[octant_key -> strain] (>=0). P_yz-invariant scalar.
+    """
+    cur, _sid = section_centroids(leaves, grid)
+    nb = section_neighbors(leaves, grid)
+    out = {}
+    for k in sorted(cur.keys()):
+        c = np.array(cur[k], float); v = np.array(smoothed_v[k], float)
+        nbrs = sorted(nb.get(k, ()))
+        if not nbrs:
+            out[k] = 0.0; continue
+        L = np.zeros((3, 3)); w = 1.0 / len(nbrs)
+        for k2 in nbrs:
+            dc = np.array(cur[k2], float) - c
+            dv = np.array(smoothed_v[k2], float) - v
+            nn = float(dc @ dc)
+            if nn < 1e-12:
+                continue
+            L += w * np.outer(dv, dc) / nn
+        Sym = 0.5 * (L + L.T)
+        out[k] = _r(np.linalg.norm(Sym))
+    return out
+
+
+def strain_field_for_halo(state, leaves, grid=(2, 2, 2), mode="mass"):
+    """Bridge to sectioned_fiedler.stitched_fiedler: returns a strain array aligned to the COMPACTED
+    section index order (assign_sections), so it can be passed as strain=... to gate the halo width.
+    """
+    from sectioned_fiedler import assign_sections
+    ctr = np.array([l["center"] for l in leaves], float)
+    so, S = assign_sections(ctr, grid)
+    # octant key per compacted section index
+    sid = [tuple(min(grid[d] - 1, int(ctr[i, d] * grid[d])) for d in range(3)) for i in range(len(leaves))]
+    key_of_section = {}
+    for i in range(len(leaves)):
+        key_of_section[int(so[i])] = sid[i]
+    sm = smooth_velocities(state, leaves, grid, mode=mode)
+    st = local_strain(sm, leaves, grid)
+    return np.array([st.get(key_of_section.get(s), 0.0) for s in range(S)], float)

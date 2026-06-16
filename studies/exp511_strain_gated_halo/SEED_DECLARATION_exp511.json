@@ -1,0 +1,35 @@
+{
+  "declaration_hash": "943feae7c1f52a4e99564a692f7e01197f1168cde87e2ad752ae060bfa301268",
+  "experiment": "EXP-511",
+  "title": "Strain-Gated Halo + Boundary Velocity Smoothing",
+  "protocol_version": "exp511-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Smoothing v_s across section boundaries with MASS-MOMENTUM weighting (weight each contributor, incl. self, by integrated VOLUME m_s; w = m * exp(-d^2/2sig^2)) stabilizes the per-section Cauchy strain; feeding that strain into the EXP-506 halo width (sigma_s *= 1+gamma* strain_s) widens the partition-of-unity blend ONLY at deforming seams, keeping the stitched Fiedler fault C0 under velocity shear. Mass is integrated VOLUME (LOD/coarsening-invariant), NOT leaf-count; EMA-stabilized against octant churn (Ghost #45). gamma=0 reproduces EXP-506.",
+  "operator_order": "step(EXP-510) -> SMOOTH(mass-momentum v_bar) -> STRAIN(Cauchy ||Sym||) -> HALO(sigma gate)",
+  "constants": {
+    "GHOST_EMA_ALPHA(mass)": 0.5,
+    "default_gamma_strain": 0.0,
+    "mode": "mass"
+  },
+  "backreaction_firewall": "smoothing+strain are dual->dual; gate modulates an INTERPOLATION WIDTH (observability param), never leaf geometry or the eigenvector c. step() forward assignment is independent of the halo path.",
+  "engine_scope": "GAME LAYER ONLY (multivelocity.py append + sectioned_fiedler.py additive halo params). No engine/*.py edits.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] SAFETY: gamma_strain=0 -> stitched_fiedler byte-identical to EXP-506 (field+sigma)",
+    "[3] mass-weighting != distance-weighting; mass pulls light sliver toward heavy bulk MORE",
+    "[4] LOD-INVARIANCE: subdividing a section (same volume, more leaves) leaves mass-smoothing identical (volume!=count)",
+    "[5] strain-gated halo WIDENS under shear (mean sigma_gated > sigma_base)",
+    "[6] strain-gated halo ~UNCHANGED under rigid translation (sigma_gated == sigma_base within eps)",
+    "[7] smoothing reduces shimmer: peak-to-peak of mass-smoothed strain < raw strain under alternating jitter",
+    "[8] mass EMA continuous: |m_t - m_{t-1}| bounded under single-leaf churn",
+    "[9] determinism: re-run identical strain field + sigma (bit-stable)",
+    "[10] dual-only: step() matched sequence identical regardless of smoothing/halo (no backreaction)"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz x->-x: strain field invariant",
+    "[2] gated halo_sigma invariant under reflection",
+    "[3] smoothed speed multiset invariant",
+    "[4] section mass (volume) invariant",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

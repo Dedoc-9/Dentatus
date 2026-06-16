@@ -82,11 +82,14 @@ def coarse_fiedler(edges, so, S, N):
     return Di @ yc, P
 
 
-def stitched_fiedler(leaves, grid=(2, 2, 2), kappa=HALO_KAPPA, fixed_sigma=None):
+def stitched_fiedler(leaves, grid=(2, 2, 2), kappa=HALO_KAPPA, fixed_sigma=None,
+                     strain=None, gamma_strain=0.0):
     """Two-level stitched Fiedler with dynamic spectral-diameter halo.
 
     Returns dict: field (per-leaf), section_of, coarse (per-section), halo_sigma (per-section),
     spectral_diameter (per-section), cost (op-count), n_sections.
+    strain/gamma_strain (EXP-511): optional per-section Cauchy strain widens the halo at deforming
+    seams; gamma_strain=0 (default) reproduces EXP-506 byte-identically.
     """
     ctr, siz, edges, nbr = build_adjacency(leaves)
     N = len(leaves)
@@ -101,8 +104,12 @@ def stitched_fiedler(leaves, grid=(2, 2, 2), kappa=HALO_KAPPA, fixed_sigma=None)
         l2 = _lambda2(_lap(len(idxs), led)) if (len(idxs) >= 2 and led) else 1.0
         ell[s] = 1.0 / np.sqrt(max(l2, 1e-3))                 # spectral diameter
         sext[s] = float(np.ptp(ctr[idxs], axis=0).mean()) + float(siz[idxs].mean()) if len(idxs) else leaf
-        sigma[s] = (float(fixed_sigma) if fixed_sigma is not None
-                    else float(np.clip(kappa * ell[s] * sext[s], leaf, max(sext[s], leaf))))  # 1-leaf floor, ext cap
+        base = (float(fixed_sigma) if fixed_sigma is not None
+                else float(np.clip(kappa * ell[s] * sext[s], leaf, max(sext[s], leaf))))  # 1-leaf floor, ext cap
+        # EXP-511 strain-gated halo: widen ONLY where the seam is deforming (Cauchy strain), so the
+        # partition-of-unity blend reaches across a shearing boundary. gamma_strain=0 -> EXP-506 exact.
+        gain = 1.0 + (gamma_strain * float(strain[s]) if (strain is not None and gamma_strain) else 0.0)
+        sigma[s] = base * gain
         cost += int(len(idxs)) ** 3
     field = np.zeros(N)
     for i in range(N):
