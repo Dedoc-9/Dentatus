@@ -45,6 +45,15 @@ the budget ladder, `ΔS_cit ∈ [+1.1, +3.1]`). Like `is_valid` (forward entailm
 guardrail that *catches malformed/over-budget external states*, not a filter on normal outputs.
 Verified veto: a synthetic tuple `(K_budget=256, N_f=148, N_γ=396)` → `ΔS_cit = −1.09` → rejected.
 
+## Axiom 3b — Observability (MCL gauge)
+
+The Citadel score is surfaced as a dashboard gauge (`game/observability/mcl_dashboard.html`):
+the arc shows **Citadel Integrity = (1 - (N_f+N_gamma)/K_budget) x 100%** (the fraction of E*
+still unspent; 0% is the rejection wall at dS_cit=0), and the readout shows the raw **dS_cit in
+bits** plus H_in / H_out / quanta. A budget ladder visualizes the informational breathing room
+across K_budget. Bundle carries pure numerics only (dS_cit, H_in, H_out, K_budget); the
+is_citadel boolean is derived by the reader from dS_cit >= 0 (witness purity preserved).
+
 ## Axiom 4 — Results
 
 ```

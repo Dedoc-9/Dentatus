@@ -1,0 +1,36 @@
+<svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace,Menlo,monospace">
+<rect x="0" y="0" width="760" height="360" rx="10" fill="var(--color-background-secondary)"/>
+<text x="24" y="30" font-size="15" font-weight="500" fill="var(--color-text-primary)">DENTATUS · MCL — Citadel Entropy Firewall</text>
+<text x="24" y="49" font-size="11" fill="var(--color-text-secondary)">Law of the Citadel: ΔS_cit = H_in − H_out = log₂(K_budget / (N_f + N_γ)) ≥ 0</text>
+<!-- big integrity gauge -->
+<text x="170" y="92" font-size="11" font-weight="500" text-anchor="middle" fill="var(--color-text-secondary)">CITADEL INTEGRITY</text>
+<path d="M 90.0 210.0 A 80 80 0 0 1 250.0 210.0" fill="none" stroke="#1e2a3a" stroke-width="16" stroke-linecap="round"/>
+<path d="M 90.0 210.0 A 80 80 0 0 1 223.7 150.7" fill="none" stroke="#39d98a" stroke-width="16" stroke-linecap="round"/>
+<text x="170" y="205" font-size="40" font-weight="500" text-anchor="middle" fill="var(--color-text-primary)">73<tspan font-size="18" fill="var(--color-text-secondary)">%</tspan></text>
+<text x="170" y="232" font-size="12" text-anchor="middle" fill="#39d98a">ADMITTED · ΔS_cit = +1.91 bits</text>
+<line x1="90" y1="210" x2="84" y2="210" stroke="#ff5c6c" stroke-width="3"/>
+<text x="170" y="262" font-size="10" text-anchor="middle" fill="var(--color-text-tertiary)">0% = rejection wall (ΔS_cit = 0)</text>
+<text x="170" y="300" font-size="11" text-anchor="middle" fill="var(--color-text-secondary)">N_f+N_γ = 544 / E* = 2048   ·   H_in 11.00 − H_out 9.09</text>
+<!-- ladder: breathing room across K_budget -->
+<text x="430" y="92" font-size="11" font-weight="500" fill="var(--color-text-secondary)">INFORMATIONAL BREATHING ROOM vs K_budget (E*)</text>
+<text x="430" y="110" font-size="10" fill="var(--color-text-tertiary)">how much budget remains before the firewall rejects</text>
+<rect x="430" y="189.8" width="42" height="110.2" rx="3" fill="#39d98a" fill-opacity="0.85"/>
+<text x="451" y="314" font-size="9" text-anchor="middle" fill="var(--color-text-secondary)">2048</text>
+<text x="451" y="184.8" font-size="9" text-anchor="middle" fill="#39d98a">73%</text>
+<rect x="480" y="167.6" width="42" height="132.4" rx="3" fill="#39d98a" fill-opacity="0.85"/>
+<text x="501" y="314" font-size="9" text-anchor="middle" fill="var(--color-text-secondary)">1024</text>
+<text x="501" y="162.6" font-size="9" text-anchor="middle" fill="#39d98a">88%</text>
+<rect x="530" y="185.2" width="42" height="114.8" rx="3" fill="#39d98a" fill-opacity="0.85"/>
+<text x="551" y="314" font-size="9" text-anchor="middle" fill="var(--color-text-secondary)">512</text>
+<text x="551" y="180.2" font-size="9" text-anchor="middle" fill="#39d98a">77%</text>
+<rect x="580" y="220.3" width="42" height="79.7" rx="3" fill="#39d98a" fill-opacity="0.85"/>
+<text x="601" y="314" font-size="9" text-anchor="middle" fill="var(--color-text-secondary)">256</text>
+<text x="601" y="215.3" font-size="9" text-anchor="middle" fill="#39d98a">53%</text>
+<rect x="630" y="173.4" width="42" height="126.6" rx="3" fill="#39d98a" fill-opacity="0.85"/>
+<text x="651" y="314" font-size="9" text-anchor="middle" fill="var(--color-text-secondary)">128</text>
+<text x="651" y="168.4" font-size="9" text-anchor="middle" fill="#39d98a">84%</text>
+<rect x="680" y="196.9" width="42" height="103.1" rx="3" fill="#39d98a" fill-opacity="0.85"/>
+<text x="701" y="314" font-size="9" text-anchor="middle" fill="var(--color-text-secondary)">64</text>
+<text x="701" y="191.9" font-size="9" text-anchor="middle" fill="#39d98a">69%</text>
+<text x="430" y="335" font-size="11" fill="var(--color-text-secondary)">dual firewall: H_verified requires is_manifold_501 AND is_citadel_508 (ΔS_cit ≥ 0)</text>
+</svg>

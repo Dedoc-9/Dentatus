@@ -43,6 +43,8 @@ def export_bundle(base_intent, budget_ladder, steps=8):
             "epsilon": r["firewall"]["epsilon"], "n_leaves": o["n_leaves"], "n_edges": o["n_edges"],
             "beta_Z_eff": round(float(o["beta_Z_eff"]), 6),
             "accepted": 1 if improved else 0,
+            "dS_cit": r["citadel"]["dS_cit"], "H_in": r["citadel"]["H_in"],
+            "H_out": r["citadel"]["H_out"], "K_budget": r["citadel"]["K_budget"],
             "H_state": H, "telemetry": tele,
         })
     return {
