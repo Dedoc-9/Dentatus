@@ -10,6 +10,10 @@ record (Annex I): these tools certify **integrity** of a well-formed transition,
   *narrow* the window, `dS_cit` finite, `survivable` is bool, hash-continuity/advancement). A breach
   raises `ClampViolation`; the boundary reverts to the last valid hash. Calibrated against 20k oracle
   outputs with zero false positives.
+- **`nonce_proof.py`** — EXP-528 rolling nonce-chaining property proof: backward-compat (nonce=None == legacy),
+  replay-reproducibility (EXP-520), replay immunity (stale frame rejected), forge resistance, fork sensitivity.
+  All 5 PASS, 0 violations. The nonce is a deterministic hash-ratchet over the sealed-H sequence; the secret
+  never enters it; replay immunity = nonce bound into `session_attest` + strictly-monotone accepted seq.
 - **`oracle_fuzz.py`** — differential / metamorphic fuzzer. Seeded-random well-formed inputs into the
   real operators, asserting: (1) clamps; (2) **metamorphic** relations needing no ground truth —
   `strain↑ ⇒ E*_eff↓`, `chi↑ ⇒ dS_cit↑` (EXP-514); (3) **determinism** — identical input ⇒ bit-identical

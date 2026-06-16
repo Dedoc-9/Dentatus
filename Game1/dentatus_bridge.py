@@ -42,7 +42,7 @@ from phase_change import enact_phase_change_515
 from recrystallize import enact_recrystallization_521
 from nucleation import enact_oriented_nucleation_522
 from sectioned_fiedler import global_fiedler
-from composite_witness import composite_address, session_attest, verify_attest, game_sufficient_stats
+from composite_witness import composite_address, session_attest, verify_attest, game_sufficient_stats, NonceChain
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SEED = {"hash": "9671566edf7b1103", "bpm": 39, "T": 1.5385, "phase0": 0.873}
@@ -81,6 +81,8 @@ class World:
         self.last_event = "BRIDGE ONLINE · spectral split locked"
         self.last_event_bad = False
         self.cmdlog = []                                   # event-sourced: each commit's game sufficient-stats
+        self.session = os.environ.get("DENTATUS_SESSION", "bridge-default")
+        self.nonces = NonceChain(self.session)             # EXP-528 rolling nonce-chain (replay immunity)
 
     def chi(self):
         return core.material_compliance_chi_514(stalk=self.stalk)["chi"]
@@ -188,14 +190,16 @@ class World:
             Hv = self.world_H(True) or "%016x" % (self.frame)
             # bind the game frame into the verified identity (composite) and server-sign it (attestation)
             gstats = game_stats or {"call": name, "chi": round(chi1, 6), "wi": round(self.wi, 6), "frame": self.frame}
-            comp = composite_address(Hv, gstats)
-            attest = session_attest(Hv, gstats, SERVER_SECRET)
+            seq, nonce = self.nonces.issue(Hv)                 # EXP-528: rolling head binds this commit
+            comp = composite_address(Hv, gstats, nonce=nonce)
+            attest = session_attest(Hv, gstats, SERVER_SECRET, nonce=nonce)
             self.cmdlog.append({"frame": self.frame, "call": name, "game": game_sufficient_stats(gstats),
-                                "H": Hv, "composite": comp})        # logged -> replay reproduces composite
+                                "H": Hv, "composite": comp, "seq": seq, "nonce": nonce})   # logged -> replay reproduces nonce
             self.last_event = "%sCOMMIT %s · tax %.2f bits · χ %.2f→%.2f · ⊕%s" % (("SYNCED · " if synced else ""), name, tax, chi0, chi1, comp[:8])
             self.last_event_bad = False
             return {"accepted": True, "call": name, "tax": round(tax, 3), "chi": round(chi1, 4),
-                    "H_verified": Hv, "composite": comp, "attestation": attest, "event": self.last_event}
+                    "H_verified": Hv, "composite": comp, "attestation": attest,
+                    "seq": seq, "nonce": nonce, "event": self.last_event}
 
 
 WORLD = World()
