@@ -38,6 +38,12 @@ mined: chi [0.050, 0.982]  dS_cit [-8.322, 20.721]  E*_eff [0, 29.788]  frac [0,
 the EXP-602 bit-stability boundary. `H` is sensitive to any change above it and stable below
 representability. This is now codified as two standing properties, not an assumption.
 
+- **`invariant_synthesis.py`** + **`../constitution/INVARIANT_REGISTRY.json`** — EXP-530 propose/license
+  pipeline (MCL_OBS2 separation of powers). Forge mines candidates (constitutional vs empirical basis);
+  a human licenses exact fingerprints into the registry with a `failure_condition`; L1 `active_clamps()`
+  enforces only licensed + fingerprint-intact + engine-matching entries. Empirical bounds: monitor-only.
+  7/7 gate properties PASS. Mining proposes; the registry licenses; L1 enforces — nothing self-activates.
+
 ## Roadmap (grounded)
 - **Rolling nonce-chaining** at L1: a per-commit nonce chained into `session_attest` so a valid signed
   frame cannot be replayed out of order. Additive, safe, next.

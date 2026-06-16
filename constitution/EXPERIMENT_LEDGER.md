@@ -59,3 +59,21 @@ entropic tax · `ξ` re-crysta
 - **Verification:** `forge/nonce_proof.py` — 0 violations across 5 properties: (1) backward-compat; (2) replay-reproducibility (EXP-520 recovers every nonce bit-for-bit from the command log); (3) replay immunity; (4) forge resistance (wrong secret hard-rejects; substituted nonce rejects); (5) fork sensitivity (one divergent H forks all subsequent nonces, no reconvergence).
 - **Wiring:** `Game1/dentatus_bridge.py` issues a nonce per commit, binds it into composite + attestation, logs `{seq,nonce}`. Collider/shear-rifle servers (no-nonce path) unaffected.
 - **Status:** Sealed · Engine Core Frozen (37/83/13/29) · Verification 5/5.
+
+---
+
+### EXP-529 · Network Chaos-Injection Harness (Fork κ)
+- **Axiom:** Robustness is proven by an adversary, not asserted. The committed timeline must be invariant to transport hostility.
+- **Mechanism:** `forge/chaos_harness.py` — deterministic L1 reducer (tick-batched NET superposition → seal → EXP-528 nonce) under a seeded chaos transport: drop-cascade 30%, jitter-reorder, latency-spike past the rebase window.
+- **Proven invariant:** the committed `H_verified` timeline is a pure function of the *accepted set* + server seq, independent of arrival order. Within a tick, resolution is net-superposition (order-free); across ticks, commit is by server seq; beyond the window, frames reject as `stale_basis` (never spliced).
+- **Verification:** 5/5 — arrival-order invariance (jitter == canonical, bit-for-bit), chaos determinism, bounded-rebase rejection (stale deterministic), drop resilience, liveness (no lock). 0 violations.
+- **Honest scope:** bounded-window order-invariance + deterministic stale-rejection — NOT zero-latency re-proof of deep history.
+- **Status:** Sealed · Engine Core Frozen (37/83/13/29).
+
+### EXP-530 · Automated Invariant Synthesis (Fork λ′)
+- **Axiom:** A system that licenses its own constraints manufactures its own confirmations (Layer-0 violation). Mining may PROPOSE; only a human-licensed registry may enforce.
+- **Separation of powers:** the forge mines candidates tagged by basis — **constitutional** (derivable: χ∈[0.05,1], Bethe frac∈[0,1], E*_eff≥0) vs **empirical** (sample-observed: dS_cit envelope). The registry `constitution/INVARIANT_REGISTRY.json` is a precommitment ledger; a candidate is enforced only when a human licenses its exact SHA-256 fingerprint with a declared `failure_condition`.
+- **Hard safety rule:** empirical (finite-sample) bounds may be licensed ONLY as `monitor` (log/alert), NEVER as `hard` reverts — a sampled range is not a law.
+- **L1 gate:** `active_clamps()` compiles a guard only if the entry's recomputed fingerprint matches the license (no silent drift) AND the engine code hash still matches (license voids on operator change).
+- **Verification:** `forge/invariant_synthesis.py` — 7/7: mining-alone-inert, licensing-activates, empirical-can't-be-hard, no-failure-condition-refused, crypto-drift-void, engine-drift-void, deterministic fingerprints. 0 violations.
+- **Status:** Sealed · registry seeded (3 hard constitutional + 1 empirical monitor) · Engine Core Frozen (37/83/13/29).

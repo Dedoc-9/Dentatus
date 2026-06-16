@@ -1,0 +1,94 @@
+{
+  "errata": [],
+  "licensed": [
+    {
+      "basis": "constitutional",
+      "code_fp": "29d7b9a2d309200d",
+      "enforcement": "hard",
+      "failure_condition": "any material_compliance_chi_514 returns chi<0.05 or >1.0",
+      "field": "chi",
+      "fingerprint": "f6852d33fc836c5b",
+      "hi": 1.0,
+      "kind": "range",
+      "licensed_at": "2026-06-16",
+      "licensed_by": "Daniel J. Dillberg",
+      "lo": 0.05,
+      "name": "chi_bounds",
+      "provenance": {
+        "N": 20000,
+        "observed": [
+          0.05,
+          0.951945
+        ],
+        "seed": 530530
+      }
+    },
+    {
+      "basis": "constitutional",
+      "code_fp": "29d7b9a2d309200d",
+      "enforcement": "hard",
+      "failure_condition": "E_strain_frac outside [0,1] (frac=min((s*/er)^2,1) by construction)",
+      "field": "E_strain_frac",
+      "fingerprint": "6e8c5c843f69d916",
+      "hi": 1.0,
+      "kind": "range",
+      "licensed_at": "2026-06-16",
+      "licensed_by": "Daniel J. Dillberg",
+      "lo": 0.0,
+      "name": "bethe_frac_bounds",
+      "provenance": {
+        "N": 20000,
+        "observed": [
+          1e-06,
+          1.0
+        ],
+        "seed": 530530
+      }
+    },
+    {
+      "basis": "constitutional",
+      "code_fp": "29d7b9a2d309200d",
+      "enforcement": "hard",
+      "failure_condition": "E_star_eff<0 (E_eff=E*(1-frac), E>=0, frac<=1)",
+      "field": "E_star_eff",
+      "fingerprint": "d9e38378e2e1539e",
+      "hi": 1000000000.0,
+      "kind": "range",
+      "licensed_at": "2026-06-16",
+      "licensed_by": "Daniel J. Dillberg",
+      "lo": 0.0,
+      "name": "E_star_eff_nonneg",
+      "provenance": {
+        "N": 20000,
+        "observed": [
+          0.0,
+          29.838023
+        ],
+        "seed": 530530
+      }
+    },
+    {
+      "basis": "empirical",
+      "code_fp": "29d7b9a2d309200d",
+      "enforcement": "monitor",
+      "failure_condition": "a future fuzz case observes dS_cit outside this sampled envelope -> revoke/widen",
+      "field": "dS_cit",
+      "fingerprint": "f48112471af1dec9",
+      "hi": 21.416574,
+      "kind": "range",
+      "licensed_at": "2026-06-16",
+      "licensed_by": "Daniel J. Dillberg",
+      "lo": -8.321928,
+      "name": "dS_cit_observed_envelope",
+      "provenance": {
+        "N": 20000,
+        "observed": [
+          -8.321928,
+          21.416574
+        ],
+        "seed": 530530
+      }
+    }
+  ],
+  "protocol": "mcl-invariant-v1"
+}
