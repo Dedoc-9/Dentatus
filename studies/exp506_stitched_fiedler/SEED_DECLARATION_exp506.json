@@ -1,0 +1,45 @@
+{
+  "protocol": "exp506-v1",
+  "series": "500",
+  "inherits": "exp505-v1",
+  "title": "Stitched Local Fiedler -- galactic-scale fault via spectral coarsening",
+  "gate_source": "global Fiedler is O(N^3); sectioned local Fiedler must stitch continuously at boundaries",
+  "operator": "game.observability.sectioned_fiedler (stitched_fiedler, coarse_fiedler)",
+  "method": {
+    "problem": "independent local Fiedler vectors (arbitrary sign/scale/mode) -> disjoint spurious fault seams",
+    "coarse": "Galerkin L_c = P^T L P, generalized eigenproblem (mass M_c=P^T P) -> global fault at section resolution",
+    "stitch": "partition-of-unity Gaussian interpolation of coarse field over section centroids -> C^0 fault line",
+    "dynamic_halo": "Gaussian width per section = kappa * spectral_diameter(1/sqrt(lambda_2^local)) * section_extent, clamped [1 leaf, section extent]",
+    "floor_rationale": "1-leaf floor guarantees the halo contains the delta_0 inter-section edges (EXP-501)"
+  },
+  "observables": {
+    "section_agreement": "sign(coarse) vs sign(global per-section mean)",
+    "leaf_agreement": "sign(stitched) vs sign(global), per leaf",
+    "spurious_seams": "stitched fault edges on section boundaries not in global fault",
+    "cost": "O(S^3 + sum n_s^3) vs O(N^3)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] Galerkin coarse: 100% section-sign agreement with global fault",
+    "[3] dynamic spectral-diameter halo with 1-leaf floor (halo widths reported)",
+    "[4] stitched leaf agreement with global >= 0.95",
+    "[5] spurious section seams == 0 (vs naive independent ~21)",
+    "[6] continuity: stitched fault-edge count == global (fault line reproduced)",
+    "[7] dynamic halo matches/beats fixed: seams(dynamic) <= seams(fixed sigma=0.3)",
+    "[8] cost reduction: two-level << global (>= 5x)",
+    "[9] determinism: diagnostics bit-stable (PYTHONHASHSEED=0)",
+    "[10] decoupled: game/ has no engine.* import (clean-room guard)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] sorted |stitched field| multiset fwd == mir (fault structure P_yz-invariant)",
+    "[3] section_agreement fwd == mir",
+    "[4] spurious_seams fwd == mir",
+    "[5] n_sections and n_leaves fwd == mir"
+  ],
+  "exp507_gate": {
+    "trigger": "sectioning validated -> streaming world-sections",
+    "target": "resident-set memory bound; per-section local Fiedler on demand; content-addressed eviction"
+  },
+  "declaration_hash": "d69b59b3ad635e16a0194e5087fa0aaa6773f378565570d3bedb46cac8d397ed"
+}

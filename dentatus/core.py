@@ -28,6 +28,7 @@ from engine.operators import (
     persist_scene_504, seed_memory_init_504, seed_memory_hash_504, spatial_key_504,
     estimate_global_motion_505, world_frame_key_505,
     track_correspondence_505, track_dag_hash_505,
+    face_adjacent_501, build_L_sheaf_503,
     _BETA_Z_313, _GAMMA_INF_A_409, _GAMMA_INF_D_409, _TAU_WARMUP_409,
     _ALPHA_DISC_409, _ALPHA_MAINT_409, _BETA_THRESHOLD_409, _BETA_Z_MIN_409,
     _GAMMA_INF_ENT_503, _K_FIEDLER_503, _ALPHA_PERSIST_504,
@@ -52,6 +53,7 @@ __all__ = [
     "persist_scene_504", "seed_memory_init_504", "seed_memory_hash_504", "spatial_key_504",
     "estimate_global_motion_505", "world_frame_key_505",
     "track_correspondence_505", "track_dag_hash_505",
+    "face_adjacent_501", "build_L_sheaf_503",
     "STALK_DIM", "SECTOR_A", "SECTOR_B", "SECTOR_C", "SECTOR_D", "FIREWALL_EPSILON",
     "ENGINE_PROTOCOL",
 ]

@@ -1,0 +1,46 @@
+{
+  "protocol": "exp507-v1",
+  "series": "500",
+  "inherits": "exp506-v1",
+  "title": "Streaming World-Sections -- bounded-memory stitched Fiedler at galactic scale",
+  "gate_source": "EXP-506 sectioning validated -> stream sections under a resident-set memory bound",
+  "operator": "game.observability.sectioned_fiedler.stream_stitched_fiedler",
+  "method": {
+    "streamability": "each leaf's stitched value depends only on the coarse field c and section centroids (both O(S)), never on other sections' leaves",
+    "pass1": "accumulate section edge counts -> Galerkin coarse Fiedler c + centroids; computed ONCE (global anchor)",
+    "pass2": "stream sections, <= max_resident resident; per-section local lambda_2 -> halo sigma_s; emit stitched leaf values",
+    "cache": "per-section local Fiedler content-addressed by section signature -> revisits hit cache",
+    "eviction": "LRU eviction keeps the resident set bounded; memory = peak_resident + coarse O(S)",
+    "bound": "peak resident = max_resident * max_section_size + O(S) << O(N)"
+  },
+  "observables": {
+    "streaming_exactness": "streaming field == non-streaming stitched field (bit-identical)",
+    "peak_resident_leaves": "bounded working set",
+    "cache_hits": "section-local Fiedler reuse on revisit",
+    "memory": "streaming vs global"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] streaming field == non-streaming stitched field (bit-identical)",
+    "[3] bounded working set: peak_resident_leaves < N (== max section size at max_resident=1)",
+    "[4] eviction: resident set never exceeds max_resident sections",
+    "[5] coarse anchor O(S) computed once (the global fault)",
+    "[6] content-addressed cache: section revisits hit cache (cache_hits >= n_sections)",
+    "[7] memory bound: streaming << global at scale (peak_resident + O(S))",
+    "[8] determinism: streaming field bit-stable (PYTHONHASHSEED=0)",
+    "[9] fault preserved: streaming field reproduces the global fault structure (via EXP-506 stitch)",
+    "[10] decoupled: game/ has no engine.* import (clean-room guard)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] sorted |streaming field| multiset fwd == mir (P_yz-invariant)",
+    "[3] peak_resident_leaves fwd == mir",
+    "[4] cache_hits fwd == mir",
+    "[5] n_sections and n_leaves fwd == mir"
+  ],
+  "exp508plus_gate": {
+    "trigger": "streaming validated -> multi-velocity tracking (moving sections) + live SSE deployment",
+    "target": "per-section velocity prediction (NN association) for non-rigid motion at scale"
+  },
+  "declaration_hash": "2889884aa163e4964f0ebb0754848fb2f7066a4974cd9ca91dcf629e8c4dd7ec"
+}
