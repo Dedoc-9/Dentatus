@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>DENTATUS · Collider Arena — Contested Truth</title>
+<style>
+  :root{--bg:#05070c;--ink:#e8f0ff;--ink2:#7f93b4;--ink3:#465a78;--line:#16202e;
+        --A:#36d6e7;--B:#ffb454;--melt:#4c7dff;--glass:#ff9d54;--solid:#caa14e;--red:#ff5c6c;--good:#39d98a;
+        --mono:ui-monospace,Menlo,Consolas,monospace;}
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidden}
+  #wrap{position:fixed;inset:0}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+  #hud{position:absolute;inset:0;pointer-events:none}
+  .strip{position:absolute;top:9px;left:14px;right:14px;display:flex;gap:16px;align-items:baseline;font-size:12px;color:var(--ink2)}
+  .strip b{color:var(--ink)} .me{font-weight:700;letter-spacing:.5px}
+  #title{position:absolute;top:32px;left:14px;font-size:11px;color:var(--ink3);max-width:60vw}
+  #panel{position:absolute;left:14px;bottom:14px;font-size:12px;line-height:1.65;text-shadow:0 0 8px #000}
+  #panel .k{color:var(--ink2);display:inline-block;width:140px}
+  #panel .v{color:var(--ink)}
+  #recv{position:absolute;right:14px;bottom:14px;text-align:right;font-size:12px;line-height:1.6;text-shadow:0 0 8px #000}
+  #recv .big{font-size:15px;font-weight:700}
+  #pulseWrap{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:min(40vw,360px);text-align:center}
+  #pulseBar{height:8px;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:#070b12;position:relative}
+  #pulseFill{position:absolute;inset:0;width:0;background:linear-gradient(90deg,#0b2230,var(--A));opacity:.6}
+  #hint{font-size:11px;color:var(--ink2);margin-top:5px}
+  #conn{position:absolute;top:32px;right:14px;font-size:11px;color:var(--ink3)}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div class="strip">
+      <span class="me" id="meTag">PLAYER A</span>
+      <span>H_t <b id="hver">—</b></span>
+      <span>fog A <b id="fa">—</b> · B <b id="fb">—</b></span>
+      <span>stale <b id="stale">0</b></span>
+    </div>
+    <div id="title">CONTESTED TRUTH — two vantages write to one ledger; the Fiedler cut is the border between them. Net-resolved at 10 Hz.</div>
+    <div id="conn">connecting…</div>
+    <div id="panel"></div>
+    <div id="recv"></div>
+    <div id="pulseWrap"><div id="pulseBar"><div id="pulseFill"></div></div>
+      <div id="hint">MOVE: WASD / left-stick (push your FULL_VALID bubble) · AIM: mouse · SHEAR: click/Space · ANNEAL: right-click/E</div></div>
+  </div>
+</div>
+<script>
+var ME=(new URLSearchParams(location.search).get("player")||"A").toUpperCase(); if(ME!=="B")ME="A";
+var OTHER=ME==="A"?"B":"A";
+document.getElementById("meTag").textContent="PLAYER "+ME;
+document.getElementById("meTag").style.color=ME==="A"?"var(--A)":"var(--B)";
+var cv=document.getElementById("cv"),cx=cv.getContext("2d");
+var W,Hh,DPR,GX=8,GY=6,FOCUS_R=2.2,RELAX_EFF=0.45;
+var St={tiles:[],focA:[1.5,5.5],focB:[6.5,5.5],frame:0,H:"—",pulse:0,resolutions:[],full_A:0,full_B:0,stale:0};
+var disp=[]; for(var i=0;i<GX*GY;i++)disp.push({chi:0.25,hit:0,flash:0});
+var mouse={x:0,y:0},aim=-1,lastRecv=null,LIVE=false,cool=0;
+var myFoc={x:ME==='A'?1.5:6.5,y:5.5};            // MY FULL_VALID bubble centroid (WASD-driven, float grid coords)
+var keys={},lastFocSent=0,lastT=performance.now();
+function myVclass(i){var gx=i%GX,gy=(i/GX|0);return Math.hypot(gx-myFoc.x,gy-myFoc.y)<=FOCUS_R?'FULL_VALID':'LOD_RELAXED';}
+function resize(){DPR=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;Hh=cv.clientHeight;cv.width=W*DPR;cv.height=Hh*DPR;cx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener("resize",resize);resize();
+
+// board geometry: centered square cells, top-down
+function board(){var pad=54,bw=W-pad*2,bh=Hh-pad*2,cs=Math.min(bw/GX,bh/GY);var ox=(W-cs*GX)/2,oy=(Hh-cs*GY)/2;return{cs:cs,ox:ox,oy:oy};}
+function tileAt(px,py){var b=board();var gx=Math.floor((px-b.ox)/b.cs),gy=Math.floor((py-b.oy)/b.cs);if(gx<0||gy<0||gx>=GX||gy>=GY)return -1;return gy*GX+gx;}
+function phaseColor(ph){return ph==="fluid"?[76,125,255]:ph==="glass"?[255,157,84]:[202,161,78];}
+
+function arena(){
+  var b=board(),cs=b.cs;
+  cx.clearRect(0,0,W,Hh);
+  // subtle frame
+  cx.strokeStyle="rgba(70,90,120,.25)";cx.lineWidth=1;cx.strokeRect(b.ox-6,b.oy-6,cs*GX+12,cs*GY+12);
+  for(var i=0;i<St.tiles.length;i++){
+    var t=St.tiles[i],d=disp[i];var gx=i%GX,gy=(i/GX|0);
+    var x=b.ox+gx*cs,y=b.oy+gy*cs;
+    d.chi+=((t.chi)-d.chi)*0.2; d.hit*=0.85; d.flash*=0.88;
+    var col=phaseColor(t.phase);
+    // Fiedler sign tint: red side vs blue side of the structural cut
+    var tint=t.sign>0?[255,70,80]:[70,150,255];
+    cx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    cx.globalAlpha=0.20+0.45*d.chi*0+0.22; cx.fillRect(x+1,y+1,cs-2,cs-2); cx.globalAlpha=1;
+    // phase body
+    cx.fillStyle="rgba("+col[0]+","+col[1]+","+col[2]+","+(0.30+0.5*(t.phase==='solid'?0.3:t.phase==='glass'?0.6:0.9))+")";
+    cx.fillRect(x+2,y+2,cs-4,cs-4);
+    // fiedler border
+    cx.strokeStyle="rgba("+tint[0]+","+tint[1]+","+tint[2]+",0.55)";cx.lineWidth=1.5;cx.strokeRect(x+2,y+2,cs-4,cs-4);
+    // MY fog: tiles I have not verified -> hatch + dim
+    var myV=myVclass(i);
+    if(myV==="LOD_RELAXED"&&i!==aim){
+      cx.fillStyle="rgba(4,6,12,0.5)";cx.fillRect(x+2,y+2,cs-4,cs-4);
+      cx.save();cx.beginPath();cx.rect(x+2,y+2,cs-4,cs-4);cx.clip();
+      cx.strokeStyle="rgba(120,140,170,0.18)";cx.lineWidth=1;
+      for(var h=-cs;h<cs;h+=6){cx.beginPath();cx.moveTo(x+h,y);cx.lineTo(x+h+cs,y+cs);cx.stroke();}
+      cx.restore();
+    }
+    // hit / contested flash
+    if(d.hit>0.02){cx.fillStyle="rgba(255,255,255,"+(0.5*d.hit)+")";cx.fillRect(x+2,y+2,cs-4,cs-4);}
+    if(d.flash>0.02){cx.strokeStyle="rgba(57,217,138,"+d.flash+")";cx.lineWidth=3;cx.strokeRect(x+3,y+3,cs-6,cs-6);}
+    if(t.critical){cx.strokeStyle="rgba(255,70,80,"+(0.5+0.5*Math.sin(St.frame*0.5+i))+")";cx.lineWidth=2;cx.strokeRect(x+3,y+3,cs-6,cs-6);}
+  }
+  // player focus markers
+  var myColor=ME==="A"?"#36d6e7":"#ffb454",enColor=ME==="A"?"#ffb454":"#36d6e7";
+  drawFoc(ME==="A"?St.focB:St.focA,enColor,OTHER,b);      // enemy (authoritative)
+  drawFoc([myFoc.x,myFoc.y],myColor,ME,b);               // me (local, zero-latency)
+  // crosshair on aimed tile
+  if(aim>=0){var gx=aim%GX,gy=(aim/GX|0);var cxp=b.ox+gx*b.cs+b.cs/2,cyp=b.oy+gy*b.cs+b.cs/2;
+    cx.strokeStyle=ME==="A"?"#36d6e7":"#ffb454";cx.lineWidth=2;
+    cx.beginPath();cx.arc(cxp,cyp,b.cs*0.42,0,7);cx.stroke();
+    cx.beginPath();cx.moveTo(cxp-9,cyp);cx.lineTo(cxp+9,cyp);cx.moveTo(cxp,cyp-9);cx.lineTo(cxp,cyp+9);cx.stroke();}
+}
+function drawFoc(f,c,lab,b){var px=b.ox+f[0]*b.cs+b.cs/2,py=b.oy+f[1]*b.cs+b.cs/2;
+  cx.strokeStyle=c;cx.globalAlpha=0.25;cx.lineWidth=1;cx.beginPath();cx.arc(px,py,FOCUS_R*b.cs,0,7);cx.stroke();cx.globalAlpha=1;
+  cx.fillStyle=c;cx.beginPath();cx.arc(px,py,5,0,7);cx.fill();
+  cx.fillStyle="#05070c";cx.font="bold 9px "+getComputedStyle(document.body).fontFamily;cx.textAlign="center";cx.fillText(lab,px,py+3);}
+
+function hud(){
+  document.getElementById("hver").textContent=St.H;
+  document.getElementById("fa").textContent=St.full_A; document.getElementById("fb").textContent=St.full_B;
+  document.getElementById("stale").textContent=St.stale;
+  document.getElementById("conn").textContent=LIVE?"● LIVE 10Hz":"○ offline";
+  document.getElementById("conn").style.color=LIVE?"var(--good)":"var(--ink3)";
+  var pf=document.getElementById("pulseFill");var win=Math.abs(St.pulse)>0.78;
+  pf.style.width=(50+50*St.pulse)+"%";pf.style.background=win?"linear-gradient(90deg,#0b3,#39d98a)":"linear-gradient(90deg,#0b2230,#36d6e7)";
+  var p="",t=St.tiles[aim];
+  if(t){
+    var myV=myVclass(aim);var tax=myV==="LOD_RELAXED";
+    p+='<div><span class="k">aimed tile</span><span class="v">#'+aim+' · '+t.phase+' · χ '+t.chi.toFixed(2)+'</span></div>';
+    p+='<div><span class="k">your vantage</span><span class="v" style="color:'+(tax?"#ffb454":"#39d98a")+'">'+myV+(tax?' · shear ×'+RELAX_EFF+' (blind)':' · verified ×1.0')+'</span></div>';
+    p+='<div><span class="k">enemy vantage</span><span class="v">'+(ME==="A"?t.vB:t.vA)+'</span></div>';
+    p+='<div><span class="k">Wi / yield</span><span class="v">'+t.wi.toFixed(2)+' · '+(t.prox*100|0)+'%</span></div>';
+  }
+  document.getElementById("panel").innerHTML=p;
+  // most recent resolution receipt
+  var r=lastRecv;
+  if(r){var ns=r.net_stress;var vc={NET_MELT:"#4c7dff",NET_ANNEAL:"#39d98a",STABLE_GLASS:"#ffb454"}[ns.verdict]||"#e8f0ff";
+    document.getElementById("recv").innerHTML=
+      '<div class="big" style="color:'+vc+'">'+ns.verdict+' · tile '+r.tile_id+'</div>'+
+      '<div>strain '+ns.strain.toFixed(3)+' vs compliance '+ns.compliance.toFixed(3)+' → net '+(ns.net_wi>=0?'+':'')+ns.net_wi.toFixed(3)+'</div>'+
+      '<div style="color:#7f93b4">⊕ '+r.composite.slice(0,16)+'</div>'+
+      '<div style="color:#465a78">sig '+r.attestation.slice(0,18)+'…</div>';}
+}
+
+function moveFocus(){var now=performance.now(),dt=Math.min(0.05,(now-lastT)/1000);lastT=now;var sp=4.2;
+  var vx=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0);
+  var vy=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);
+  if(vx||vy){myFoc.x=Math.max(-0.5,Math.min(GX-0.5,myFoc.x+vx*sp*dt));myFoc.y=Math.max(-0.5,Math.min(GY-0.5,myFoc.y+vy*sp*dt));}
+  if(now-lastFocSent>90){lastFocSent=now;send('/focus',{player:ME,focus:[+myFoc.x.toFixed(3),+myFoc.y.toFixed(3)]});}}
+function loop(){moveFocus();arena();hud();if(cool>0)cool--;requestAnimationFrame(loop);}
+loop();
+
+// ---- input ----
+function fire(){if(aim<0||cool>0)return;cool=3;var sec=aim;disp[sec].hit=1; // local prediction
+  send("/call/shear_fire",{player:ME,section:sec,wi:Math.abs(St.pulse)>0.78?0.11:0.09,synced:Math.abs(St.pulse)>0.78,game_stats:{p:ME,tile:sec}});}
+function anneal(){if(aim<0)return;var sec=aim;disp[sec].hit=0.6;
+  send("/call/anneal",{player:ME,section:sec,synced:true,game_stats:{p:ME,tile:sec}});}
+function send(path,body){if(!LIVE)return;fetch(BRIDGE+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).catch(function(){});}
+cv.addEventListener("pointermove",function(e){mouse.x=e.clientX;mouse.y=e.clientY;aim=tileAt(e.clientX,e.clientY);});
+cv.addEventListener("pointerdown",function(e){if(e.button===2){e.preventDefault();anneal();}else fire();});
+cv.addEventListener("contextmenu",function(e){e.preventDefault();anneal();});
+addEventListener("keydown",function(e){var k=e.key.toLowerCase();
+  if(e.code==="Space"){e.preventDefault();fire();return;} if(k==="e"){anneal();return;}
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].indexOf(k)>=0){keys[k]=true;e.preventDefault();}});
+addEventListener("keyup",function(e){keys[e.key.toLowerCase()]=false;});
+// gamepad: RT fire, LB anneal
+var pad=null,padR=false,padL=false;
+addEventListener("gamepadconnected",function(e){pad=e.gamepad.index;});
+function pollPad(){if(pad!=null){var g=navigator.getGamepads()[pad];if(g){
+  var rt=g.buttons[7]&&g.buttons[7].pressed||g.buttons[0]&&g.buttons[0].pressed;if(rt&&!padR)fire();padR=rt;
+  var lb=g.buttons[6]&&g.buttons[6].pressed||g.buttons[4]&&g.buttons[4].pressed;if(lb&&!padL)anneal();padL=lb;
+  var lx=g.axes[0]||0,ly=g.axes[1]||0;if(Math.abs(lx)>0.2)keys['__lx']=lx;else keys['__lx']=0;if(Math.abs(ly)>0.2)keys['__ly']=ly;else keys['__ly']=0;
+  myFoc.x=Math.max(-0.5,Math.min(GX-0.5,myFoc.x+(keys['__lx']||0)*0.09));myFoc.y=Math.max(-0.5,Math.min(GY-0.5,myFoc.y+(keys['__ly']||0)*0.09));
+  var rx=g.axes[2]||0,ry=g.axes[3]||0;if(Math.abs(rx)>0.3||Math.abs(ry)>0.3){mouse.x+=rx*8;mouse.y+=ry*8;aim=tileAt(mouse.x,mouse.y);}
+}}requestAnimationFrame(pollPad);}pollPad();
+
+// ---- live stream ----
+var BRIDGE=location.origin;
+function connect(){try{var es=new EventSource(BRIDGE+"/stream");
+  es.onmessage=function(ev){var d=JSON.parse(ev.data);LIVE=true;
+    St.tiles=d.tiles;St.focA=d.focA;St.focB=d.focB;St.frame=d.frame;St.H=d.H_verified;St.pulse=d.pulse_val;
+    St.full_A=d.full_A;St.full_B=d.full_B;St.stale=d.stale;St.resolutions=d.resolutions||[];
+    for(var k=0;k<St.resolutions.length;k++){var r=St.resolutions[k];disp[r.tile_id].flash=1;lastRecv=r;}
+  };
+  es.onerror=function(){LIVE=false;};}catch(e){LIVE=false;}}
+connect();
+</script>
+</body>
+</html>
