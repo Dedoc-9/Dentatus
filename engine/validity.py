@@ -741,11 +741,39 @@ STRAIN_EPS_REF_512 = 0.5     # critical shear strain (DIMENSIONAL knob); per-wor
 # number -> a constitutional constant alongside FIREWALL_EPSILON and the Citadel floor.
 STRAIN_STAR_REF_512 = 0.5
 _VORT_EPS_513 = 1e-9         # vorticity-singularity regulariser (Ghost #47)
+# EXP-514 Fork theta: epistemic-material compliance chi in [CHI_MIN,1] from Sector D covariance
+# spectrum. chi is a COMPLIANCE (eps_ref_eff = eps_ref*chi <= eps_ref) so a declared material can only
+# NARROW the constitutional window, never widen it -> cannot bypass the firewall.
+CHI_MIN_514 = 0.05           # stiffest admissible material floor (avoids a degenerate zero window)
+CHI_ENTROPY_W_514 = 0.5      # blend weight: spectral entropy vs (1 - spectral gap)
+
+
+def material_compliance_chi_514(stalk=None, cov_eigvals=None,
+                                w=CHI_ENTROPY_W_514, chi_min=CHI_MIN_514):
+    """Continuous map Sector D covariance spectrum -> compliance chi (NOT a lookup table).
+        eta = normalized spectral entropy of the covariance eigenvalues  (disorder)
+        gap = 1 - lambda_2/lambda_1                                       (ordering)
+        chi = clip( w*eta + (1-w)*(1-gap), chi_min, 1 )
+    Disordered/isotropic covariance (high eta, small gap) -> chi->1 (compliant; 'water', survives shear).
+    Ordered/anisotropic (low eta, large gap)              -> chi->chi_min (stiff; 'diamond', fragile).
+    Pure spectral function of DECLARED state; P_yz: eigenvalues of Sigma=L L^T are reflection-invariant."""
+    if cov_eigvals is None:
+        _, Sigma = cholesky_from_stalk_401(stalk)
+        cov_eigvals = _np401.linalg.eigvalsh(Sigma)
+    ev = _np401.sort(_np401.abs(_np401.asarray(cov_eigvals, float)))[::-1]
+    ev = _np401.maximum(ev, 1e-12)
+    p = ev / ev.sum()
+    n = len(ev)
+    eta = float(-(p * _np401.log(p)).sum() / _math509.log(n)) if n > 1 else 1.0
+    gap = float(1.0 - ev[1] / ev[0]) if n > 1 else 0.0
+    chi = float(min(1.0, max(chi_min, w * eta + (1.0 - w) * (1.0 - gap))))
+    return {"chi": round(chi, 9), "eta_spec": round(eta, 9), "gap_spec": round(gap, 9),
+            "eigs": [round(float(x), 9) for x in ev]}
 
 
 def bethe_citadel_strain_512(beta_Z, strain, n_fragments, n_gamma,
                              eps_ref=None, a0=BETHE_A0_509, d_stalk=18,
-                             dt=None, vorticity=None):
+                             dt=None, vorticity=None, chi=None):
     """EXP-509 Bethe Citadel with a deformation-energy drain on the excitation reservoir.
         frac   = min((strain*/eps_ref)^2, 1)     # elastic-energy fraction (quadratic, Hooke ~ 1/2 k x^2)
         E*_eff = beta_Z * (1 - frac)             # deformation energy sequestered from the level density
@@ -779,17 +807,33 @@ def bethe_citadel_strain_512(beta_Z, strain, n_fragments, n_gamma,
         s_star = s                                               # dimensional (EXP-512 original)
         er = STRAIN_EPS_REF_512 if eps_ref is None else float(eps_ref)
         mode = "dimensional"
-    frac = min((s_star / er) ** 2, 1.0) if er > 0.0 else 0.0
+    # EXP-514: bounded material compliance narrows (never widens) the window: er_eff = er*clip(chi,0,1)
+    chi_eff = None if chi is None else float(min(1.0, max(0.0, float(chi))))
+    er_eff = er if chi_eff is None else er * chi_eff
+    frac = min((s_star / er_eff) ** 2, 1.0) if er_eff > 0.0 else 1.0
     E_eff = E * (1.0 - frac)
     Nf = max(int(n_fragments), 0); Ng = max(int(n_gamma), 0)
     quanta = max(Nf + Ng, 1)
     H_in = float(2.0 * _math509.sqrt(a * E_eff) / _math509.log(2.0))
     H_out = float(_math509.log2(float(quanta)))
-    return {"a": round(a, 9), "E_star": round(E, 9), "strain": round(s, 9),
-            "strain_star": round(s_star, 9), "nd_mode": mode,
-            "E_strain_frac": round(frac, 9), "E_star_eff": round(E_eff, 9),
-            "H_in": round(H_in, 9), "H_out": round(H_out, 9), "dS_cit": round(H_in - H_out, 9),
-            "N_f": Nf, "N_gamma": Ng, "quanta": quanta, "eps_ref": round(er, 9)}
+    # phase-change target: minimum compliance chi to admit this strain* at this complexity (dS=0 boundary)
+    boundary_E = (H_out * _math509.log(2.0) / 2.0) ** 2 / a if a > 0 else float("inf")
+    frac_max = 1.0 - boundary_E / E if E > 0.0 else -1.0
+    if s_star <= 0.0:
+        chi_req = 0.0
+    elif frac_max <= 0.0 or er <= 0.0:
+        chi_req = float("inf")                          # over-complex: no material survives any shear
+    else:
+        chi_req = s_star / (er * (frac_max ** 0.5))
+    out = {"a": round(a, 9), "E_star": round(E, 9), "strain": round(s, 9),
+           "strain_star": round(s_star, 9), "nd_mode": mode,
+           "E_strain_frac": round(frac, 9), "E_star_eff": round(E_eff, 9),
+           "H_in": round(H_in, 9), "H_out": round(H_out, 9), "dS_cit": round(H_in - H_out, 9),
+           "N_f": Nf, "N_gamma": Ng, "quanta": quanta, "eps_ref": round(er, 9),
+           "chi": (None if chi_eff is None else round(chi_eff, 9)), "eps_ref_eff": round(er_eff, 9),
+           "chi_required": (None if chi_req == float("inf") else round(chi_req, 9)),
+           "survivable_by_material": bool(chi_req <= 1.0)}
+    return out
 
 
 def is_bethe_strain_512(dS_cit, floor=0.0):

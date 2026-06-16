@@ -402,7 +402,7 @@ def strain_field_for_halo(state, leaves, grid=(2, 2, 2), mode="mass"):
 
 def citadel_strain_coupling(state, leaves, beta_Z, n_fragments, n_gamma,
                             grid=(2, 2, 2), mode="mass", eps_ref=None, reduce="max",
-                            nondim=None, dt=1.0):
+                            nondim=None, dt=1.0, stalk=None):
     """Couple EXP-511 boundary strain to the EXP-509 Bethe Citadel. The deforming seam (reduce="max")
     or the mean field (reduce="mean") drains the excitation reservoir.
 
@@ -423,7 +423,12 @@ def citadel_strain_coupling(state, leaves, beta_Z, n_fragments, n_gamma,
         kw["dt"] = float(dt)
     elif nondim == "weissenberg":
         kw["vorticity"] = float(kinematic_decomposition(state)["vort"])
+    if stalk is not None:                                     # EXP-514 epistemic material (Sector D -> chi)
+        mat = _core.material_compliance_chi_514(stalk=stalk)
+        kw["chi"] = mat["chi"]
     bc = _core.bethe_citadel_strain_512(beta_Z, strain, n_fragments, n_gamma, **kw)
+    if stalk is not None:
+        bc["material"] = mat
     bc["is_bethe_strain"] = bool(_core.is_bethe_strain_512(bc["dS_cit"]))
     bc["strain_reduce"] = reduce
     return bc

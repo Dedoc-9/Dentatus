@@ -1,0 +1,37 @@
+{
+  "declaration_hash": "99eda360b4e85bd8bf8ff7da6815e5c2bf15b77f7eced542d45303f0bce7398a",
+  "experiment": "EXP-514",
+  "title": "Epistemic Materialism (Fork theta): bounded material compliance chi from Sector D spectrum",
+  "protocol_version": "exp514-v1",
+  "date": "2026-06-15",
+  "hypothesis": "A material is a FILTER FOR TRUTH, not a shader. Compliance chi in [chi_min,1] is a CONTINUOUS map (not a lookup table) of the Sector D covariance spectrum: chi = clip(w*eta + (1-w)*(1-gap)) where eta is the normalized spectral entropy and gap=1-lambda2/lambda1. Ordered/anisotropic covariance (low eta, high gap) -> chi->chi_min (stiff 'diamond', fragile: rejects tiny shear); disordered/isotropic (high eta, low gap) -> chi->1 (compliant 'water', survives high Wi). eps_ref_eff = STRAIN_STAR_REF * chi <= STRAIN_STAR_REF, so a declared material can only NARROW the constitutional window, never widen it. The firewall reports chi_required: the minimum compliance to survive the present shear (the informational phase-change target).",
+  "equations": {
+    "eta": "-(sum p_i ln p_i)/ln(n),  p_i = lambda_i/sum lambda   # spectral entropy of Sigma=L L^T",
+    "gap": "1 - lambda_2/lambda_1",
+    "chi": "clip(w*eta + (1-w)*(1-gap), chi_min, 1)",
+    "eps_ref_eff": "STRAIN_STAR_REF * chi   (<= STRAIN_STAR_REF: material narrows, never widens)",
+    "chi_required": "strain* / (STRAIN_STAR_REF * sqrt(frac_max)),  frac_max = 1-(H_out ln2/2)^2/(a E)"
+  },
+  "governance": "STRAIN_STAR_REF stays a PROTECTED constant; chi is a function of DECLARED state (Sector D bits of H_state), bounded in (0,1]. You cannot make stone behave like water via an API knob -- you must change the world's definition (its covariance spectrum) and pay the entropic cost. No bypass.",
+  "backreaction_firewall": "chi feeds the VERDICT (a read of declared state); never mutates geometry, eigenvector, forward E*, or the world's stalk. chi=None -> byte-identical to EXP-513.",
+  "engine_scope": "engine/validity.py: ADDITIVE material_compliance_chi_514 + chi param on bethe_citadel_strain_512 (+ CHI_MIN_514, CHI_ENTROPY_W_514). state/operators/confluence FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] water (isotropic Sigma) -> chi=1, eta=1, gap=0",
+    "[3] diamond (anisotropic Sigma) -> chi=chi_min, low eta, high gap; monotone: more anisotropy -> lower chi",
+    "[4] CONTINUOUS (not lookup): small Sector-D perturbation -> small chi change (|dchi| bounded)",
+    "[5] bounded: chi in [chi_min,1]; eps_ref_eff = STRAIN_STAR_REF*chi <= STRAIN_STAR_REF (narrows only)",
+    "[6] EPISTEMIC MATERIALISM: same Weissenberg shear -> water ADMITS, diamond REJECTS",
+    "[7] phase-change target: chi_required reported; admit iff chi >= chi_required; water>=chi_req>diamond",
+    "[8] no-bypass: passing chi>1 is clipped to 1 (cannot widen beyond constitution)",
+    "[9] backward compat: chi=None -> byte-identical dS_cit to EXP-513",
+    "[10] determinism: chi + coupled dS_cit bit-stable"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: chi(Sigma) == chi(P Sigma P^T) (covariance eigenvalues reflection-invariant)",
+    "[2] coupled dS_cit invariant under scene reflection at fixed material",
+    "[3] chi_required invariant under reflection",
+    "[4] verdict invariant under reflection",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}
