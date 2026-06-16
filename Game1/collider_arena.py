@@ -40,6 +40,7 @@ from dentatus import core
 from phase_change import enact_phase_change_515
 from recrystallize import enact_recrystallization_521
 from composite_witness import composite_address, session_attest
+import sectioned_fiedler as sf   # EXP-506/507 real sheaf Fiedler (face_adjacent_501 adjacency + engine spectral routine)
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SEED = {"hash": "9671566edf7b1103", "bpm": 39, "T": 1.5385, "phase0": 0.873}
@@ -70,6 +71,9 @@ class Collider:
         self.foc = {"A": (1.5, GY - 0.5), "B": (GX - 1.5, GY - 0.5)}   # A near-left, B near-right
         self.pending = []
         self.resolutions = []
+        # NATIVE binding: tiles -> telemetry leaves; edges from the engine's real face_adjacent_501 (delta_0).
+        self.leaves = [{"center": [t["gx"] + 0.5, t["gy"] + 0.5, 0.5], "size": [1.0, 1.0, 1.0]} for t in self.tiles]
+        _c, _s2, self.fed_edges, _nb = sf.build_adjacency(self.leaves)   # static sheaf adjacency (only weights change)
         self.signs = self._fiedler()
         self.log = []
         self.stale = 0
@@ -125,18 +129,16 @@ class Collider:
         return {"clear": True, "block": None}
 
     def _fiedler(self):
-        n = len(self.tiles); Lap = np.zeros((n, n)); stiff = [max(1e-3, 1.0 - self.chi(t)) for t in self.tiles]
-        def idx(x, y): return y * GX + x
-        for y in range(GY):
-            for x in range(GX):
-                i = idx(x, y)
-                for dx, dy in ((1, 0), (0, 1)):
-                    nx, ny = x + dx, y + dy
-                    if nx < GX and ny < GY:
-                        j = idx(nx, ny); w = min(stiff[i], stiff[j])
-                        Lap[i, i] += w; Lap[j, j] += w; Lap[i, j] -= w; Lap[j, i] -= w
-        w, v = np.linalg.eigh(Lap); order = np.argsort(w)
-        f = v[:, order[1]] if n > 1 else np.zeros(n)
+        # NATIVE sheaf Fiedler (EXP-506/507). Edges come from the engine's real face_adjacent_501 (delta_0
+        # adjacency); each edge weight = shared structural stiffness (1-chi, EXP-514 Epistemic Materialism),
+        # so a NET_MELT (chi->1) dissolves the link toward zero and the engine's spectral routine re-routes
+        # the structural fault THROUGH the weakened material. Spectral extraction = sf._fiedler (engine code).
+        n = len(self.tiles); stiff = [max(1e-3, 1.0 - self.chi(t)) for t in self.tiles]
+        A = np.zeros((n, n))
+        for i, j in self.fed_edges:
+            w = min(stiff[i], stiff[j]); A[i, i] += w; A[j, j] += w; A[i, j] -= w; A[j, i] -= w
+        f = sf._fiedler(A)
+        if n and f[int(np.argmax(np.abs(f)))] < 0: f = -f      # fixed sign gauge -> stable RED/BLUE labels across ticks
         sg = np.sign(f); sg[sg == 0] = 1
         return [int(x) for x in sg]
 
