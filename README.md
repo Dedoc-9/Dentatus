@@ -151,6 +151,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-503 | Spectral manifold feedback Phi_fb_manifold; β_Z_eff=f(B_A,B_D,B_ent_spectral); bounded Ω_ent_sp; Ghost #25 | `16f3e47232a3a84e` | **open** |
 | EXP-504 | Stateful Seed; temporal manifold smoothing; persist_scene_504; S_ent/B_ent_spectral memory; healing curve; Ghost #26/#27 | `93201baeac72aac9` | **open** |
 | EXP-505 | Persistent world-state across moving claims; motion-compensated world frame; track correspondence DAG; Ghost #28 | `6885720d383ca775` | **open** |
+| EXP-508 | Citadel entropy firewall; Law of the Citadel ΔS_cit≥0 (N_f+N_γ≤K_budget); dual-gate with is_manifold_501 | `8a511d4360b4c040` | **open** |
 | EXP-601 | Deterministic seeding; Claim.id timestamp-excluded; bitwise-reproducible H_t (Ghost #27 killed); P_yz exact | `f352e458d1e252f4` | **open** |
 | EXP-602 | Bit-stable semantic compiler; H_verified = firewall-gated realized-state address; PYTHONHASHSEED=0 pin (Ghost #32); witness-pure | `7753731c596ef389` | **open** |
 | EXP-603 | Agency loop & autonomous reality search; Agency Hysteresis Latch (Ghost #33); witnessed audit trail; decoupled in game/ | `fdb106028f99333e` | **open** |
@@ -522,8 +523,10 @@ EXP-503 wires the spectral scaffold into the Zeeman field: `β_Z_eff = f(B_A, B_
 
 **Series 500 mechanisms (verified).** Sheaf Coboundary δ₀ (`G_ent = F_ij·stalk_j − stalk_i`)
 over face-adjacent octree leaves; the Sector D **XOR Sign Rule** (`l_pq` flips iff face axis ∈
-{p,q}) as the covariance-ellipsoid *Zusammenhang*; the **Manifold Firewall** `is_manifold_501`
-(ε = 0.8) as the elastic-limit validity gate; the Fiedler value λ₂ as algebraic-connectivity /
+{p,q}) as the covariance-ellipsoid *Zusammenhang*; the **Manifold Firewall** `is_manifold_501` (ε = 0.8) as the elastic-limit validity gate,
+now paired with the **Citadel Entropy Firewall** `is_citadel_508` (Law of the Citadel:
+ΔS_cit = log₂(K_budget/(N_f+N_γ)) ≥ 0) as a **dual gate** — a reality is verified only if it is
+both manifold-continuous and energy-budget-admissible; the Fiedler value λ₂ as algebraic-connectivity /
 fault-line observable. Series 500 is closed through EXP-505.
 
 ---

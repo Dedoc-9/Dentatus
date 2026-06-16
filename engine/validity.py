@@ -644,3 +644,45 @@ def is_manifold_501_perclaim(G_ent_per_claim, Z_active_norm,
             worst_ratio = r
             worst_cid = cid
     return bool(worst_ratio <= float(eps_manifold)), worst_cid, worst_ratio
+
+# ---------------------------------------------------------------------------
+# Citadel Entropy Firewall -- EXP-508 (is_citadel_508)
+# ---------------------------------------------------------------------------
+#
+# Information-admissibility law (NOT the thermodynamic Second Law). E* = K_budget
+# is the energy/resolution budget; it licenses Omega(E*) = K_budget microstates, so
+#   H_in  = log2(K_budget)
+#   H_out = log2(N_f + N_gamma)        distributed entropy across N_f fragments (leaves)
+#                                      and N_gamma gamma/photon emissions (the delta_0
+#                                      coboundary residuals exchanged between fragments)
+#   dS_cit = H_in - H_out = log2( K_budget / (N_f + N_gamma) )
+#
+# Law of the Citadel:  dS_cit >= 0  <=>  N_f + N_gamma <= K_budget
+#   "no structure is fabricated beyond what the energy budget E* licenses."
+# Dual firewall: a reality is verified only if it is BOTH manifold-continuous
+# (is_manifold_501, eps=0.8) AND citadel-admissible (is_citadel_508, dS_cit >= 0).
+
+CITADEL_FLOOR_508 = 0.0     # entropy-neutral-or-positive admission threshold (bits)
+
+
+def citadel_entropy_508(K_budget, n_fragments, n_gamma):
+    """EXP-508 Citadel entropy accounting. Returns dict(H_in, H_out, dS_cit, N_f, N_gamma, quanta).
+
+    H_in   = log2(K_budget)                 (E* = K_budget licensing)
+    H_out  = log2(N_f + N_gamma)            (fragments + gamma/delta_0 emissions)
+    dS_cit = H_in - H_out                   (the citadel score, in bits)
+
+    Pure numeric; counts are P_yz-invariant -> dS_cit is P_yz-invariant.
+    """
+    Nf = max(int(n_fragments), 0)
+    Ng = max(int(n_gamma), 0)
+    quanta = max(Nf + Ng, 1)
+    H_in = float(np.log2(max(float(K_budget), 1.0)))
+    H_out = float(np.log2(float(quanta)))
+    return {"H_in": round(H_in, 9), "H_out": round(H_out, 9),
+            "dS_cit": round(H_in - H_out, 9), "N_f": Nf, "N_gamma": Ng, "quanta": quanta}
+
+
+def is_citadel_508(dS_cit, floor=CITADEL_FLOOR_508):
+    """Law of the Citadel: admit iff dS_cit >= floor (entropy-neutral or positive)."""
+    return bool(float(dS_cit) >= float(floor))

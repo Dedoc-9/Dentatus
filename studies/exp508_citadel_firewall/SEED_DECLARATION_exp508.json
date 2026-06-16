@@ -1,0 +1,53 @@
+{
+  "protocol": "exp508-v1",
+  "series": "500",
+  "inherits": "exp505-v1",
+  "title": "Citadel Entropy Firewall -- dual-gate admissibility (Law of the Citadel)",
+  "gate_source": "information-admissibility law complementing the geometric firewall is_manifold_501",
+  "operator": "engine.validity.citadel_entropy_508 + is_citadel_508; dual gate in dentatus.api.observe",
+  "law": {
+    "dS_cit": "H_in - H_out",
+    "H_in": "log2(Omega(E*)) = log2(K_budget)   [E* = K_budget licensing]",
+    "H_out": "log2(N_f + N_gamma)   [N_f fragments (leaves) + N_gamma gamma/delta_0 emissions (edges)]",
+    "admission": "Law of the Citadel: dS_cit >= 0  <=>  N_f + N_gamma <= K_budget",
+    "interpretation": "no structure fabricated beyond what the energy budget E* licenses (information-admissibility, NOT thermodynamic Second Law)",
+    "dual_firewall": "H_verified stamped iff is_manifold_501 (geometric continuity, eps=0.8) AND is_citadel_508 (dS_cit >= 0)"
+  },
+  "mapping": {
+    "E_star": "K_budget (resolution/energy budget)",
+    "Omega_nucleons": "microstates licensed by E* = K_budget",
+    "N_f": "number of fragments = active leaves",
+    "N_gamma": "gamma/photon emissions = delta_0 coboundary residuals = face-adjacent edges",
+    "ghost_link": "the Ghost G_t (E-301-004 residual) is the natural radiated-entropy channel"
+  },
+  "observables": {
+    "dS_cit": "citadel score (bits); >=0 admissible",
+    "H_in": "log2(K_budget)",
+    "H_out": "log2(N_f+N_gamma)",
+    "admissible": "is_manifold_501 AND is_citadel_508 (dual gate)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] citadel math: H_in=log2(K_budget), H_out=log2(N_f+N_gamma), dS_cit=H_in-H_out",
+    "[3] valid worlds admitted: docking-bay realizations across budget ladder -> dS_cit >= 0 (engine respects budget)",
+    "[4] over-budget veto: synthetic tuple with N_f+N_gamma > K_budget -> is_citadel_508 False",
+    "[5] entropy-neutral boundary: N_f+N_gamma == K_budget -> dS_cit == 0 -> admitted (>=0)",
+    "[6] dual-gate contract: api admissible == (is_manifold_501 AND is_citadel); H_verified iff admissible",
+    "[7] conservation invariant: engine self-limits to K_budget -> citadel admits all valid realizations",
+    "[8] lossless single (N_f=1,N_gamma=0) -> dS_cit = log2(K_budget) (maximal slack)",
+    "[9] determinism: dS_cit bit-stable for a realized world (PYTHONHASHSEED=0)",
+    "[10] no regression: is_manifold_501 path + EXP-602 H_verified unaffected for admissible worlds"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] N_f fwd == mir (P_yz-invariant fragment count)",
+    "[3] N_gamma fwd == mir (P_yz-invariant edge count)",
+    "[4] dS_cit fwd == mir (citadel score P_yz-invariant)",
+    "[5] is_citadel decision fwd == mir"
+  ],
+  "exp509_gate": {
+    "trigger": "dual firewall stable",
+    "target": "Bethe level-density rho(E*) refinement of H_in; couple Citadel to Zeeman energy beta_Z"
+  },
+  "declaration_hash": "8a511d4360b4c0402b9e97152d39111e0b0872d00fa2f4fda6f338600e115698"
+}

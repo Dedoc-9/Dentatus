@@ -19,6 +19,7 @@ from engine.state import (
 from engine.validity import (
     is_manifold_501, is_manifold_501_perclaim, EPS_MANIFOLD_502,
     is_valid_covariance_401, cholesky_from_stalk_401, kappa_integral,
+    citadel_entropy_508, is_citadel_508, CITADEL_FLOOR_508,
 )
 # --- operators: partition+homeostasis, manifold observation, spectral, persistence, tracking ---
 from engine.operators import (
@@ -46,6 +47,7 @@ __all__ = [
     "MuState", "Claim", "Provenance", "now_iso", "ALPHA_DEFAULT", "PROTOCOL_VERSION",
     "is_manifold_501", "is_manifold_501_perclaim", "EPS_MANIFOLD_502",
     "is_valid_covariance_401", "cholesky_from_stalk_401", "kappa_integral",
+    "citadel_entropy_508", "is_citadel_508", "CITADEL_FLOOR_508",
     "apply_gamma_503_recursive", "phi_fb_manifold", "phi_ent_observe", "spectral_ent_project",
     "persist_scene_504", "seed_memory_init_504", "seed_memory_hash_504", "spatial_key_504",
     "estimate_global_motion_505", "world_frame_key_505",

@@ -100,7 +100,12 @@ def observe(request):
                                                           k_modes=core._K_FIEDLER_503)
     Zn = float(np.linalg.norm([np.linalg.norm(Zc[c]) for c in sorted(Zc)]))
     ok, worst_cid, worst_ratio = core.is_manifold_501_perclaim(g, Zn)
-    admissible = bool(core.is_manifold_501(B_ent) and ok)
+    # EXP-508 Citadel entropy firewall (dual gate): the realized fragments (N_f) + delta_0
+    # gamma emissions (N_gamma = edges) must fit the energy budget E* = K_budget.
+    cit = core.citadel_entropy_508(K_budget, len(mu.active), int(N_edges))
+    citadel_ok = core.is_citadel_508(cit["dS_cit"])
+    # DUAL FIREWALL: manifold-continuous AND citadel-admissible.
+    admissible = bool(core.is_manifold_501(B_ent) and ok and citadel_ok)
 
     resp = {
         "protocol": "dentatus-api-v1",
@@ -113,10 +118,16 @@ def observe(request):
             "beta_Z_eff": round(float(bze), 9),
         },
         "firewall": {
-            "is_manifold_501": admissible,
+            "is_manifold_501": bool(core.is_manifold_501(B_ent) and ok),
             "epsilon": core.FIREWALL_EPSILON,
             "worst_ratio": round(float(worst_ratio), 9),
         },
+        "citadel": {
+            "H_in": cit["H_in"], "H_out": cit["H_out"], "dS_cit": cit["dS_cit"],
+            "N_f": cit["N_f"], "N_gamma": cit["N_gamma"],
+            "is_citadel": citadel_ok, "K_budget": int(K_budget),
+        },
+        "admissible": admissible,
         "fiedler": {"lambda_2": round(float(lam2), 9), "n_modes": int(len(lam_modes))},
     }
     # EXP-602: H_state is the bit-stable content address of the REALIZED world (W,Z,S).
