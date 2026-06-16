@@ -1,0 +1,34 @@
+{
+  "declaration_hash": "082b4a773bb23dfc2fe573d3c2d34010d5efd252e19707b0604b50d262338656",
+  "experiment": "EXP-517",
+  "title": "Live MuState Injection (Fork rho): the Lineage becomes the State",
+  "protocol_version": "exp517-v1",
+  "date": "2026-06-15",
+  "hypothesis": "A phase change is injected into the RUNNING MuState: the melted claim replaces the pre-melt leaf in the active set, the engine re-seals, and H_t advances continuously (H_before -> H_after). This closes the EXP-516 audit-vs-live gap (Ghost #50): the provenance edge and the live world are the same chain. INTERFERENCE (solid-assumption intent applied to a now-fluid world) is resolved by OPTIMISTIC CONCURRENCY: actors stamp the H they read; injection is a compare-and-swap on H, and an intent whose basis_H != live H is rejected as stale -> the Agency must rebase. Engine FROZEN (core MuState/Claim/Provenance; no engine.* import).",
+  "mechanism": {
+    "inject": "new active = (active - {parent}) | {melted child}; re-seal -> H_t = HASH(Z+S+W+t); Z changes (new material stalk) so the chain advances. CAS: expected_H mismatch -> StaleStateError.",
+    "interference": "apply_intent(mu, intent): basis_H != mu.H -> rejected (stale_basis); rebase re-stamps against the live world; the Agency recomputes material-dependent fields before resubmitting.",
+    "ghost_51": "re-declaration changes Z; S accumulates the injection residual via the engine next_S()."
+  },
+  "invariance_note": "the engine H_t hashes the raw Z (orientation-bearing) -> it is the continuous LIVE chain but NOT P_yz-invariant; the MATERIAL lineage witness (eigenvalue H_before/H_after, chi, child id with material-H payload) IS P_yz-invariant (Fork B).",
+  "engine_scope": "NO engine edits. game/agency/injection.py uses core (MuState/Claim/Provenance/next_S/seal) + game.phase_change. state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] inject melted -> new MuState at t+1; child active, parent inactive; H_before != H_after",
+    "[3] H_t continuity: record links before->after; child.provenance.parent_ids=(parent.id,), op=PhaseChange:minimal",
+    "[4] CAS guard: stale expected_H -> StaleStateError; correct expected_H -> success",
+    "[5] INTERFERENCE: solid intent (basis H_before) on fluid world (H_after) -> rejected stale_basis",
+    "[6] REBASE: re-stamped intent -> accepted",
+    "[7] world is now fluid: injected active material chi == melted chi; Z changed (dZ>0)",
+    "[8] purity: input mu unchanged (still sealed, H==H_before; claims/active intact)",
+    "[9] stable/unsurvivable -> no injection (mu unchanged, child None)",
+    "[10] determinism: H_engine_after + child id bit-stable"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: material_H_before & material_H_after invariant under Sector-D reflection",
+    "[2] chi_after invariant",
+    "[3] child Claim.id invariant (material-H payload)",
+    "[4] interference verdict invariant (stale rejected under reflection)",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}
