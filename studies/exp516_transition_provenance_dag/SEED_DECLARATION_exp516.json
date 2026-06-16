@@ -1,0 +1,34 @@
+{
+  "declaration_hash": "e028deae2adcaeb6126e399577835413a735594ddd3569b82271912553cdf85f",
+  "experiment": "EXP-516",
+  "title": "Transition Log -> Provenance DAG (Fork omicron): phase changes as first-class lineage",
+  "protocol_version": "exp516-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Each EXP-515 phase change is threaded into the engine's Claim provenance DAG as a genuine child Claim: provenance.parent_ids=(pre-melt id,), operator_id='PhaseChange:<mode>', payload = the P_yz-invariant material eigenvalue hash (H_after). Because Claim.id is content-addressed and timestamp-excluded (EXP-601), the lineage diamond->glass->fluid is deterministic and cryptographically traceable, enabling ancestry/time-travel queries and historical auditing. Engine FROZEN; built via dentatus.core (Claim/Provenance) only -- no engine.* import.",
+  "structure": {
+    "node": "Claim (id = SHA256(provenance + payload + t + protocol)[:16]); payload = material H_after",
+    "edge": "{parent, child, operator_id='PhaseChange:<mode>', witness(chi_before/after, t_star, H_before/after)}",
+    "queries": "ancestry(id) -> [root..id]; lineage(id) -> witnessed transitions along the path"
+  },
+  "backreaction_firewall": "the DAG only GROWS on a 'melted' outcome; 'stable'/'unsurvivable' add no edge. Recording is append-only and never mutates prior nodes/edges, the parent Claim, or engine state. P_yz: payloads & witness hashes are eigenvalue-based -> the whole chain is reflection-invariant.",
+  "engine_scope": "NO engine edits. game/agency/transition_dag.py consumes dentatus.core (Claim, Provenance, now_iso) + game.phase_change. state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] melted -> child Claim: provenance.parent_ids=(parent.id,), operator_id='PhaseChange:minimal'",
+    "[3] child Claim.id deterministic/content-addressed (re-record -> identical id; timestamp excluded)",
+    "[4] edge recorded with witness (chi_before/after, t_star, H_before/after)",
+    "[5] multi-step ancestry: diamond->glass->softer; ancestry()=[root,c1,c2]; lineage chain correct",
+    "[6] stable outcome -> no node/edge growth (record returns None)",
+    "[7] unsurvivable outcome -> no edge (record returns None)",
+    "[8] child stalk = melted Sector D; payload = H_after; t = parent.t+1",
+    "[9] append-only & serializable: to_dict round-trips; prior edges unmutated by later records",
+    "[10] determinism: full DAG (child ids + edges) bit-stable across runs"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: child Claim.id invariant under Sector-D reflection (material-H payloads)",
+    "[2] witness H_before & H_after invariant",
+    "[3] ancestry structure (ids) identical under reflection",
+    "[4] t_star & chi invariant",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}
