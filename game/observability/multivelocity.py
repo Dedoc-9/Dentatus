@@ -392,3 +392,28 @@ def strain_field_for_halo(state, leaves, grid=(2, 2, 2), mode="mass"):
     sm = smooth_velocities(state, leaves, grid, mode=mode)
     st = local_strain(sm, leaves, grid)
     return np.array([st.get(key_of_section.get(s), 0.0) for s in range(S)], float)
+
+
+# ============================================================
+# EXP-512 — Strain -> Bethe coupling (Fork epsilon). Game-layer orchestration: measure boundary
+# strain, hand it to the PURE engine firewall (dentatus.core.bethe_citadel_strain_512). Read-only
+# w.r.t. the verdict; never mutates geometry or E* of the forward state (opt-in, like EXP-509 gate).
+# ============================================================
+
+def citadel_strain_coupling(state, leaves, beta_Z, n_fragments, n_gamma,
+                            grid=(2, 2, 2), mode="mass", eps_ref=None, reduce="max"):
+    """Couple EXP-511 boundary strain to the EXP-509 Bethe Citadel. The deforming seam (reduce="max")
+    or the mean field (reduce="mean") drains the excitation reservoir. Returns the EXP-512 observable
+    + verdict. Pure: does not modify state, geometry, or the forward E*.
+    """
+    from dentatus import core as _core
+    sf = strain_field_for_halo(state, leaves, grid, mode=mode)
+    if len(sf) == 0:
+        strain = 0.0
+    else:
+        strain = float(np.max(sf)) if reduce == "max" else float(np.mean(sf))
+    kw = {} if eps_ref is None else {"eps_ref": float(eps_ref)}
+    bc = _core.bethe_citadel_strain_512(beta_Z, strain, n_fragments, n_gamma, **kw)
+    bc["is_bethe_strain"] = bool(_core.is_bethe_strain_512(bc["dS_cit"]))
+    bc["strain_reduce"] = reduce
+    return bc

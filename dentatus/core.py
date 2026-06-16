@@ -21,6 +21,7 @@ from engine.validity import (
     is_valid_covariance_401, cholesky_from_stalk_401, kappa_integral,
     citadel_entropy_508, is_citadel_508, CITADEL_FLOOR_508,
     bethe_citadel_509, is_bethe_citadel_509, BETHE_A0_509,
+    bethe_citadel_strain_512, is_bethe_strain_512, STRAIN_EPS_REF_512,
 )
 # --- operators: partition+homeostasis, manifold observation, spectral, persistence, tracking ---
 from engine.operators import (
@@ -51,6 +52,7 @@ __all__ = [
     "is_valid_covariance_401", "cholesky_from_stalk_401", "kappa_integral",
     "citadel_entropy_508", "is_citadel_508", "CITADEL_FLOOR_508",
     "bethe_citadel_509", "is_bethe_citadel_509", "BETHE_A0_509",
+    "bethe_citadel_strain_512", "is_bethe_strain_512", "STRAIN_EPS_REF_512",
     "apply_gamma_503_recursive", "phi_fb_manifold", "phi_ent_observe", "spectral_ent_project",
     "persist_scene_504", "seed_memory_init_504", "seed_memory_hash_504", "spatial_key_504",
     "estimate_global_motion_505", "world_frame_key_505",

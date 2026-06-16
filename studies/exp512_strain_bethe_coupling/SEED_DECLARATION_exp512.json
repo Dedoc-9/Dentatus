@@ -1,0 +1,38 @@
+{
+  "declaration_hash": "dd86223ac4b68ff8d1cfcc208ae807edd9999ede8eea23755bbbe50d03292a37",
+  "experiment": "EXP-512",
+  "title": "Strain -> Bethe Coupling (Fork epsilon): deformation energy drains excitation",
+  "protocol_version": "exp512-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Boundary shear strain (EXP-511) acts as a deformation-energy drain on the EXP-509 excitation reservoir: E*_eff = beta_Z*(1-(strain/eps_ref)^2). The level-density parameter a (substrate schema mass) is UNCHANGED -- strain is energetic, not structural. A world that shears past the critical strain eps_ref overheats (dS_cit<0) and is rejected by the Citadel: mechanical instability becomes an informational breach. strain=0 recovers EXP-509 exactly.",
+  "equations": {
+    "frac": "min((strain/eps_ref)^2, 1)   # elastic-energy fraction (quadratic, Hooke 1/2 k x^2)",
+    "E_star_eff": "beta_Z * (1 - frac)",
+    "dS_cit": "2*sqrt(a*E_star_eff)/ln2 - log2(N_f+N_gamma),   a = a0*d_stalk (fixed)"
+  },
+  "rejected_alternatives": {
+    "scale_a_by_strain (option b)": "re-entangles the fixed substrate constant a with dynamical state -> the EXP-509 double-count trap; dissolves the friction. REJECTED.",
+    "additive heat raising E* (option a, naive)": "raising E* increases H_in -> easier admission (wrong sign). Corrected to a SUBTRACTIVE deformation-energy drain."
+  },
+  "backreaction_firewall": "strain feeds the Citadel VERDICT (a read), never mutates geometry, the eigenvector, or the forward E*. Opt-in (separate function / gate) like EXP-509 bethe_gate -> existing forks unchanged.",
+  "engine_scope": "engine/validity.py: ADDITIVE bethe_citadel_strain_512 + is_bethe_strain_512 only. state.py/operators.py/confluence.py FROZEN. Orchestration in game/observability/multivelocity.py.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] strain=0 recovers bethe_citadel_509 dS_cit EXACTLY",
+    "[3] friction: rising strain at fixed world -> dS_cit strictly decreasing, crosses 0 (admit->reject)",
+    "[4] a UNCHANGED across strain (substrate constant; strain never scales a)",
+    "[5] quadratic: E_strain_frac == (strain/eps_ref)^2 (clipped at 1)",
+    "[6] overheat at eps_ref: strain=eps_ref -> E*_eff=0 -> reject",
+    "[7] end-to-end: high-shear scene rejected, rigid scene admitted (eps_ref calibrated between them)",
+    "[8] no-regression: bethe_citadel_509 default path unchanged (coupling is a separate opt-in fn)",
+    "[9] determinism: re-run identical dS_cit (bit-stable)",
+    "[10] eps_ref knob monotone: larger eps_ref -> higher dS at fixed strain (more tolerant)"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz x->-x: coupled dS_cit invariant",
+    "[2] E_star_eff invariant under reflection",
+    "[3] end-to-end verdict invariant under reflection",
+    "[4] max-section strain invariant",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

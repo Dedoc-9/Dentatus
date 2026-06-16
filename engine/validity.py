@@ -731,3 +731,42 @@ def bethe_citadel_509(beta_Z, n_fragments, n_gamma, a0=BETHE_A0_509, d_stalk=18)
 def is_bethe_citadel_509(dS_cit, floor=0.0):
     """Thermodynamic Law of the Citadel: admit iff dS_cit_bethe >= floor (not overheated)."""
     return bool(float(dS_cit) >= float(floor))
+
+
+# ============================================================
+# EXP-512 — Strain -> Bethe coupling (Fork epsilon): deformation energy drains excitation.
+# ============================================================
+STRAIN_EPS_REF_512 = 0.5     # critical shear strain (dimensionless knob); at strain=eps_ref the
+                             # full excitation reservoir is sequestered into deformation (E*_eff=0).
+
+
+def bethe_citadel_strain_512(beta_Z, strain, n_fragments, n_gamma,
+                             eps_ref=STRAIN_EPS_REF_512, a0=BETHE_A0_509, d_stalk=18):
+    """EXP-509 Bethe Citadel with a deformation-energy drain on the excitation reservoir.
+        frac   = min((strain/eps_ref)^2, 1)      # elastic-energy fraction (quadratic, Hooke ~ 1/2 k x^2)
+        E*_eff = beta_Z * (1 - frac)             # deformation energy sequestered from the level density
+        H_in   = 2*sqrt(a * E*_eff)/ln2,  H_out = log2(N_f+N_gamma),  dS_cit = H_in - H_out
+    a = a0*d_stalk is UNCHANGED (substrate schema mass; strain is energetic, not structural -> never
+    scales a). strain=0 -> frac=0 -> E*_eff=beta_Z -> identical to bethe_citadel_509 (exact recovery).
+    P_yz: strain (Frobenius norm) and beta_Z are P_yz-invariant scalars -> dS_cit P_yz-invariant.
+    Returns dict(a, E_star, strain, E_strain_frac, E_star_eff, H_in, H_out, dS_cit, N_f, N_gamma,
+    quanta, eps_ref)."""
+    a = float(a0) * int(d_stalk)
+    E = max(float(beta_Z), 0.0)
+    s = max(float(strain), 0.0)
+    er = float(eps_ref)
+    frac = min((s / er) ** 2, 1.0) if er > 0.0 else 0.0
+    E_eff = E * (1.0 - frac)
+    Nf = max(int(n_fragments), 0); Ng = max(int(n_gamma), 0)
+    quanta = max(Nf + Ng, 1)
+    H_in = float(2.0 * _math509.sqrt(a * E_eff) / _math509.log(2.0))
+    H_out = float(_math509.log2(float(quanta)))
+    return {"a": round(a, 9), "E_star": round(E, 9), "strain": round(s, 9),
+            "E_strain_frac": round(frac, 9), "E_star_eff": round(E_eff, 9),
+            "H_in": round(H_in, 9), "H_out": round(H_out, 9), "dS_cit": round(H_in - H_out, 9),
+            "N_f": Nf, "N_gamma": Ng, "quanta": quanta, "eps_ref": round(er, 9)}
+
+
+def is_bethe_strain_512(dS_cit, floor=0.0):
+    """Admit iff strain-coupled dS_cit >= floor (manifold not overheated by deformation)."""
+    return bool(float(dS_cit) >= float(floor))
