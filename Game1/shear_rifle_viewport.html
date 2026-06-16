@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>DENTATUS · SHEAR-RIFLE — Combat Slice</title>
+<style>
+  :root{--blk:#050400;--amb:#ffb000;--amb2:#b87d00;--amb3:#5a3f06;--phos:#3fd0c0;--blue:#4ca8ff;--warn:#ff3b2f;--ink:#ffd98a;--dim:#7a5f1e;--mono:"Consolas",ui-monospace,Menlo,monospace;}
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#050400;color:#ffb000;font-family:var(--mono);overflow:hidden;touch-action:none;letter-spacing:.3px;cursor:crosshair}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.16) 2px 3px);opacity:.5}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .hud{position:fixed;z-index:10;pointer-events:none}
+  #top{top:0;left:0;right:0;height:30px;display:flex;align-items:center;gap:14px;padding:0 12px;font-size:12px;background:linear-gradient(#0a0700,transparent)}
+  #top .id{color:#ffb000;font-weight:700;letter-spacing:1px}#top .k{color:#7a5f1e}#top .v{color:#ffd98a}
+  #top .right{margin-left:auto;display:flex;gap:14px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#3fd0c0;box-shadow:0 0 8px #3fd0c0;display:inline-block;vertical-align:middle}.dot.off{background:#7a5f1e;box-shadow:none}
+  #aim{left:12px;bottom:12px;font-size:12px;line-height:1.6;text-shadow:0 0 8px #000}
+  #aim .k{color:#7a5f1e}#aim .v{color:#ffd98a;font-variant-numeric:tabular-nums}
+  #recv{right:12px;bottom:12px;font-size:11px;text-align:right;color:#3fd0c0;max-width:46vw;text-shadow:0 0 8px #000}
+  #recv .h{color:#ffd98a}
+  #heatwrap{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(40vw,360px);z-index:10;pointer-events:none;text-align:center}
+  #heat{height:8px;border:1px solid #5a3f06;background:#0a0700;border-radius:5px;overflow:hidden}#heatF{height:100%;width:0;background:linear-gradient(90deg,#5a3f06,#ffb000)}
+  #beat{font-size:11px;color:#7a5f1e;margin-top:4px;height:14px}
+  #ph{position:fixed;top:34px;left:50%;transform:translateX(-50%);font-size:11px;color:#465a78;z-index:10}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div class="hud" id="top">
+  <span class="id">DENTATUS // SHEAR-RIFLE</span>
+  <span class="k">H_t</span><span class="v" id="hHt">—</span>
+  <span class="right">
+    <span><span class="dot off" id="linkDot"></span> <span class="k">LINK</span> <span class="v" id="hLink">LOCAL</span></span>
+    <span class="k">ACTION</span><span class="v">60fps</span><span class="k">/ TRUTH</span><span class="v" id="hTick">12Hz</span>
+  </span>
+</div>
+<div class="hud" id="ph">TWO-CLOCK · client predicts, server (Dentatus) is authoritative & replayable</div>
+<div class="hud" id="aim"></div>
+<div class="hud" id="recv"></div>
+<div id="heatwrap"><div id="heat"><div id="heatF"></div></div><div id="beat">FIRE: click/SPACE · ANNEAL: right-click/E — rebuild cover · sync to the pulse</div></div>
+<script>
+var SEED={T:1.5385,phase0:0.873};
+var BRIDGE=(location.protocol==='file:'?'http://localhost:8780':'');
+function pulseAt(t){var ph=((t/SEED.T)+SEED.phase0)%1;if(ph<0)ph+=1;return{ph:ph,val:Math.cos(2*Math.PI*ph)};}
+var cv=document.getElementById('cv'),cx=cv.getContext('2d'),W,H,DPR;
+var GX=8,GY=6,LIVE=false;
+var tiles=[];  // authoritative state from stream {id,gx,gy,chi,wi,phase,prox,critical,sign,hit}
+var disp=[];   // displayed (lerped) chi + local hit flash
+for(var i=0;i<GX*GY;i++){tiles.push({id:i,gx:i%GX,gy:(i/GX|0),chi:0.25,wi:0.06,phase:'solid',prox:0,critical:false,sign:1,hit:0,vclass:'LOD_RELAXED',vaddr:''});disp.push({chi:0.25,hit:0});}
+var mouse={x:0,y:0}, aimTile=-1, heat=0, tracers=[], lastShot=null, Hv='—';
+/* ---- connect ---- */
+function setLink(on){LIVE=on;document.getElementById('hLink').textContent=on?'LIVE':'LOCAL';document.getElementById('hLink').style.color=on?'#3fd0c0':'#ffd98a';document.getElementById('linkDot').classList.toggle('off',!on);}
+function connect(){var es;try{es=new EventSource(BRIDGE+'/stream');}catch(e){return;}
+  es.onmessage=function(ev){var f=JSON.parse(ev.data);setLink(true);Hv=f.H_verified;
+    document.getElementById('hHt').textContent=f.H_verified?f.H_verified.toUpperCase():'UNWITNESSED';
+    for(var i=0;i<f.tiles.length;i++){var s=f.tiles[i];tiles[s.id]=s;}
+  };
+  es.onerror=function(){if(!LIVE)setLink(false);};}
+/* ---- geometry: top-down grid with slight depth ---- */
+function tileQuad(gx,gy){
+  var pad=70, topY=H*0.16, botY=H*0.92;
+  var tFar=gy/GY, tNear=(gy+1)/GY;
+  function row(tr){var w=W-2*pad - (1-tr)*W*0.18; var x0=(W-w)/2; var y=topY+(botY-topY)*tr; return {x0:x0,w:w,y:y};}
+  var a=row(tFar), b=row(tNear);
+  var ax0=a.x0+a.w*(gx/GX), ax1=a.x0+a.w*((gx+1)/GX);
+  var bx0=b.x0+b.w*(gx/GX), bx1=b.x0+b.w*((gx+1)/GX);
+  return [[ax0,a.y],[ax1,a.y],[bx1,b.y],[bx0,b.y]];
+}
+function tileAt(mx,my){for(var i=0;i<tiles.length;i++){var q=tileQuad(tiles[i].gx,tiles[i].gy);if(pointInQuad(mx,my,q))return i;}return -1;}
+function pointInQuad(px,py,q){var s=0;for(var i=0;i<4;i++){var a=q[i],b=q[(i+1)%4];var cr=(b[0]-a[0])*(py-a[1])-(b[1]-a[1])*(px-a[0]);s+=(cr>0?1:-1);}return Math.abs(s)===4;}
+function phaseColor(chi,sign,hit){
+  var c;
+  if(chi<0.3) c=[255,176,0];            // solid amber
+  else if(chi<0.7) c=[255,140,42];      // glass orange
+  else c=[76,168,255];                  // fluid blue
+  var tint=sign>0?1.0:0.82;             // fault side: blue side slightly cooler
+  c=[c[0]*tint,c[1]*tint,c[2]*(sign>0?1:1.15)];
+  var h=Math.min(1,hit); c=[c[0]+(255-c[0])*h,c[1]+(255-c[1])*h,c[2]+(255-c[2])*h];
+  return c;
+}
+/* ---- render ---- */
+function resize(){DPR=Math.min(devicePixelRatio||1,1.6);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener('resize',resize);
+function frame(){
+  var now=performance.now()/1000, pl=pulseAt(now);
+  cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#050400';cx.fillRect(0,0,W,H);
+  // floor grid glow
+  aimTile=tileAt(mouse.x,mouse.y);
+  for(var i=0;i<tiles.length;i++){
+    var t=tiles[i], d=disp[i];
+    d.chi+=(t.chi-d.chi)*0.18;                       // reconcile displayed -> authoritative χ
+    d.hit=Math.max(d.hit*0.86, t.hit||0);            // hit flash (predicted + streamed)
+    var q=tileQuad(t.gx,t.gy), col=phaseColor(d.chi,t.sign,d.hit);
+    cx.beginPath();cx.moveTo(q[0][0],q[0][1]);for(var k=1;k<4;k++)cx.lineTo(q[k][0],q[k][1]);cx.closePath();
+    cx.fillStyle='rgba('+(col[0]|0)+','+(col[1]|0)+','+(col[2]|0)+','+(0.10+0.22*(1-d.chi)+0.3*d.hit)+')';cx.fill();
+    var relaxed=(t.vclass==='LOD_RELAXED' && i!==aimTile);
+    if(relaxed){ // INTEGRITY AXIS: un-verified-at-fine-resolution -> coarse hatch + dim
+      cx.fillStyle='rgba(5,4,0,0.45)';cx.fill();
+      cx.save();cx.clip();cx.strokeStyle='rgba(122,95,30,0.5)';cx.lineWidth=1;
+      var qx0=Math.min(q[0][0],q[3][0]),qx1=Math.max(q[1][0],q[2][0]),qy0=q[0][1],qy1=q[2][1];
+      for(var hx=qx0-30;hx<qx1+30;hx+=7){cx.beginPath();cx.moveTo(hx,qy0);cx.lineTo(hx+(qy1-qy0),qy1);cx.stroke();}
+      cx.restore();
+    }
+    cx.lineWidth=i===aimTile?2:1;
+    cx.strokeStyle=t.critical?('rgba(255,59,47,'+(0.5+0.5*(0.5+0.5*pl.val))+')'):(i===aimTile?'#ffd98a':(relaxed?'rgba(90,63,6,0.6)':'rgba('+(col[0]|0)+','+(col[1]|0)+','+(col[2]|0)+',0.5)'));
+    if(relaxed){cx.setLineDash([4,4]);} cx.stroke(); cx.setLineDash([]);
+    if(d.chi>=0.7){ // fluid ripple
+      var cxm=(q[0][0]+q[2][0])/2,cym=(q[0][1]+q[2][1])/2;
+      cx.strokeStyle='rgba(76,168,255,0.5)';cx.lineWidth=1;cx.beginPath();
+      cx.arc(cxm,cym,4+3*Math.sin(now*4+i),0,6.28);cx.stroke();
+    } else if(d.chi>=0.3){ // glass cracks
+      cx.strokeStyle='rgba(255,140,42,0.4)';cx.lineWidth=1;cx.beginPath();cx.moveTo(q[0][0],q[0][1]);cx.lineTo(q[2][0],q[2][1]);cx.stroke();
+    }
+  }
+  // tracers
+  var px=W/2, py=H*0.99;
+  for(var j=tracers.length-1;j>=0;j--){var tr=tracers[j];tr.life-=0.06;if(tr.life<=0){tracers.splice(j,1);continue;}
+    cx.strokeStyle='rgba(255,217,138,'+tr.life+')';cx.lineWidth=2;cx.beginPath();cx.moveTo(px,py);cx.lineTo(tr.x,tr.y);cx.stroke();
+    cx.fillStyle='rgba(255,255,255,'+tr.life+')';cx.beginPath();cx.arc(tr.x,tr.y,4*tr.life+1,0,6.28);cx.fill();}
+  // player + crosshair
+  cx.fillStyle='#ffb000';cx.beginPath();cx.moveTo(px,py-14);cx.lineTo(px-10,py);cx.lineTo(px+10,py);cx.closePath();cx.fill();
+  cx.strokeStyle=heat>0.9?'#ff3b2f':'#ffd98a';cx.lineWidth=1.5;
+  cx.beginPath();cx.arc(mouse.x,mouse.y,11,0,6.28);cx.moveTo(mouse.x-16,mouse.y);cx.lineTo(mouse.x-6,mouse.y);cx.moveTo(mouse.x+6,mouse.y);cx.lineTo(mouse.x+16,mouse.y);cx.moveTo(mouse.x,mouse.y-16);cx.lineTo(mouse.x,mouse.y-6);cx.moveTo(mouse.x,mouse.y+6);cx.lineTo(mouse.x,mouse.y+16);cx.stroke();
+  // hud
+  heat=Math.max(0,heat-0.02);document.getElementById('heatF').style.width=(heat*100)+'%';
+  var beat=document.getElementById('beat');var synced=(pl.ph<0.08||pl.ph>0.92);
+  beat.textContent=synced?'◉ PULSE WINDOW — SYNCED SHOT READY':'fire on the pulse — synced shots breach cheaper';
+  beat.style.color=synced?'#3fd0c0':'#7a5f1e';
+  if(aimTile>=0){var t=tiles[aimTile];document.getElementById('aim').innerHTML=
+    '<span class="k">TARGET</span> <span class="v">tile '+aimTile+'</span>  <span class="k">phase</span> <span class="v">'+t.phase.toUpperCase()+'</span><br>'+
+    '<span class="k">χ</span> <span class="v">'+t.chi.toFixed(2)+'</span>  <span class="k">Wi</span> <span class="v">'+t.wi.toFixed(2)+'</span>  <span class="k">yield</span> <span class="v" style="color:'+(t.critical?'#ff3b2f':'#ffd98a')+'">'+(t.prox*100|0)+'%</span><br>'+'<span class="k">INTEGRITY</span> <span class="v" style="color:'+(t.vclass==='FULL_VALID'?'#3fd0c0':'#7a5f1e')+'">'+t.vclass+'</span> <span class="v">'+(t.vaddr||'').slice(0,10)+'</span>';}
+  if(lastShot)document.getElementById('recv').innerHTML='<span class="h">'+lastShot.verdict+'</span> tile '+lastShot.section+' · χ→'+lastShot.chi.toFixed(2)+'<br>H '+(lastShot.H_verified||'—')+' ⊕'+(lastShot.composite||'').slice(0,8)+'<br>attest '+(lastShot.attestation||'').slice(0,12)+'… <span style="color:#3fd0c0">SIGNED</span>';
+  requestAnimationFrame(frame);
+}
+/* ---- fire ---- */
+function fire(){
+  if(aimTile<0||heat>0.95)return;
+  heat=Math.min(1,heat+0.16);
+  var now=performance.now()/1000, pl=pulseAt(now), synced=(pl.ph<0.08||pl.ph>0.92);
+  var q=tileQuad(tiles[aimTile].gx,tiles[aimTile].gy);var tx=(q[0][0]+q[2][0])/2,ty=(q[0][1]+q[2][1])/2;
+  tracers.push({x:tx,y:ty,life:1});
+  disp[aimTile].hit=1;                               // CLIENT PREDICTION: flash immediately
+  var sec=aimTile;
+  if(LIVE){fetch(BRIDGE+'/call/shear_fire',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({section:sec,wi:synced?0.07:0.05,synced:synced,focus:[tiles[sec].gx,tiles[sec].gy],game_stats:{shooter:'p1',tile:sec,heat:+heat.toFixed(3)}})})
+      .then(function(r){return r.json();}).then(function(res){if(res.accepted)lastShot=res;}).catch(function(){});
+  } else { // offline: predict locally
+    var t=tiles[sec];t.wi=Math.min(1.2,t.wi+(synced?0.07:0.05));
+    if(t.wi>0.5*t.chi){t.chi=Math.min(1,t.chi+0.07);t.phase=t.chi<0.3?'solid':t.chi<0.7?'glass':'fluid';}
+    lastShot={verdict:t.wi>0.5*t.chi?'MELT':'HIT',section:sec,chi:t.chi,H_verified:'LOCAL',composite:'',attestation:''};
+  }
+}
+function anneal(){
+  if(aimTile<0)return; var sec=aimTile; disp[sec].hit=0.6;
+  if(LIVE){fetch(BRIDGE+'/call/anneal',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({section:sec,synced:true,focus:[tiles[sec].gx,tiles[sec].gy],game_stats:{shooter:'p1',tile:sec}})})
+    .then(function(r){return r.json();}).then(function(res){if(res.accepted)lastShot=res;}).catch(function(){});}
+  else{var t=tiles[sec];if(t.chi>0.3){t.chi=Math.max(0.2,t.chi-0.22);t.phase=t.chi<0.3?'solid':t.chi<0.7?'glass':'fluid';lastShot={verdict:'ANNEAL',section:sec,chi:t.chi};}}
+}
+cv.addEventListener('contextmenu',function(e){e.preventDefault();mouse.x=e.clientX;mouse.y=e.clientY;anneal();});
+cv.addEventListener('pointermove',function(e){mouse.x=e.clientX;mouse.y=e.clientY;});
+cv.addEventListener('pointerdown',function(e){mouse.x=e.clientX;mouse.y=e.clientY;fire();});
+addEventListener('keydown',function(e){if(e.code==='Space'){e.preventDefault();fire();}else if(e.key==='e'||e.key==='E'){anneal();}});
+var pad=null,padT=false;addEventListener('gamepadconnected',function(e){pad=e.gamepad.index;});
+var padL=false;
+function pollPad(){if(pad==null)return;var g=navigator.getGamepads()[pad];if(!g)return;var t=g.buttons[7]&&g.buttons[7].pressed||g.buttons[0]&&g.buttons[0].pressed;if(t&&!padT)fire();padT=t;
+  var lb=g.buttons[6]&&g.buttons[6].pressed||g.buttons[4]&&g.buttons[4].pressed;if(lb&&!padL)anneal();padL=lb;
+  if(g.axes&&g.axes.length>=2){mouse.x=Math.max(0,Math.min(W,mouse.x+g.axes[0]*8));mouse.y=Math.max(0,Math.min(H,mouse.y+g.axes[1]*8));}}
+setInterval(pollPad,16);
+mouse.x=innerWidth/2;mouse.y=innerHeight/2;resize();setLink(false);connect();frame();
+</script>
+</body>
+</html>
