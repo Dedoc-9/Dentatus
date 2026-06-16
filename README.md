@@ -4,6 +4,10 @@ Generative reality engine implementing a cellular sheaf state machine over a cla
 State evolution is governed by a fixed operator pipeline with immutable hash-indexed states,
 dual ghost channels, and preregistered validity predicates.
 
+> **📜 The canonical law lives in [`constitution/`](constitution/CONSTITUTIONAL_CHARTER.md)** — the
+> Constitutional Charter (Theory of the Manifold), the Experiment Ledger (proof index), and the Ghost
+> Registry. Start there for the unified architecture (the Four-Faced Firewall + the Kinetic Lineage).
+
 **Primary architect**: Daniel J. Dillberg — bigdilly95@gmail.com  
 **License**: core under GNU Affero General Public License v3.0 (sole copyright ⇒ dual-licensing available) — see `AGPL-3.0`, `DEV_NOTES_clean_room.md`
 
