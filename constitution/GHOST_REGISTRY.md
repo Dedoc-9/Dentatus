@@ -60,7 +60,7 @@ guarded · ○ open. The defining residual `G_t = Z_t − Π_{W_t}(Z_t)` underli
 | 51 | Injection ghost & inactive-claim accumulation | re-declaration jumps `Z` by `ΔZ`, absorbed into `S` via `next_S`; inactive claims accrue (→ compaction) | ✓ | 517→518 |
 | 52 | Compaction shadow & hot/cold undo asymmetry | `η_CLT` preserved only via permanently-retained sufficient statistics; undo O(1) hot, replay-cost cold | ◐ managed | 518 |
 | 53 | Checkpoint cadence & unbounded command log | `K` trades memory for replay latency (warm tail); the command log is the minimal unbounded tier; `verify_history` is a continuous determinism monitor | ◐ managed | 520 |
-| 54 | Amorphous lock | a fully isotropic (total-melt) state has no residual order to amplify → cannot spontaneously re-crystallise; needs an orienting field (Fork ψ). Minimal melts always re-crystallisable | ○ open | 521 |
+| 54 | Amorphous lock | a fully isotropic (total-melt) state has no residual order to amplify; **closed** by EXP-522 oriented nucleation (re-crystallise along the strain principal axis). Residual `no_orienting_field` case (isotropic stress) is symmetry-correct, not a lock | ✓ | 521→522 |
 
 ## Principle
 

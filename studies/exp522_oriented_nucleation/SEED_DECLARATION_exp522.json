@@ -1,0 +1,34 @@
+{
+  "declaration_hash": "851a4f654a262c2ac4e5ad73c9d67558337315b6714cb399963a67e5c601d3b8",
+  "experiment": "EXP-522",
+  "title": "Oriented Nucleation (Fork psi): re-crystallise an amorphous state along the strain axis",
+  "protocol_version": "exp522-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Closes Ghost #54. A fully isotropic (total-melt) state has no residual order for EXP-521 to amplify; oriented nucleation supplies the missing orienting field from the strain tensor Sym(L): the amorphous manifold re-crystallises with its covariance principal axis aligned to the strain principal axis (Sigma' = V_s diag(c exp(beta * d/||d||)) V_s^T, d = centred strain eigenvalues, det preserved). The hysteresis gate (EXP-521) still applies. Isotropic stress (d->0) gives no field -> the state stays amorphous; a material with residual order defers to EXP-521. Engine FROZEN.",
+  "constants": {
+    "HYSTERESIS_522": 0.15,
+    "ANNEAL_522": 0.25,
+    "ISO_EPS_522": 1e-06,
+    "BETA_MAX_522": 6.0
+  },
+  "engine_scope": "NO engine edits. game/agency/nucleation.py uses core (chi/bethe/cholesky) + dentatus.semantic. state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] amorphous re-crystallises: total-melt -> chi=1 isotropic; nucleate under anisotropic strain -> chi<1 (ordered)",
+    "[3] ALIGNMENT: covariance major eigenvector aligns with strain principal axis (|cos| ~ 1)",
+    "[4] no_orienting_field: isotropic stress on amorphous -> no nucleation (stays amorphous)",
+    "[5] not_amorphous: residual-order material -> defers to EXP-521 (status not_amorphous, unchanged)",
+    "[6] volume preserved: det(Sigma_after) == det(Sigma_before)",
+    "[7] hysteresis respected: amorphous in dead-zone (small headroom) -> hold",
+    "[8] stays admissible: chi_after > chi_required (nucleated material survives current stress)",
+    "[9] Ghost #54 closed: total-melt -> oriented-nucleate cycle re-orders an amorphous state end-to-end",
+    "[10] determinism: chi_after + beta + alignment bit-stable"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: chi_after invariant under joint reflection of Sector D and Sym(L)",
+    "[2] beta invariant",
+    "[3] alignment_cos invariant",
+    "[4] det invariant",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

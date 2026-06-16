@@ -177,6 +177,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-519 | Unified Kinetic Dashboard (capstone); WebGL replay of bit-perfect captured telemetry (509→518): shearing seam + Weissenberg heat-map, Citadel arc + χ_required + melt pops, growing provenance tree, flat memory vs climbing history, advancing H_t; diamond→glass→fluid→firewall-holds; telemetry deterministically reproducible | `seed b3…` | **open** |
 | EXP-520 | Replay / Time-Travel Debugger (Fork τ); event-sourced command log + sparse checkpoints reconstruct any historical μ; VERIFIED replay (H_t match, tamper-evident); BeyondWindowError→cold restore; Ghost #53 checkpoint-cadence; engine frozen (core facade only) | `2e489550a816e08e` | **open** |
 | EXP-521 | Re-crystallization / Annealing (Fork ξ); distinct lower cooling threshold (Schmitt hysteresis) closes the one-way melt ratchet; reverse anisotropy geodesic (widen spectrum, det-preserving); χ–Wi hysteresis loop, chatter-free; **Ghost #49 closed**, #54 amorphous-lock; engine frozen (game/agency policy) | `8f9fcf2b21b0ce97` | **open** |
+| EXP-522 | Oriented Nucleation (Fork ψ); amorphous (total-melt) state re-crystallises along the strain principal axis (det-preserving, aligned to flow, alignment cos=1); isotropic-stress no-field is symmetry-correct; **Ghost #54 closed**; engine frozen (game/agency policy) | `851a4f654a262c2a` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
