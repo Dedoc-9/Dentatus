@@ -122,3 +122,15 @@ entropic tax · `ξ` re-crysta
   - **Klein non-orientability conflicts with the engine's orientation-bearing identity** (EXP-523 two-hash split: H_t is orientation-bearing; the Fiedler sign gauge assumes consistent orientation). Crossing the seam flips chirality/aim and makes the red/blue basin labeling ambiguous at the seam — disorienting for play and in tension with P_yz reasoning.
   - **A TORUS is the right primitive for a boundless arena:** both edges wrap directly, orientable, seamless (shoot off one edge → arrive the other, no walls) with NONE of the flip pathology. Klein only adds an "emerge mirrored behind them" gimmick at the cost of readability and orientation coherence. Recommend torus; treat Klein as a novelty, not the default.
   - **Menger/Sierpinski is a MAP GENERATOR, not physics:** a static deterministic opacity mask (procedural fractal cover layout), not a new material model. χ/phase/LoS already provide per-tile opacity; the "infinite surface area / sub-quantum tunnel" framing is inflation. Bank as a cover-layout option, not a material-physics fork.
+
+### Scaling Measurement · Per-sector frame-time ceiling (corrects the scaling blueprint)
+- **Measured** (current duel = FULL-grid weighted-Fiedler eigendecomposition, NOT the EXP-507 stitched path), mean / p95 ms per 10 Hz tick under combat load:
+  - 8x6 (48): 3.8 / 5.5 — OK
+  - 10x10 (100): 11 / 18 — OK
+  - 12x12 (144): 20 / 25 — OK (≈4x headroom) ← comfortable per-sector ceiling
+  - 16x16 (256): 57 / 77 — TIGHT (≈1.3x headroom)
+  - 20x20 (400): 139 / 162 — OVER BUDGET
+  - 24x24 (576): 285 / 346 — OVER BUDGET
+- **Correction of record:** a blueprint claimed a 256-leaf (16x16) sector runs at 2.9 ms with 7x headroom. Real is ≈57 ms / 1.3x — off by ~20x. The honest comfortable sector on the current code is ~12x12 (144 tiles); 16x16 is viable but tight; ≥400 tiles is over budget.
+- **Single-writer caveat:** all active sectors share ONE 10 Hz thread, so TOTAL live tiles across loaded sectors must fit the 100 ms budget — at ~144 tiles/25 ms that's ~3-4 active sectors before the budget is gone. "32-64 players across a 10x10 matrix" requires EITHER the EXP-507 stitched Fiedler (O(sections x leaf_cap^3), per-section cheap) wired into the duel, OR sharding sectors across processes. The current path cannot do it.
+- **This now LICENSES the stitched-Fiedler wiring** (EXP-506/507 → duel): the profiler has empirically bent past budget (400 tiles), there's a concrete target, the tool already exists and is verified in isolation, and it can be differentially validated against the full-grid Fiedler as oracle. First optimization this session justified by data rather than assumed.
