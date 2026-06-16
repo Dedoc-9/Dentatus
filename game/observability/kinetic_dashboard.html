@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>DENTATUS · Unified Kinetic Dashboard (EXP-519)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#121822; --panel2:#0e141d; --line:#1e2a3a;
+    --txt:#dfe7f2; --txt2:#8aa0bb; --txt3:#5a6b82;
+    --green:#39d98a; --red:#ff5c6c; --amber:#ffb454; --cyan:#36d6e7; --blue:#4c7dff; --violet:#a98bff;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);overflow:hidden}
+  #app{display:grid;grid-template-rows:auto 1fr auto;height:100vh;gap:8px;padding:10px}
+  header{display:flex;align-items:baseline;gap:14px}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.5px}
+  header .sub{font-size:11px;color:var(--txt2)}
+  header .badge{margin-left:auto;font-size:11px;color:var(--txt3)}
+  #grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;min-height:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;position:relative;overflow:hidden;min-height:0}
+  .panel .ttl{position:absolute;top:8px;left:12px;font-size:11px;font-weight:600;color:var(--txt2);letter-spacing:.6px;z-index:2}
+  .panel .tag{position:absolute;top:8px;right:12px;font-size:10px;color:var(--txt3);z-index:2}
+  canvas{display:block;width:100%;height:100%}
+  #seamWrap{position:relative}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s}
+  footer{display:flex;align-items:center;gap:12px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  button{background:#1b2735;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 14px;font-family:var(--mono);font-size:12px;cursor:pointer}
+  button:hover{border-color:var(--txt3)}
+  #scrub{flex:1;appearance:none;height:5px;border-radius:3px;background:var(--line);outline:none}
+  #scrub::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:50%;background:var(--green);cursor:pointer}
+  .clock{font-size:11px;color:var(--txt2);min-width:120px}
+  .evt{font-size:11px;font-weight:600;min-width:108px;text-align:center;border-radius:5px;padding:3px 0}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>DENTATUS · UNIFIED KINETIC DASHBOARD</h1>
+    <span class="sub">EXP-519 — replay of bit-perfect engine telemetry (509→518)</span>
+    <span class="badge" id="meta"></span>
+  </header>
+  <div id="grid">
+    <div class="panel" id="seamWrap">
+      <div class="ttl">① THE SEAM — manifold shear · Weissenberg heat-map</div>
+      <div class="tag" id="seamTag"></div>
+      <canvas id="seam"></canvas>
+      <div id="flash"></div>
+    </div>
+    <div class="panel">
+      <div class="ttl">② THE YIELD — Citadel integrity · χ_required · melt</div>
+      <div class="tag" id="yieldTag"></div>
+      <canvas id="yield"></canvas>
+    </div>
+    <div class="panel">
+      <div class="ttl">③ THE LINEAGE — provenance tree · phase transitions</div>
+      <div class="tag" id="lineTag"></div>
+      <canvas id="lineage"></canvas>
+    </div>
+    <div class="panel">
+      <div class="ttl">④ THE TRUTH — bit-perfect H_t · bounded memory</div>
+      <div class="tag" id="truthTag"></div>
+      <canvas id="truth"></canvas>
+    </div>
+  </div>
+  <footer>
+    <button id="play">▶ Play</button>
+    <button id="reset">⟲</button>
+    <input id="scrub" type="range" min="0" value="0" step="1"/>
+    <span class="evt" id="evt"></span>
+    <span class="clock" id="clock"></span>
+  </footer>
+</div>
+<script>
+const TELE = {"meta":{"beta_Z":40.0,"N_f":148,"N_gamma":396,"vort":0.4,"frames":80,"protocol":"exp519-v1","seed_H":"3d9d3f8b88a9990f"},"frames":[{"i":0,"strain":0.0,"Wi":0.0,"Wi_crit":0.5,"chi":0.05,"chi_required":0.0,"dS":20.8984,"integrity":0.9646,"admit":true,"H":"3d9d3f8b88a9990f","eta_CLT":0.0,"working_set":1,"history":0,"ghost":0.0,"event":"shearing","material":"diamond","eta_spec":0.0314,"gap_spec":0.9975},{"i":1,"strain":0.02,"Wi":0.05,"Wi_crit":0.5,"chi":0.1059,"chi_required":0.1049,"dS":0.8083,"integrity":0.3186,"admit":true,"H":"65bcfb1336c5b320","eta_CLT":-0.36565,"working_set":1,"history":1,"ghost":0.9019,"event":"melted","material":"diamond","eta_spec":0.1893,"gap_spec":0.9774},{"i":2,"strain":0.04,"Wi":0.1,"Wi_crit":0.5,"chi":0.2109,"chi_required":0.2099,"dS":0.4156,"integrity":0.306,"admit":true,"H":"576229a799c6138f","eta_CLT":-0.41746,"working_set":1,"history":2,"ghost":0.3775,"event":"melted","material":"diamond","eta_spec":0.3648,"gap_spec":0.9431},{"i":3,"strain":0.06,"Wi":0.15,"Wi_crit":0.5,"chi":0.3158,"chi_required":0.3148,"dS":0.2798,"integrity":0.3016,"admit":true,"H":"9eb5ba6db512fb94","eta_CLT":-0.42286,"working_set":1,"history":3,"ghost":0.2469,"event":"melted","material":"glass","eta_spec":0.5274,"gap_spec":0.8958},{"i":4,"strain":0.08,"Wi":0.2,"Wi_crit":0.5,"chi":0.4207,"chi_required":0.4197,"dS":0.2109,"integrity":0.2994,"admit":true,"H":"a2971af993c01921","eta_CLT":-0.41708,"working_set":1,"history":4,"ghost":0.1961,"event":"melted","material":"glass","eta_spec":0.673,"gap_spec":0.8315},{"i":5,"strain":0.1,"Wi":0.25,"Wi_crit":0.5,"chi":0.5257,"chi_required":0.5247,"dS":0.1692,"integrity":0.298,"admit":true,"H":"09e09940dd0b957c","eta_CLT":-0.4059,"working_set":1,"history":5,"ghost":0.17,"event":"melted","material":"glass","eta_spec":0.7958,"gap_spec":0.7445},{"i":6,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.1526,"event":"melted","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":7,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0916,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":8,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0549,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":9,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.033,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":10,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0198,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":11,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0119,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":12,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0071,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":13,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0043,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":14,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0026,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":15,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0015,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":16,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0009,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":17,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0006,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":18,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0003,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":19,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0002,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":20,"strain":0.12,"Wi":0.3,"Wi_crit":0.5,"chi":0.6306,"chi_required":0.6296,"dS":0.1413,"integrity":0.2971,"admit":true,"H":"9b3617ac1db05f00","eta_CLT":-0.38985,"working_set":1,"history":6,"ghost":0.0001,"event":"shearing","material":"glass","eta_spec":0.8899,"gap_spec":0.6286},{"i":21,"strain":0.12667,"Wi":0.31667,"Wi_crit":0.5,"chi":0.6656,"chi_required":0.6646,"dS":0.1339,"integrity":0.2969,"admit":true,"H":"3aee206a90ae1b7c","eta_CLT":-0.35186,"working_set":1,"history":7,"ghost":0.0474,"event":"melted","material":"glass","eta_spec":0.9141,"gap_spec":0.583},{"i":22,"strain":0.13333,"Wi":0.33333,"Wi_crit":0.5,"chi":0.7006,"chi_required":0.6996,"dS":0.1273,"integrity":0.2967,"admit":true,"H":"305280363169d952","eta_CLT":-0.32206,"working_set":1,"history":8,"ghost":0.0456,"event":"melted","material":"fluid","eta_spec":0.9348,"gap_spec":0.5337},{"i":23,"strain":0.14,"Wi":0.35,"Wi_crit":0.5,"chi":0.7355,"chi_required":0.7345,"dS":0.1213,"integrity":0.2965,"admit":true,"H":"d831ff0f400c103a","eta_CLT":-0.29772,"working_set":1,"history":9,"ghost":0.0437,"event":"melted","material":"fluid","eta_spec":0.9521,"gap_spec":0.481},{"i":24,"strain":0.14667,"Wi":0.36667,"Wi_crit":0.5,"chi":0.7705,"chi_required":0.7695,"dS":0.1158,"integrity":0.2963,"admit":true,"H":"6323e735db700e83","eta_CLT":-0.27717,"working_set":1,"history":10,"ghost":0.0418,"event":"melted","material":"fluid","eta_spec":0.9662,"gap_spec":0.4251},{"i":25,"strain":0.15333,"Wi":0.38333,"Wi_crit":0.5,"chi":0.8055,"chi_required":0.8045,"dS":0.1108,"integrity":0.2962,"admit":true,"H":"313cc7e55aed991e","eta_CLT":-0.25931,"working_set":1,"history":11,"ghost":0.0398,"event":"melted","material":"fluid","eta_spec":0.9773,"gap_spec":0.3663},{"i":26,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0378,"event":"melted","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":27,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0227,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":28,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0136,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":29,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0082,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":30,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0049,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":31,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0029,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":32,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0018,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":33,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0011,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":34,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0006,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":35,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0004,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":36,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0002,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":37,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0001,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":38,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0001,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":39,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":40,"strain":0.16,"Wi":0.4,"Wi_crit":0.5,"chi":0.8405,"chi_required":0.8395,"dS":0.1062,"integrity":0.296,"admit":true,"H":"776cf64d63a62225","eta_CLT":-0.24345,"working_set":1,"history":12,"ghost":0.0,"event":"shearing","material":"fluid","eta_spec":0.9857,"gap_spec":0.3048},{"i":41,"strain":0.16333,"Wi":0.40833,"Wi_crit":0.5,"chi":0.858,"chi_required":0.857,"dS":0.1041,"integrity":0.296,"admit":true,"H":"baffb91e5102c468","eta_CLT":-0.22771,"working_set":1,"history":13,"ghost":0.0182,"event":"melted","material":"fluid","eta_spec":0.9891,"gap_spec":0.2731},{"i":42,"strain":0.16667,"Wi":0.41667,"Wi_crit":0.5,"chi":0.8755,"chi_required":0.8745,"dS":0.102,"integrity":0.2959,"admit":true,"H":"156610dcdcea9e7b","eta_CLT":-0.21394,"working_set":1,"history":14,"ghost":0.0177,"event":"melted","material":"fluid","eta_spec":0.9919,"gap_spec":0.241},{"i":43,"strain":0.17,"Wi":0.425,"Wi_crit":0.5,"chi":0.8929,"chi_required":0.8919,"dS":0.1,"integrity":0.2958,"admit":true,"H":"b9d54b6f314b824c","eta_CLT":-0.20175,"working_set":1,"history":15,"ghost":0.0172,"event":"melted","material":"fluid","eta_spec":0.9942,"gap_spec":0.2083},{"i":44,"strain":0.17333,"Wi":0.43333,"Wi_crit":0.5,"chi":0.9104,"chi_required":0.9094,"dS":0.0981,"integrity":0.2958,"admit":true,"H":"0eeac50c4857e0dc","eta_CLT":-0.19084,"working_set":1,"history":16,"ghost":0.0167,"event":"melted","material":"fluid","eta_spec":0.9961,"gap_spec":0.1752},{"i":45,"strain":0.17667,"Wi":0.44167,"Wi_crit":0.5,"chi":0.9279,"chi_required":0.9269,"dS":0.0963,"integrity":0.2957,"admit":true,"H":"2be31997426ac548","eta_CLT":-0.181,"working_set":1,"history":17,"ghost":0.0163,"event":"melted","material":"fluid","eta_spec":0.9976,"gap_spec":0.1417},{"i":46,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0158,"event":"melted","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":47,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0095,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":48,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0057,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":49,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0034,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":50,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.002,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":51,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0012,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":52,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0007,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":53,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0004,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":54,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0003,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":55,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0002,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":56,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0001,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":57,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0001,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":58,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":59,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":60,"strain":0.18,"Wi":0.45,"Wi_crit":0.5,"chi":0.9454,"chi_required":0.9444,"dS":0.0945,"integrity":0.2956,"admit":true,"H":"2bc38c8a72ae93be","eta_CLT":-0.17205,"working_set":1,"history":18,"ghost":0.0,"event":"shearing","material":"fluid","eta_spec":0.9987,"gap_spec":0.1078},{"i":61,"strain":0.182,"Wi":0.455,"Wi_crit":0.5,"chi":0.9559,"chi_required":0.9549,"dS":0.0935,"integrity":0.2956,"admit":true,"H":"60401610c99ea581","eta_CLT":-0.16371,"working_set":1,"history":19,"ghost":0.0093,"event":"melted","material":"fluid","eta_spec":0.9991,"gap_spec":0.0873},{"i":62,"strain":0.184,"Wi":0.46,"Wi_crit":0.5,"chi":0.9664,"chi_required":0.9654,"dS":0.0925,"integrity":0.2956,"admit":true,"H":"611f3386c8b7fb70","eta_CLT":-0.15611,"working_set":1,"history":20,"ghost":0.0091,"event":"melted","material":"fluid","eta_spec":0.9995,"gap_spec":0.0667},{"i":63,"strain":0.186,"Wi":0.465,"Wi_crit":0.5,"chi":0.9769,"chi_required":0.9759,"dS":0.0915,"integrity":0.2955,"admit":true,"H":"691302b0a4376c89","eta_CLT":-0.14916,"working_set":1,"history":21,"ghost":0.009,"event":"melted","material":"fluid","eta_spec":0.9998,"gap_spec":0.046},{"i":64,"strain":0.188,"Wi":0.47,"Wi_crit":0.5,"chi":0.9874,"chi_required":0.9864,"dS":0.0905,"integrity":0.2955,"admit":true,"H":"5f9dd974ddb7dd10","eta_CLT":-0.14276,"working_set":1,"history":22,"ghost":0.0088,"event":"melted","material":"fluid","eta_spec":0.9999,"gap_spec":0.0252},{"i":65,"strain":0.19,"Wi":0.475,"Wi_crit":0.5,"chi":0.9979,"chi_required":0.9969,"dS":0.0896,"integrity":0.2955,"admit":true,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0087,"event":"melted","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":66,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0052,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":67,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0031,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":68,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0019,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":69,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0011,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":70,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0007,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":71,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0004,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":72,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0002,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":73,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0001,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":74,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0001,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":75,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0001,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":76,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":77,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":78,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042},{"i":79,"strain":0.192,"Wi":0.48,"Wi_crit":0.5,"chi":0.9979,"chi_required":1.0074,"dS":-0.9039,"integrity":0.2635,"admit":false,"H":"778db162df3bb665","eta_CLT":-0.13685,"working_set":1,"history":23,"ghost":0.0,"event":"unsurvivable","material":"fluid","eta_spec":1.0,"gap_spec":0.0042}],"transitions":[{"frame":1,"chi_before":0.05,"chi_after":0.105934877,"H_after":"65bcfb1336c5b320","dZ":0.901936086},{"frame":2,"chi_before":0.105934877,"chi_after":0.210869753,"H_after":"576229a799c6138f","dZ":0.377533856},{"frame":3,"chi_before":0.210869753,"chi_after":0.31580463,"H_after":"9eb5ba6db512fb94","dZ":0.246895828},{"frame":4,"chi_before":0.31580463,"chi_after":0.420739507,"H_after":"a2971af993c01921","dZ":0.196144257},{"frame":5,"chi_before":0.420739507,"chi_after":0.525674384,"H_after":"09e09940dd0b957c","dZ":0.169974735},{"frame":6,"chi_before":0.525674384,"chi_after":0.63060926,"H_after":"9b3617ac1db05f00","dZ":0.152595548},{"frame":21,"chi_before":0.63060926,"chi_after":0.665587553,"H_after":"3aee206a90ae1b7c","dZ":0.04737226},{"frame":22,"chi_before":0.665587553,"chi_after":0.700565845,"H_after":"305280363169d952","dZ":0.045569222},{"frame":23,"chi_before":0.700565845,"chi_after":0.735544137,"H_after":"d831ff0f400c103a","dZ":0.043699293},{"frame":24,"chi_before":0.735544137,"chi_after":0.770522428,"H_after":"6323e735db700e83","dZ":0.041767381},{"frame":25,"chi_before":0.770522428,"chi_after":0.805500721,"H_after":"313cc7e55aed991e","dZ":0.039793269},{"frame":26,"chi_before":0.805500721,"chi_after":0.840479014,"H_after":"776cf64d63a62225","dZ":0.03780587},{"frame":41,"chi_before":0.840479014,"chi_after":0.857968159,"H_after":"baffb91e5102c468","dZ":0.018162278},{"frame":42,"chi_before":0.857968159,"chi_after":0.875457305,"H_after":"156610dcdcea9e7b","dZ":0.017674876},{"frame":43,"chi_before":0.875457305,"chi_after":0.892946452,"H_after":"b9d54b6f314b824c","dZ":0.017194464},{"frame":44,"chi_before":0.892946452,"chi_after":0.910435598,"H_after":"0eeac50c4857e0dc","dZ":0.016722593},{"frame":45,"chi_before":0.910435598,"chi_after":0.927924745,"H_after":"2be31997426ac548","dZ":0.016260599},{"frame":46,"chi_before":0.927924745,"chi_after":0.945413891,"H_after":"2bc38c8a72ae93be","dZ":0.015809596},{"frame":61,"chi_before":0.945413891,"chi_after":0.955907378,"H_after":"60401610c99ea581","dZ":0.009274192},{"frame":62,"chi_before":0.955907378,"chi_after":0.966400865,"H_after":"611f3386c8b7fb70","dZ":0.009118793},{"frame":63,"chi_before":0.966400865,"chi_after":0.976894354,"H_after":"691302b0a4376c89","dZ":0.00896616},{"frame":64,"chi_before":0.976894354,"chi_after":0.987387841,"H_after":"5f9dd974ddb7dd10","dZ":0.008816353},{"frame":65,"chi_before":0.987387841,"chi_after":0.997881329,"H_after":"778db162df3bb665","dZ":0.008669419}]};
+const F = TELE.frames, T = TELE.transitions, META = TELE.meta;
+document.getElementById('meta').textContent =
+  `β_Z=${META.beta_Z} · N=${META.N_f+META.N_gamma} · vort=${META.vort} · ε_ref*=0.5 · ${META.frames} frames`;
+
+/* ---------- color helpers ---------- */
+const C = getComputedStyle(document.documentElement);
+const col = n => C.getPropertyValue(n).trim();
+function heat(t){ // 0..1 blue->green->amber->red
+  t=Math.max(0,Math.min(1,t));
+  const stops=[[0,[76,125,255]],[0.4,[57,217,138]],[0.7,[255,180,84]],[1,[255,92,108]]];
+  for(let i=0;i<stops.length-1;i++){const[a,ca]=stops[i],[b,cb]=stops[i+1];if(t>=a&&t<=b){const k=(t-a)/(b-a);return`rgb(${ca.map((c,j)=>Math.round(c+(cb[j]-c)*k)).join(',')})`;}}
+  return'rgb(255,92,108)';
+}
+const matColor = m => m==='diamond'?col('--cyan'):m==='glass'?col('--amber'):col('--blue');
+
+/* ---------- ① THE SEAM (Three.js) ---------- */
+const seamCanvas=document.getElementById('seam');
+let renderer,scene,cam,boxes=[],GN=7;
+function initSeam(){
+  renderer=new THREE.WebGLRenderer({canvas:seamCanvas,antialias:true,alpha:true});
+  scene=new THREE.Scene();
+  cam=new THREE.PerspectiveCamera(42,1,0.1,100);
+  cam.position.set(0,0,11); cam.lookAt(0,0,0);
+  const g=new THREE.BoxGeometry(0.82,0.82,0.82);
+  for(let y=0;y<GN;y++)for(let x=0;x<GN;x++){
+    const m=new THREE.MeshBasicMaterial({color:0x39d98a});
+    const b=new THREE.Mesh(g,m);
+    b.userData={x:x-(GN-1)/2,y:y-(GN-1)/2};
+    scene.add(b); boxes.push(b);
+  }
+  resizeSeam();
+}
+function resizeSeam(){
+  const w=seamCanvas.clientWidth,h=seamCanvas.clientHeight;
+  renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+}
+function renderSeam(fr){
+  const Wi=fr.Wi, shear=Wi*0.9, hc=Wi/0.85;
+  const c=heat(hc);
+  const rgb=c.match(/\d+/g).map(Number);
+  const three=new THREE.Color(`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`);
+  for(const b of boxes){
+    const ux=b.userData.x,uy=b.userData.y;
+    b.position.set(ux*1.05 + shear*uy, uy*1.05, 0);  // simple shear x += s*y
+    b.rotation.z = shear*0.18;
+    b.material.color.copy(three);
+    b.scale.setScalar(fr.event==='melted'?1.12:1.0);
+  }
+  scene.rotation.y=Math.sin(performance.now()/3000)*0.12;
+  renderer.render(scene,cam);
+}
+
+/* ---------- generic 2D canvas setup ---------- */
+function setup2d(id){
+  const cv=document.getElementById(id),ctx=cv.getContext('2d');
+  function r(){const dpr=devicePixelRatio||1;cv.width=cv.clientWidth*dpr;cv.height=cv.clientHeight*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+  r(); return {cv,ctx,resize:r};
+}
+const Y=setup2d('yield'), L=setup2d('lineage'), R=setup2d('truth');
+
+/* ---------- ② THE YIELD ---------- */
+function renderYield(fr){
+  const {ctx,cv}=Y,W=cv.clientWidth,H=cv.clientHeight;
+  ctx.clearRect(0,0,W,H);
+  const cx=W*0.5,cy=H*0.66,rad=Math.min(W,H)*0.30;
+  // arc track
+  ctx.lineWidth=15;ctx.lineCap='round';
+  ctx.strokeStyle=col('--line');
+  ctx.beginPath();ctx.arc(cx,cy,rad,Math.PI,2*Math.PI);ctx.stroke();
+  // integrity fill
+  const integ=fr.integrity, ang=Math.PI+Math.PI*integ;
+  ctx.strokeStyle = fr.admit?col('--green'):col('--red');
+  ctx.beginPath();ctx.arc(cx,cy,rad,Math.PI,ang);ctx.stroke();
+  // firewall mark at integrity where dS=0  (integ0 = (0+9.1)/31.1)
+  const fw=(0+9.1)/31.1, fa=Math.PI+Math.PI*fw;
+  ctx.strokeStyle=col('--red');ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx+Math.cos(fa)*(rad-12),cy+Math.sin(fa)*(rad-12));ctx.lineTo(cx+Math.cos(fa)*(rad+12),cy+Math.sin(fa)*(rad+12));ctx.stroke();
+  // center text
+  ctx.textAlign='center';
+  ctx.fillStyle=col('--txt');ctx.font='600 30px '+col('--mono');
+  ctx.fillText('ΔS '+(fr.dS>=0?'+':'')+fr.dS.toFixed(1),cx,cy-6);
+  ctx.fillStyle=fr.admit?col('--green'):col('--red');ctx.font='12px '+col('--mono');
+  ctx.fillText(fr.admit?'CITADEL ADMITS':(fr.event==='unsurvivable'?'FIREWALL HOLDS · REJECT':'BREACH'),cx,cy+14);
+  // chi compliance bar
+  const bx=W*0.16,bw=W*0.68,by=H*0.84;
+  ctx.fillStyle=col('--line');ctx.fillRect(bx,by,bw,8);
+  ctx.fillStyle=matColor(fr.material);ctx.fillRect(bx,by,bw*fr.chi,8);
+  // chi_required marker
+  if(fr.chi_required!==null && fr.chi_required<=1){
+    const mx=bx+bw*fr.chi_required;
+    ctx.strokeStyle=col('--amber');ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(mx,by-5);ctx.lineTo(mx,by+13);ctx.stroke();
+    ctx.fillStyle=col('--amber');ctx.font='9px '+col('--mono');ctx.textAlign='center';
+    ctx.fillText('χ_req '+fr.chi_required.toFixed(2),mx,by-9);
+  }
+  ctx.fillStyle=col('--txt2');ctx.font='10px '+col('--mono');ctx.textAlign='left';
+  ctx.fillText('χ '+fr.chi.toFixed(2)+'  ('+fr.material+')',bx,by+24);
+  ctx.textAlign='right';
+  ctx.fillStyle = fr.Wi>fr.Wi_crit?col('--red'):col('--txt2');
+  ctx.fillText('Wi '+fr.Wi.toFixed(2)+' / crit '+fr.Wi_crit,bx+bw,by+24);
+  document.getElementById('yieldTag').textContent = fr.event==='melted'?'◆ MELT':'';
+}
+
+/* ---------- ③ THE LINEAGE ---------- */
+function renderLineage(fr){
+  const {ctx,cv}=L,W=cv.clientWidth,H=cv.clientHeight;
+  ctx.clearRect(0,0,W,H);
+  const done=T.filter(t=>t.frame<=fr.i);
+  const n=done.length, total=T.length;
+  const x0=W*0.08,x1=W*0.92,y=H*0.52,step=(x1-x0)/Math.max(total,1);
+  // seed node
+  ctx.fillStyle=col('--cyan');ctx.beginPath();ctx.arc(x0,y,6,0,7);ctx.fill();
+  ctx.fillStyle=col('--txt3');ctx.font='9px '+col('--mono');ctx.textAlign='center';
+  ctx.fillText('seed',x0,y+22);
+  let px=x0;
+  done.forEach((t,k)=>{
+    const x=x0+step*(k+1);
+    const c = t.chi_after<0.25?col('--cyan'):t.chi_after<0.7?col('--amber'):col('--blue');
+    ctx.strokeStyle=col('--line');ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,y);ctx.lineTo(x,y);ctx.stroke();
+    const cur=(k===n-1);
+    ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,cur?7:4.5,0,7);ctx.fill();
+    if(cur){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,10,0,7);ctx.stroke();
+      ctx.fillStyle=col('--txt2');ctx.font='9px '+col('--mono');
+      ctx.fillText('χ '+t.chi_after.toFixed(2),x,y-16);
+      ctx.fillStyle=col('--txt3');ctx.fillText(t.H_after.slice(0,8),x,y+22);}
+    px=x;
+  });
+  ctx.fillStyle=col('--txt2');ctx.font='10px '+col('--mono');ctx.textAlign='left';
+  ctx.fillText('transitions: '+n+' / '+total,x0,H*0.86);
+  ctx.textAlign='right';ctx.fillStyle=col('--txt3');
+  ctx.fillText('content-addressed · append-only',x1,H*0.86);
+}
+
+/* ---------- ④ THE TRUTH ---------- */
+let ghostTrail=[];
+function renderTruth(fr){
+  const {ctx,cv}=R,W=cv.clientWidth,H=cv.clientHeight;
+  ctx.clearRect(0,0,W,H);
+  // H_t ticker
+  ctx.textAlign='left';ctx.fillStyle=col('--txt3');ctx.font='10px '+col('--mono');
+  ctx.fillText('H_t  (bit-perfect, advances every transition)',W*0.06,H*0.20);
+  ctx.fillStyle=col('--green');ctx.font='600 22px '+col('--mono');
+  ctx.fillText(fr.H,W*0.06,H*0.32);
+  // memory vs history bars
+  const bx=W*0.06,bw=W*0.40,y1=H*0.50,y2=H*0.66;
+  const maxHist=TELE.frames;
+  ctx.fillStyle=col('--txt3');ctx.font='10px '+col('--mono');
+  ctx.fillText('LIVE WORKING SET (bounded)',bx,y1-8);
+  ctx.fillStyle=col('--line');ctx.fillRect(bx,y1,bw,9);
+  ctx.fillStyle=col('--green');ctx.fillRect(bx,y1,bw*(fr.working_set/8),9);
+  ctx.fillStyle=col('--txt2');ctx.textAlign='right';ctx.fillText(fr.working_set+' claim',bx+bw,y1-8);ctx.textAlign='left';
+  ctx.fillStyle=col('--txt3');ctx.fillText('AUDITABLE HISTORY (unbounded DAG)',bx,y2-8);
+  ctx.fillStyle=col('--line');ctx.fillRect(bx,y2,bw,9);
+  ctx.fillStyle=col('--violet');ctx.fillRect(bx,y2,bw*(fr.history/Math.max(maxHist*0.35,1)),9);
+  ctx.fillStyle=col('--txt2');ctx.textAlign='right';ctx.fillText(fr.history+' txns',bx+bw,y2-8);ctx.textAlign='left';
+  // ghost spike sparkline (injection footprint dZ)
+  ghostTrail.push(fr.ghost); if(ghostTrail.length>W) ghostTrail.shift();
+  const gx=W*0.52,gw=W*0.42,gy=H*0.52,gh=H*0.20;
+  ctx.fillStyle=col('--txt3');ctx.fillText('‖ghost‖ injection footprint (dZ)',gx,gy-8);
+  ctx.strokeStyle=col('--red');ctx.lineWidth=1.5;ctx.beginPath();
+  const start=Math.max(0,fr.i-60);
+  for(let k=start;k<=fr.i;k++){const v=F[k].ghost;const xx=gx+gw*((k-start)/60);const yy=gy+gh-(v/0.95)*gh;k===start?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy);}
+  ctx.stroke();
+  // numerics
+  ctx.fillStyle=col('--txt2');ctx.font='11px '+col('--mono');ctx.textAlign='left';
+  ctx.fillText('η_CLT '+fr.eta_CLT.toFixed(3)+'   ESS — pure   t='+fr.i,W*0.06,H*0.92);
+}
+
+/* ---------- playback ---------- */
+let idx=0, playing=false, last=0;
+const scrub=document.getElementById('scrub'); scrub.max=F.length-1;
+const flash=document.getElementById('flash');
+function show(i){
+  idx=Math.max(0,Math.min(F.length-1,i));
+  const fr=F[idx];
+  renderSeam(fr); renderYield(fr); renderLineage(fr); renderTruth(fr);
+  scrub.value=idx;
+  document.getElementById('seamTag').textContent='Wi '+fr.Wi.toFixed(2);
+  document.getElementById('lineTag').textContent=fr.material.toUpperCase();
+  document.getElementById('truthTag').textContent='t='+fr.i;
+  const ev=document.getElementById('evt');
+  if(fr.event==='melted'){ev.textContent='◆ PHASE CHANGE';ev.style.background='#2a2034';ev.style.color=col('--amber');
+    flash.style.opacity=0.5;setTimeout(()=>flash.style.opacity=0,90);}
+  else if(fr.event==='unsurvivable'){ev.textContent='■ FIREWALL HOLDS';ev.style.background='#33161a';ev.style.color=col('--red');}
+  else{ev.textContent='shearing';ev.style.background='transparent';ev.style.color=col('--txt3');}
+  document.getElementById('clock').textContent=`frame ${fr.i+1}/${F.length} · ${fr.material}`;
+}
+function loop(ts){
+  if(playing){ if(ts-last>90){ last=ts; if(idx>=F.length-1){playing=false;document.getElementById('play').textContent='▶ Play';} else show(idx+1);} }
+  else renderSeam(F[idx]); // keep 3D idle-rotating
+  requestAnimationFrame(loop);
+}
+document.getElementById('play').onclick=()=>{playing=!playing;document.getElementById('play').textContent=playing?'❚❚ Pause':'▶ Play';if(playing&&idx>=F.length-1)show(0);};
+document.getElementById('reset').onclick=()=>{playing=false;document.getElementById('play').textContent='▶ Play';ghostTrail=[];show(0);};
+scrub.oninput=e=>{playing=false;document.getElementById('play').textContent='▶ Play';show(+e.target.value);};
+addEventListener('resize',()=>{resizeSeam();Y.resize();L.resize();R.resize();show(idx);});
+initSeam(); show(0); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
