@@ -59,6 +59,7 @@ guarded · ○ open. The defining residual `G_t = Z_t − Π_{W_t}(Z_t)` underli
 | 50 | Audit-vs-live gap; destination-confluence | DAG recorded valid nodes not in live state (closed by 517); path lives in edges, not node id | ✓ | 516→517 |
 | 51 | Injection ghost & inactive-claim accumulation | re-declaration jumps `Z` by `ΔZ`, absorbed into `S` via `next_S`; inactive claims accrue (→ compaction) | ✓ | 517→518 |
 | 52 | Compaction shadow & hot/cold undo asymmetry | `η_CLT` preserved only via permanently-retained sufficient statistics; undo O(1) hot, replay-cost cold | ◐ managed | 518 |
+| 53 | Checkpoint cadence & unbounded command log | `K` trades memory for replay latency (warm tail); the command log is the minimal unbounded tier; `verify_history` is a continuous determinism monitor | ◐ managed | 520 |
 
 ## Principle
 

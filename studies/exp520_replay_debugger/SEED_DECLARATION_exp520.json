@@ -1,0 +1,33 @@
+{
+  "declaration_hash": "2e489550a816e08ee5d6ace0f4ac293fa059977c9109f15ee87e79604cbb2eb2",
+  "experiment": "EXP-520",
+  "title": "Replay / Time-Travel Debugger (Fork tau): the DAG as a verified time machine",
+  "protocol_version": "exp520-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Because the engine is deterministic and content-addressed, history is event-sourced: a COMMAND LOG (the deterministic inputs that drove each phase change) plus SPARSE CHECKPOINTS (full MuState every K transitions) reconstruct ANY historical mu by restoring the nearest checkpoint and replaying commands forward. Replay is VERIFIED, not trusted: each reconstructed step's engine H_t must equal the recorded H_t -- a match is cryptographic proof of determinism and an un-tampered history; a mismatch raises ReplayMismatch. This turns EXP-518 BeyondWindowError into a COLD RESTORE and makes 'the past' a reproducible mathematical coordinate. Engine FROZEN.",
+  "mechanism": {
+    "capture": "step() journals {seq, inputs(beta_Z,strain,vort,N), result_H, child_id}; checkpoint every K.",
+    "reconstruct": "seq=h_index[H]; restore checkpoints[<=seq]; replay commands; assert step H==recorded H.",
+    "cold_restore": "reconstruct(H) for a target outside the skeleton undo window (Fork upsilon bridge)."
+  },
+  "engine_scope": "NO engine edits. game/agency/replay.py uses core (MuState/Claim) + game.injection. state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] capture: command log + sparse checkpoints (genesis at 0 + every K)",
+    "[3] reconstruct(mid H) -> mu.H == target (exact historical reconstruction)",
+    "[4] verified replay: verify_history reproduces every recorded H (end-to-end determinism)",
+    "[5] checkpoint efficiency: reconstruct replays from nearest checkpoint (steps_replayed < target_seq)",
+    "[6] reconstruct genesis -> root mu; reconstruct latest -> live mu",
+    "[7] tamper detection: corrupt a recorded result_H -> ReplayMismatch",
+    "[8] COLD RESTORE: a CompactingWorld beyond its skeleton window -> cold_restore reconstructs the unreachable H",
+    "[9] reconstruct by int seq and by H string agree",
+    "[10] determinism: reconstruct twice -> identical mu.H"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: command inputs (beta_Z, strain, vorticity) invariant under reflection",
+    "[2] child ids invariant (material-H payloads)",
+    "[3] verified replay passes for both orientations (each internally consistent)",
+    "[4] reconstructed material chi at a target seq invariant",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

@@ -175,6 +175,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-517 | Live MuState Injection (Fork ρ); melted claim injected into running world, continuous H_t chain (lineage IS state); Interference resolved by optimistic concurrency (CAS on H, stale basis_H rejected→rebase); Ghost #51 injection-ghost; engine frozen (core MuState facade) | `082b4a773bb23dfc` | **open** |
 | EXP-518 | History Compaction (Fork υ); H-inert + observationally-inert eviction (η_CLT via sufficient statistics); bounded working set, unbounded auditable DAG history; Skeleton Lineage O(1) undo + cold replay beyond window; Ghost #52 compaction-shadow; engine frozen (core MuState facade) | `32c1314a87fbd523` | **open** |
 | EXP-519 | Unified Kinetic Dashboard (capstone); WebGL replay of bit-perfect captured telemetry (509→518): shearing seam + Weissenberg heat-map, Citadel arc + χ_required + melt pops, growing provenance tree, flat memory vs climbing history, advancing H_t; diamond→glass→fluid→firewall-holds; telemetry deterministically reproducible | `seed b3…` | **open** |
+| EXP-520 | Replay / Time-Travel Debugger (Fork τ); event-sourced command log + sparse checkpoints reconstruct any historical μ; VERIFIED replay (H_t match, tamper-evident); BeyondWindowError→cold restore; Ghost #53 checkpoint-cadence; engine frozen (core facade only) | `2e489550a816e08e` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
