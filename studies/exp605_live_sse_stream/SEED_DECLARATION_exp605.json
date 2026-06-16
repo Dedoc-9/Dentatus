@@ -1,0 +1,43 @@
+{
+  "protocol": "exp605-v1",
+  "series": "600",
+  "inherits": "exp604-v1",
+  "title": "Live SSE Reality Stream -- keyframe+delta codec",
+  "gate_source": "EXP-604 dashboard + EXP-507 streaming -> live observable reality conduit",
+  "operator": "game.observability.stream (encode/decode_reality_stream) + sse_server.py + dashboard live client",
+  "codec": {
+    "coarse_channel": "keyed by H_coarse; periodic KEYFRAME (I-frame) + thresholded DELTAS (P-frames, only anchors moved > eps)",
+    "section_channel": "keyed by 507 section signature; first occurrence full leaf telemetry, repeats -> section_ref (client cache)",
+    "heartbeat": "H_state unchanged -> heartbeat; at EMA equilibrium the stream goes near-silent",
+    "bitrate": "proportional to RATE OF CHANGE, not world size (mirrors EXP-507 memory bound)",
+    "no_pop_in": "each leaf's stitched value depends only on coarse+centroids (EXP-507) -> sections render independently, no cross-section dependency, no seams even half-loaded"
+  },
+  "transport": {
+    "server": "game/observability/sse_server.py (stdlib http.server); serves dashboard at / and SSE at /stream",
+    "client": "dashboard live client (EventSource) decodes keyframe+delta + section cache; sections pulse in",
+    "determinism": "PYTHONHASHSEED=0 (server self-pins)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] codec exact: decode(encode(states)) reconstructs the coarse field bit-exactly",
+    "[3] keyframe+delta: a coarse_delta carries only changed anchors (< full keyframe size)",
+    "[4] content-addressed sections: repeated sections emit section_ref (leaves not re-sent)",
+    "[5] heartbeat: an unchanged world emits a heartbeat (near-zero payload)",
+    "[6] bitrate proportional to change: equilibrium codec << full-resend",
+    "[7] no pop-in: each section event is self-contained (carries all its leaves); render needs only coarse+centroids",
+    "[8] keyframe resync: decoding from a keyframe onward reconstructs the coarse field (late subscriber, no drift)",
+    "[9] determinism: encode bit-stable (PYTHONHASHSEED=0)",
+    "[10] decoupled: game/ has no engine.* import (clean-room guard)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] event-type counts fwd == mir (P_yz-invariant stream structure)",
+    "[3] sorted |coarse anchor| multiset fwd == mir",
+    "[4] total encoded bytes fwd == mir",
+    "[5] section signature set cardinality fwd == mir"
+  ],
+  "exp606_gate": {
+    "trigger": "live stream stable -> WebXR + multi-velocity moving sections; Zeeman-coupled Citadel (EXP-509)"
+  },
+  "declaration_hash": "7e682b51a229f7e68925f6e609d96354e17ec11c8386ebe41552584af1317c73"
+}

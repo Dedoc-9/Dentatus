@@ -46,6 +46,8 @@
   .pill{font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid var(--line)}
   .pill.ok{color:var(--ok);border-color:var(--ok)} .pill.bad{color:var(--bad);border-color:var(--bad)}
   canvas.flat{width:100%;display:block}
+  .livebtn{margin-left:12px;cursor:pointer;border:1px solid var(--line);background:#0c1119;color:var(--ok);border-radius:6px;padding:5px 11px;font-size:11px;font-family:inherit}
+  .livebtn:hover{background:#11202a}
 </style>
 </head>
 <body>
@@ -54,6 +56,7 @@
     <h1>DENTATUS · MCL</h1>
     <span class="tag" id="meta">mission control layer</span>
     <span class="addr" id="addr">H_verified —</span>
+    <button id="livebtn" class="livebtn" onclick="connectLive()">● LIVE</button>
   </header>
   <main>
     <div id="view">
@@ -259,11 +262,37 @@ function animate(){requestAnimationFrame(animate);ry+=0.0016;
   camera.lookAt(0,0,0);renderer.render(scene,camera);}
 resize(); select(BUNDLE.frames.findIndex(f=>f.accepted)>=0?BUNDLE.frames.map(f=>f.B_ent).indexOf(Math.min(...BUNDLE.frames.filter(f=>f.accepted).map(f=>f.B_ent))):0); animate();
 
-/* ---- LIVE mode contract (SSE; content-addressed). Stub: wire to dentatus_service. ----
-   const cache={}; const es=new EventSource(sseUrl);
-   es.addEventListener('frame',ev=>{const f=JSON.parse(ev.data);
-     if(f.ref){ render(cache[f.H_state]); } else { cache[f.H_state]=f; render(f); }});
-   es.addEventListener('commit',ev=>{ markVerified(JSON.parse(ev.data).H_verified); });          */
+/* ---- LIVE mode (EXP-605): keyframe+delta SSE reality stream from sse_server.py ---- */
+function buildFrameLeaves(leaves){
+  while(group.children.length) group.remove(group.children[0]);
+  let fmax=1e-9; leaves.forEach(l=>fmax=Math.max(fmax,Math.abs(l.fiedler)));
+  leaves.forEach(l=>{
+    const g=new THREE.BoxGeometry(l.size[0]*0.92,l.size[1]*0.92,l.size[2]*0.92);
+    const m=new THREE.MeshLambertMaterial({color:fiedlerColor(l.fiedler,fmax),transparent:true,opacity:0.92});
+    const box=new THREE.Mesh(g,m); box.position.set(l.center[0]-0.5,l.center[1]-0.5,l.center[2]-0.5); group.add(box);
+  });
+}
+function connectLive(){
+  const btn=document.getElementById('livebtn'); btn.textContent='● LIVE (connecting…)';
+  let coarse=null, cache={}, world=null, recv=new Set(), live=[], bytes=0, seq=0, worlds=0;
+  let es; try{ es=new EventSource('/stream'); }catch(err){ btn.textContent='● LIVE (no server)'; return; }
+  function status(extra){ document.getElementById('ov').innerHTML =
+    'LIVE · world '+seq+' · sections '+recv.size+'/'+(world?world.sigs.length:'?')+
+    '<br>H_coarse '+(coarse?coarse.H.slice(0,10):'—')+' · '+(bytes/1024).toFixed(1)+' KiB · '+(extra||''); }
+  es.addEventListener('world',e=>{ bytes+=e.data.length; const d=JSON.parse(e.data); seq=d.seq; worlds++;
+    world={sigs:d.sigs||[], H_state:d.H_state}; recv=new Set(); live=[]; btn.textContent='● LIVE · '+seq; status('pulsing'); });
+  es.addEventListener('coarse_keyframe',e=>{ bytes+=e.data.length; const d=JSON.parse(e.data);
+    coarse={c:d.c,sigma:d.sigma,centroids:d.centroids,H:'keyframe'}; });
+  es.addEventListener('coarse_delta',e=>{ bytes+=e.data.length; const d=JSON.parse(e.data);
+    if(coarse){ for(const a of d.changed){ coarse.c[a[0]]=a[1]; coarse.sigma[a[0]]=a[2]; coarse.centroids[a[0]]=a[3]; } coarse.H='delta('+d.changed.length+')'; } });
+  es.addEventListener('section',e=>{ bytes+=e.data.length; const d=JSON.parse(e.data);
+    cache[d.sig]=d.leaves; recv.add(d.sig); live=live.concat(d.leaves); buildFrameLeaves(live); status('pulse'); });
+  es.addEventListener('section_ref',e=>{ bytes+=e.data.length; const d=JSON.parse(e.data);
+    recv.add(d.sig); if(cache[d.sig]){ live=live.concat(cache[d.sig]); buildFrameLeaves(live); } status('cache'); });
+  es.addEventListener('heartbeat',e=>{ bytes+=e.data.length; status('equilibrium — stream near-silent'); });
+  es.addEventListener('end',e=>{ es.close(); btn.textContent='● LIVE (ended)'; status('ended · '+worlds+' worlds, '+(bytes/1024).toFixed(1)+' KiB total'); });
+  es.onerror=()=>{ btn.textContent='● LIVE (offline — run sse_server.py)'; try{es.close();}catch(_){} };
+}
 </script>
 </body>
 </html>
