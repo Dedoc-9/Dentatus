@@ -1,0 +1,38 @@
+{
+  "declaration_hash": "c238e89e21e18bb50ad97626309f923e1efb93f8bb50c92d62ce872204415bfa",
+  "experiment": "EXP-515",
+  "title": "Enacted Phase Change (Fork lambda): witnessed material re-declaration under shear",
+  "protocol_version": "exp515-v1",
+  "date": "2026-06-15",
+  "hypothesis": "When EXP-514 reports a breach (chi_world < chi_required, survivable), a GAME-LAYER policy enacts the transition: re-declare Sector D along the VOLUME-PRESERVING anisotropy-melt geodesic lambda_i(t)=exp(lbar+(1-t)(ln lambda_i - lbar)) to the MINIMAL t* with chi>=chi_required (+margin) -- least entropy injection, a graceful yield, NOT a total melt. The transition is witnessed (H_before -> H_after over the P_yz-invariant eigenvalue spectrum). Engine stays FROZEN (pure game policy over EXP-514 reports); the input stalk is never mutated.",
+  "equations": {
+    "geodesic": "l_i=ln lambda_i; lbar=mean(l_i); lambda_i(t)=exp(lbar+(1-t)(l_i-lbar))  # det preserved",
+    "minimal": "t* = min t in [0,1] with chi(melt(Sigma,t)) >= chi_required + margin",
+    "total": "t = 1 (isotropic at constant volume, chi->1)"
+  },
+  "modes": {
+    "minimal": "least entropy injection (graceful yield, diamond->stressed glass)",
+    "total": "full isotropic melt (diamond->fluid)"
+  },
+  "backreaction_firewall": "engine REPORTS chi_required; this module (game/agency) ENACTS, returning a NEW stalk + witness. It never mutates engine state or the input. Reported->enacted boundary kept in the game layer to preserve determinism and the EXP-514 A6 firewall.",
+  "engine_scope": "NO engine edits. game/agency/phase_change.py consumes core (chi, bethe, cholesky) + dentatus.semantic (stalk_D_from_sigma). state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] stable: admissible world -> status=stable, stalk unchanged, H_before==H_after, t*=0",
+    "[3] melted (minimal): breached diamond -> status=melted, chi_after>=chi_required, admit_after True",
+    "[4] volume preserved: det(Sigma_after) == det(Sigma_before) (anisotropy-only melt)",
+    "[5] minimality: chi_after just above chi_required (no overshoot to 1.0); minimal < total",
+    "[6] total mode: chi_after==1.0 (isotropic), admit_after True, det preserved",
+    "[7] unsurvivable: chi_required>1 -> status=unsurvivable, stalk unchanged (no melt can save)",
+    "[8] witnessed: melted -> H_before != H_after; witness records chi_before/after/required/t_star",
+    "[9] purity: input stalk unchanged after call (pure; engine state untouched)",
+    "[10] determinism: re-run identical new Sector D + witness H_after"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: reflect Sector D (Sigma->P Sigma P^T) -> chi_before invariant",
+    "[2] t_star invariant under reflection",
+    "[3] H_before & H_after invariant (eigenvalue-spectrum witness)",
+    "[4] det invariant under reflection",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

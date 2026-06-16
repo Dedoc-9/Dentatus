@@ -166,6 +166,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-512 | Strain→Bethe coupling (Fork ε); E*_eff=β_Z·(1−(strain/ε_ref)²) deformation-energy drain; a fixed (rejected scaling a); violent shear overheats→reject; strain=0 recovers 509; opt-in; Ghost #46; validity.py additive only | `dd86223ac4b68ff8` | **open** |
 | EXP-513 | Dimensionless strain (Fork η); shear-Courant strain·dt + Weissenberg strain/‖Ω‖ (framerate-independent, EXP-510 consolidation); ε_ref→universal constant (protected, not L1 knob); Ghost #46 closed, #47 floor-regularised; validity.py additive only | `e283bd260e380617` | **open** |
 | EXP-514 | Epistemic Materialism (Fork θ); compliance χ=continuous map of Sector D covariance spectrum (η, gap); ε_ref_eff=STRAIN_STAR_REF·χ (narrows only, no API bypass); stiff=fragile; phase-change χ_required (solid→fluid target); Ghost #48; validity.py additive only | `99eda360b4e85bd8` | **open** |
+| EXP-515 | Enacted Phase Change (Fork λ); witnessed Sector-D re-declaration on breach; volume-preserving anisotropy-melt geodesic; minimal t* (least entropy injection, graceful yield) vs total melt; stable/melted/unsurvivable; Ghost #49; engine frozen (game/agency policy) | `c238e89e21e18bb5` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
