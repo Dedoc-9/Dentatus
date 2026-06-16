@@ -104,3 +104,11 @@ entropic tax · `ξ` re-crysta
 - **Correction:** committed pulse is now `_tick_pulse()` — a pure function of the integer frame (`frame/TICK_HZ`), never the clock. `synced` is server-confirmed against that deterministic pulse (also closes the always-claim-synced exploit). Each committed log entry records `tick_pulse` + `beta_eff`, so the replayer reads the value, not the clock. Display metronome stays wall-clock (cosmetic only).
 - **Verification:** `forge/duel_determinism_proof.py` — identical scripted runs produce identical H-chains; the SAME run with random wall-clock sleeps injected produces a BIT-IDENTICAL H-chain (hardware-invariance); every commit logs its pulse/beta.
 - **Status:** Sealed · Engine Core Frozen (37/83/13/29).
+
+### Scaling Backlog · Hilbert spatial-spiral linearization (MEASURED · UN-LICENSED)
+- **Status:** candidate EXP-507 scaling primitive. NOT sealed, NOT wired to the live game. Profiler (EXP-532) shows ~7x headroom at 48 tiles, so adopting this now would be premature optimization.
+- **Measurement (`forge/hilbert_compress_proof.py`, 64x64 = 4096 leaves, representative coherent frame):**
+  - **Block locality: 13x tighter** — avg 1-D index span of a 4x4 spatial block 195 (row-major) → 15 (Hilbert). This is the real, robust benefit: contiguous LRU eviction / cold-storage blocks (EXP-606/518) instead of fragmented leaves.
+  - Compression: +5.2% gzip reduction, **data-dependent** — it can go negative on adversarial fields (e.g. column-alternating sign), so it is a minor perk, not a guarantee.
+- **Correction of record:** an earlier draft claimed a 30.92% compression gain and a "cache discontinuity" metric. Both were wrong — the 30.92% does not reproduce (real ≈ +5% on a representative frame, ≈ −5% on the adversarial one the draft actually used), and the discontinuity metric measured row-scan locality (which row-major wins by construction), not the block locality Hilbert provides. Hardened script verifies the Hilbert order is a bijection with a correct inverse and measures block-span instead.
+- **Adopt when:** the world scales to thousands of streamed leaves and the profiler bends — then linearize leaves by Hilbert index for section assignment, eviction order, and persistent command-log layout. Conceptual fit: the space-axis analogue of the EXP-528 nonce ratchet (the time-axis spiral).
