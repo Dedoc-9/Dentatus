@@ -38,6 +38,10 @@ mined: chi [0.050, 0.982]  dS_cit [-8.322, 20.721]  E*_eff [0, 29.788]  frac [0,
 the EXP-602 bit-stability boundary. `H` is sensitive to any change above it and stable below
 representability. This is now codified as two standing properties, not an assumption.
 
+- **`bridge_gate_proof.py`** — EXP-530 LIVE integration: proves `active_clamps()` wired into the bridge
+  `/call` L1 boundary. Clean commits pass; a hard violation triggers a fail-closed revert to the last
+  valid H (state restored, world un-locked, liveness preserved); cmdlog stays deterministic (replay-exact).
+  4/4 PASS. Engine never edited; gate lives entirely in `Game1/dentatus_bridge.py`.
 - **`invariant_synthesis.py`** + **`../constitution/INVARIANT_REGISTRY.json`** — EXP-530 propose/license
   pipeline (MCL_OBS2 separation of powers). Forge mines candidates (constitutional vs empirical basis);
   a human licenses exact fingerprints into the registry with a `failure_condition`; L1 `active_clamps()`

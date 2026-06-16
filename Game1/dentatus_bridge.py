@@ -33,7 +33,7 @@ def _find_repo():
             return c
     return parent
 REPO = _find_repo()
-for _p in (REPO, os.path.join(REPO, "game/agency"), os.path.join(REPO, "game/observability")):
+for _p in (REPO, os.path.join(REPO, "game/agency"), os.path.join(REPO, "game/observability"), os.path.join(REPO, "forge")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 import numpy as np
@@ -43,6 +43,7 @@ from recrystallize import enact_recrystallization_521
 from nucleation import enact_oriented_nucleation_522
 from sectioned_fiedler import global_fiedler
 from composite_witness import composite_address, session_attest, verify_attest, game_sufficient_stats, NonceChain
+from invariant_synthesis import active_clamps   # EXP-530: licensed property clamps (registry-gated)
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SEED = {"hash": "9671566edf7b1103", "bpm": 39, "T": 1.5385, "phase0": 0.873}
@@ -83,6 +84,8 @@ class World:
         self.cmdlog = []                                   # event-sourced: each commit's game sufficient-stats
         self.session = os.environ.get("DENTATUS_SESSION", "bridge-default")
         self.nonces = NonceChain(self.session)             # EXP-528 rolling nonce-chain (replay immunity)
+        self.clamps = active_clamps()                      # EXP-530 licensed L1 guards {name:(field,pred,enf)}
+        self.last_valid_H = self.world_H(True) or "%016x" % 0   # fail-closed anchor
 
     def chi(self):
         return core.material_compliance_chi_514(stalk=self.stalk)["chi"]
@@ -171,7 +174,8 @@ class World:
                 self.wi = min(0.5, self.wi + 0.05)
                 return {"accepted": False, "call": name, "tax": round(tax, 3), "chi": round(chi0, 4),
                         "H_verified": None, "event": self.last_event}
-            # admitted -> run the REAL engine operator
+            # admitted -> snapshot state for a fail-closed revert, then run the REAL engine operator
+            stalk_before = self.stalk.copy(); wi_before = self.wi
             if name == "Geodesic_Melt_515":
                 ns, w = enact_phase_change_515(self.stalk, BETA, self.wi * VORT, NF, NG, vorticity=VORT, mode="total")
                 if w["status"] == "melted":
@@ -187,19 +191,48 @@ class World:
                 if w.get("status") in ("nucleated", "recrystallized"):
                     self.stalk = np.asarray(ns, float)
             chi1 = self.chi()
+            # == EXP-530 LIVE GATE: licensed property clamps run BEFORE the step is sealed ==============
+            bc1 = core.bethe_citadel_strain_512(BETA, self.wi * VORT, NF, NG, vorticity=VORT, chi=chi1)
+            frame_vals = {"chi": round(chi1, 9), "E_strain_frac": bc1["E_strain_frac"],
+                          "E_star_eff": bc1["E_star_eff"], "dS_cit": bc1["dS_cit"]}
+            clamp_log = []; hard_violation = None
+            for _cn, (_cf, _cp, _ce) in sorted(self.clamps.items()):     # sorted -> deterministic log order
+                if _cf not in frame_vals:
+                    continue
+                _ok, _why = _cp(frame_vals[_cf])
+                clamp_log.append({"clamp": _cn, "field": _cf, "enf": _ce, "ok": bool(_ok)})
+                if (not _ok) and _ce == "hard" and hard_violation is None:
+                    hard_violation = (_cn, _why)
+            if hard_violation is not None:
+                # FAIL-CLOSED: discard the corrupt transaction, revert to the last valid hashed state.
+                # Liveness preserved: only THIS call is rejected; the world holds its last good H_verified.
+                self.stalk = stalk_before; self.wi = wi_before
+                self.last_event = "REJECTED · property clamp violation · %s" % hard_violation[0]
+                self.last_event_bad = True
+                self.cmdlog.append({"frame": self.frame, "call": name, "rejected": "property_clamp",
+                                    "clamp": hard_violation[0], "clamps": clamp_log,
+                                    "H": self.last_valid_H})            # deterministic rejection record (replayable)
+                return {"accepted": False, "call": name, "reason": "property_clamp_violation",
+                        "clamp": hard_violation[0], "detail": hard_violation[1],
+                        "H_verified": self.last_valid_H, "event": self.last_event}
+            # passed every HARD clamp -> seal + issue receipt
             Hv = self.world_H(True) or "%016x" % (self.frame)
-            # bind the game frame into the verified identity (composite) and server-sign it (attestation)
+            self.last_valid_H = Hv
             gstats = game_stats or {"call": name, "chi": round(chi1, 6), "wi": round(self.wi, 6), "frame": self.frame}
             seq, nonce = self.nonces.issue(Hv)                 # EXP-528: rolling head binds this commit
             comp = composite_address(Hv, gstats, nonce=nonce)
             attest = session_attest(Hv, gstats, SERVER_SECRET, nonce=nonce)
+            monitors = [c["clamp"] for c in clamp_log if c["enf"] == "monitor" and not c["ok"]]
             self.cmdlog.append({"frame": self.frame, "call": name, "game": game_sufficient_stats(gstats),
-                                "H": Hv, "composite": comp, "seq": seq, "nonce": nonce})   # logged -> replay reproduces nonce
-            self.last_event = "%sCOMMIT %s · tax %.2f bits · χ %.2f→%.2f · ⊕%s" % (("SYNCED · " if synced else ""), name, tax, chi0, chi1, comp[:8])
+                                "H": Hv, "composite": comp, "seq": seq, "nonce": nonce,
+                                "clamps": clamp_log})          # clamp validations logged -> replay reconstructs bit-for-bit
+            self.last_event = "%sCOMMIT %s · tax %.2f bits · χ %.2f→%.2f · ⊕%s%s" % (
+                ("SYNCED · " if synced else ""), name, tax, chi0, chi1, comp[:8],
+                (" · MONITOR:%s" % monitors[0] if monitors else ""))
             self.last_event_bad = False
             return {"accepted": True, "call": name, "tax": round(tax, 3), "chi": round(chi1, 4),
                     "H_verified": Hv, "composite": comp, "attestation": attest,
-                    "seq": seq, "nonce": nonce, "event": self.last_event}
+                    "seq": seq, "nonce": nonce, "clamps": clamp_log, "event": self.last_event}
 
 
 WORLD = World()

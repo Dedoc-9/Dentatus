@@ -77,3 +77,9 @@ entropic tax · `ξ` re-crysta
 - **L1 gate:** `active_clamps()` compiles a guard only if the entry's recomputed fingerprint matches the license (no silent drift) AND the engine code hash still matches (license voids on operator change).
 - **Verification:** `forge/invariant_synthesis.py` — 7/7: mining-alone-inert, licensing-activates, empirical-can't-be-hard, no-failure-condition-refused, crypto-drift-void, engine-drift-void, deterministic fingerprints. 0 violations.
 - **Status:** Sealed · registry seeded (3 hard constitutional + 1 empirical monitor) · Engine Core Frozen (37/83/13/29).
+
+### EXP-530.L · Live L1 Gate (Active Server Defense)
+- **Integration:** `active_clamps()` is loaded once at `World.__init__` and evaluated inside `do_call` (`POST /call`) AFTER the real operator runs and `chi1` is computed, but BEFORE the step is sealed or an `H_verified`/nonce is issued. Frozen `engine/` untouched; all gating lives in `Game1/dentatus_bridge.py`.
+- **Fail-closed:** a HARD-clamp breach reverts `(stalk, wi)` to the pre-call snapshot, holds `last_valid_H`, logs a deterministic rejection, returns `REJECTED · property clamp violation`. Only the offending call is rejected — liveness preserved for the rest of the world. MONITOR breaches are logged, never reverted.
+- **Replay continuity:** clamp validations are written to the command log; identical synced drives reproduce the cmdlog (H/composite/seq/nonce/clamps) bit-for-bit (EXP-520).
+- **Verification:** `forge/bridge_gate_proof.py` 4/4; full forge suite (oracle_fuzz, nonce_proof, chaos_harness, invariant_synthesis, bridge_gate_proof) 0 violations. Engine Frozen (37/83/13/29); 0 engine imports.

@@ -140,7 +140,7 @@ def active_clamps(reg=None, current_code_fp=None):
         if e.get("code_fp") != fp_now:                 # engine changed since mining -> license void
             continue
         if e["kind"] == "range":
-            out[e["name"]] = (_range_pred(e["field"], e["lo"], e["hi"]), e["enforcement"])
+            out[e["name"]] = (e["field"], _range_pred(e["field"], e["lo"], e["hi"]), e["enforcement"])
     return out
 
 
@@ -159,8 +159,8 @@ def _proof():
     reg = license_candidate(reg, by["chi_bounds"], "D.Dillberg", "hard", "2026-06-16")
     act = active_clamps(reg)
     if "chi_bounds" not in act: fails.append("licensed constitutional invariant not active")
-    pred, enf = act["chi_bounds"]
-    if not pred(0.5)[0] or pred(1.7)[0] or enf != "hard": fails.append("licensed chi clamp misbehaves")
+    field, pred, enf = act["chi_bounds"]
+    if field != "chi" or not pred(0.5)[0] or pred(1.7)[0] or enf != "hard": fails.append("licensed chi clamp misbehaves")
 
     # 3) EMPIRICAL CANNOT BE HARD — refused; allowed only as monitor
     try:
@@ -170,7 +170,7 @@ def _proof():
         pass
     reg2 = license_candidate({"protocol": PROTOCOL, "licensed": [], "errata": []},
                              by["dS_cit_observed_envelope"], "D.Dillberg", "monitor")
-    if active_clamps(reg2)["dS_cit_observed_envelope"][1] != "monitor":
+    if active_clamps(reg2)["dS_cit_observed_envelope"][2] != "monitor":
         fails.append("empirical bound not licensed as monitor")
 
     # 4) NO FALSIFICATION, NO LICENSE — a candidate without failure_condition is refused
