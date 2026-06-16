@@ -38,6 +38,13 @@ mined: chi [0.050, 0.982]  dS_cit [-8.322, 20.721]  E*_eff [0, 29.788]  frac [0,
 the EXP-602 bit-stability boundary. `H` is sensitive to any change above it and stable below
 representability. This is now codified as two standing properties, not an assumption.
 
+- **`registry_signing.py`** + **`signature_proof.py`** — EXP-531 boot airlock. A detached **Ed25519** signature
+  (`constitution/INVARIANT_REGISTRY.sig`) over the exact registry bytes; the server verifies it against an
+  authorized-pubkey allowlist (`AUTHORIZED_KEYS.json`) BEFORE compiling a clamp, and refuses to boot on
+  breach. Closes the EXP-530 residual: a wholesale registry replacement with recomputed fingerprints now
+  fails because it isn't signed by a listed key. 7/7 proof. Honest trust-root note: this narrows the trust
+  root to (a listed private key OR write access to the allowlist) — the allowlist must be protected
+  out-of-band (version control + read-only deploy). Requires the `cryptography` package; no hand-rolled crypto.
 - **`bridge_gate_proof.py`** — EXP-530 LIVE integration: proves `active_clamps()` wired into the bridge
   `/call` L1 boundary. Clean commits pass; a hard violation triggers a fail-closed revert to the last
   valid H (state restored, world un-locked, liveness preserved); cmdlog stays deterministic (replay-exact).

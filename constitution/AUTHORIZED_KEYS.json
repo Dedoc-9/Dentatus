@@ -1,0 +1,11 @@
+{
+  "keys": [
+    {
+      "added": "2026-06-16",
+      "holder": "Daniel J. Dillberg",
+      "pubkey": "ae9b54e97990b1c0ce6e7ce0374d267932c72faa95f40712921308129f0e6a10"
+    }
+  ],
+  "note": "Public keys authorized to sign INVARIANT_REGISTRY.json. Protect this file out-of-band (version control + read-only deploy).",
+  "protocol": "mcl-authority-v1"
+}

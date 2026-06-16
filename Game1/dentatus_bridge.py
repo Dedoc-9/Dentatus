@@ -44,6 +44,7 @@ from nucleation import enact_oriented_nucleation_522
 from sectioned_fiedler import global_fiedler
 from composite_witness import composite_address, session_attest, verify_attest, game_sufficient_stats, NonceChain
 from invariant_synthesis import active_clamps   # EXP-530: licensed property clamps (registry-gated)
+from registry_signing import airlock as _registry_airlock, RegistryCryptographicBreach   # EXP-531 boot airlock
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SEED = {"hash": "9671566edf7b1103", "bpm": 39, "T": 1.5385, "phase0": 0.873}
@@ -52,6 +53,10 @@ PORT = int(os.environ.get("BRIDGE_PORT", "8770"))
 # SERVER SECRET — the real moat. NEVER ship this; set it in the deploy environment.
 SERVER_SECRET = os.environ.get("DENTATUS_SERVER_SECRET", "DEV_INSECURE_KEY_set_DENTATUS_SERVER_SECRET").encode()
 REQUIRE_ATTEST = os.environ.get("DENTATUS_REQUIRE_ATTEST", "0") == "1"   # gate: commits need a composite frame
+REQUIRE_SIGNED_REGISTRY = os.environ.get("DENTATUS_REQUIRE_SIGNED_REGISTRY", "0") == "1"   # EXP-531 strict boot
+_REG = os.path.join(REPO, "constitution", "INVARIANT_REGISTRY.json")
+_SIG = os.path.join(REPO, "constitution", "INVARIANT_REGISTRY.sig")
+_KEYS = os.path.join(REPO, "constitution", "AUTHORIZED_KEYS.json")
 
 
 def _glass_stalk():
@@ -84,6 +89,9 @@ class World:
         self.cmdlog = []                                   # event-sourced: each commit's game sufficient-stats
         self.session = os.environ.get("DENTATUS_SESSION", "bridge-default")
         self.nonces = NonceChain(self.session)             # EXP-528 rolling nonce-chain (replay immunity)
+        # EXP-531 BOOT AIRLOCK: verify the registry signature before a single clamp is compiled.
+        # A present-but-invalid signature ALWAYS fails closed; strict mode also rejects an absent one.
+        self.registry_auth = _registry_airlock(_REG, _SIG, _KEYS, require=REQUIRE_SIGNED_REGISTRY)
         self.clamps = active_clamps()                      # EXP-530 licensed L1 guards {name:(field,pred,enf)}
         self.last_valid_H = self.world_H(True) or "%016x" % 0   # fail-closed anchor
 

@@ -35,3 +35,7 @@ Game1/__pycache__/
 Game1/*.session
 Game1/cmdlog*.json
 *.attest.log
+
+# EXP-531 registry signing — private key NEVER committed
+constitution/.registry_signing_key
+*.registry_signing_key
