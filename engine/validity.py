@@ -686,3 +686,48 @@ def citadel_entropy_508(K_budget, n_fragments, n_gamma):
 def is_citadel_508(dS_cit, floor=CITADEL_FLOOR_508):
     """Law of the Citadel: admit iff dS_cit >= floor (entropy-neutral or positive)."""
     return bool(float(dS_cit) >= float(floor))
+
+# ---------------------------------------------------------------------------
+# Zeeman/Bethe Citadel -- EXP-509 (is_bethe_citadel_509)
+# ---------------------------------------------------------------------------
+#
+# Dynamic thermodynamic refinement of the Citadel law (EXP-508). The static law used
+# E* = K_budget with a counting level density. EXP-509 couples E* to the ZEEMAN ENERGY
+# (beta_Z, the homeostatic excitation / "temperature") and a BETHE level density:
+#
+#   rho(E*)  = exp( 2*sqrt(a * E*) )                   Bethe nuclear level density
+#   H_in     = log2 rho(E*) = 2*sqrt(a*E*) / ln2       available phase space (bits)
+#   H_out    = log2(N_f + N_gamma)                      realized microstates
+#   dS_cit_bethe = H_in - H_out
+#
+# Law of the (thermodynamic) Citadel: dS_cit_bethe >= 0
+#   -- a world whose realized complexity exceeds the phase space its excitation E* licenses
+#      "overheats" and is rejected. Excitation gates structure (friction).
+#
+# LEVEL-DENSITY PARAMETER a:  a = a0 * d_stalk  (the stalk-schema mass, d=18 = the substrate's
+#   intrinsic degrees of freedom). a is a SUBSTRATE property, FIXED per realization. It does NOT
+#   scale with leaf-count: leaf-count is the realized complexity already in H_out; coupling a to
+#   it would double-count N and dissolve the friction. (a0 calibrated so valid realizations pass.)
+
+BETHE_A0_509 = 0.15          # level-density per stalk dimension (calibrated)
+import math as _math509
+
+
+def bethe_citadel_509(beta_Z, n_fragments, n_gamma, a0=BETHE_A0_509, d_stalk=18):
+    """EXP-509 Zeeman/Bethe Citadel score. E* = beta_Z (Zeeman excitation); Bethe level density.
+    Returns dict(a, E_star, H_in, H_out, dS_cit, N_f, N_gamma, quanta).  P_yz: counts + beta_Z
+    (a norm-derived scalar) are P_yz-invariant -> dS_cit P_yz-invariant."""
+    a = float(a0) * int(d_stalk)
+    E = max(float(beta_Z), 0.0)
+    Nf = max(int(n_fragments), 0); Ng = max(int(n_gamma), 0)
+    quanta = max(Nf + Ng, 1)
+    H_in = float(2.0 * _math509.sqrt(a * E) / _math509.log(2.0))     # log2 of Bethe rho(E*)
+    H_out = float(_math509.log2(float(quanta)))
+    return {"a": round(a, 9), "E_star": round(E, 9), "H_in": round(H_in, 9),
+            "H_out": round(H_out, 9), "dS_cit": round(H_in - H_out, 9),
+            "N_f": Nf, "N_gamma": Ng, "quanta": quanta}
+
+
+def is_bethe_citadel_509(dS_cit, floor=0.0):
+    """Thermodynamic Law of the Citadel: admit iff dS_cit_bethe >= floor (not overheated)."""
+    return bool(float(dS_cit) >= float(floor))

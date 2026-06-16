@@ -45,6 +45,7 @@ def export_bundle(base_intent, budget_ladder, steps=8):
             "accepted": 1 if improved else 0,
             "dS_cit": r["citadel"]["dS_cit"], "H_in": r["citadel"]["H_in"],
             "H_out": r["citadel"]["H_out"], "K_budget": r["citadel"]["K_budget"],
+            "E_star": r["bethe_citadel"]["E_star"], "dS_cit_bethe": r["bethe_citadel"]["dS_cit"],
             "H_state": H, "telemetry": tele,
         })
     return {

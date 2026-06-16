@@ -104,8 +104,15 @@ def observe(request):
     # gamma emissions (N_gamma = edges) must fit the energy budget E* = K_budget.
     cit = core.citadel_entropy_508(K_budget, len(mu.active), int(N_edges))
     citadel_ok = core.is_citadel_508(cit["dS_cit"])
-    # DUAL FIREWALL: manifold-continuous AND citadel-admissible.
+    # EXP-509 Zeeman/Bethe Citadel (thermodynamic): E* = beta_Z_eff (excitation/"temperature");
+    # Bethe level density. Always reported as the temperature observable; an OPT-IN gate
+    # (request["bethe_gate"]=True) so a calibration constant never silently flips H_verified.
+    bethe = core.bethe_citadel_509(bze, len(mu.active), int(N_edges))
+    bethe_ok = core.is_bethe_citadel_509(bethe["dS_cit"])
+    # DUAL FIREWALL: manifold-continuous AND (static) citadel-admissible; + optional Bethe gate.
     admissible = bool(core.is_manifold_501(B_ent) and ok and citadel_ok)
+    if request.get("bethe_gate"):
+        admissible = bool(admissible and bethe_ok)
 
     resp = {
         "protocol": "dentatus-api-v1",
@@ -126,6 +133,11 @@ def observe(request):
             "H_in": cit["H_in"], "H_out": cit["H_out"], "dS_cit": cit["dS_cit"],
             "N_f": cit["N_f"], "N_gamma": cit["N_gamma"],
             "is_citadel": citadel_ok, "K_budget": int(K_budget),
+        },
+        "bethe_citadel": {
+            "a": bethe["a"], "E_star": bethe["E_star"], "H_in": bethe["H_in"],
+            "H_out": bethe["H_out"], "dS_cit": bethe["dS_cit"],
+            "is_bethe_citadel": bethe_ok, "gated": bool(request.get("bethe_gate", False)),
         },
         "admissible": admissible,
         "fiedler": {"lambda_2": round(float(lam2), 9), "n_modes": int(len(lam_modes))},

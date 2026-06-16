@@ -1,0 +1,49 @@
+{
+  "protocol": "exp509-v1",
+  "series": "500",
+  "inherits": "exp508-v1",
+  "title": "Zeeman/Bethe Citadel -- dynamic thermodynamic firewall",
+  "gate_source": "EXP-508 static Citadel -> couple E* to Zeeman energy + Bethe level density (living ecology)",
+  "operator": "engine.validity.bethe_citadel_509 + is_bethe_citadel_509; observable + opt-in gate in dentatus.api",
+  "law": {
+    "E_star": "beta_Z_eff (Zeeman homeostatic excitation / temperature)",
+    "rho": "Bethe level density rho(E*) = exp(2*sqrt(a*E*))",
+    "H_in": "log2 rho(E*) = 2*sqrt(a*E*)/ln2  (available phase space, bits)",
+    "H_out": "log2(N_f + N_gamma)  (realized microstates)",
+    "dS_cit_bethe": "H_in - H_out >= 0  : a world too complex for its excitation 'overheats' and is rejected"
+  },
+  "level_density_parameter": {
+    "a": "a0 * d_stalk  (d_stalk = 18 = stalk-schema mass = substrate degrees of freedom)",
+    "a0": "0.15 (calibrated so valid realizations pass)",
+    "decision": "a is a SUBSTRATE property, FIXED per realization -- it does NOT scale with leaf-count",
+    "rationale": "leaf-count is the realized complexity already in H_out; coupling a to it double-counts N and dissolves the excitation friction (H_in ~ sqrt(N*E) would grow faster than H_out ~ log2 N)"
+  },
+  "firewall_role": {
+    "default": "OBSERVABLE only -- bethe_citadel reported as the temperature; H_verified gated by manifold AND static-508",
+    "opt_in": "request bethe_gate=True -> triple firewall: manifold AND citadel-508 AND bethe-509",
+    "safety": "a calibration constant never silently flips H_verified; valid worlds verified Bethe-admissible (margin >= +0.86)"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] Bethe math: H_in = 2*sqrt(a*E*)/ln2, a = a0*d_stalk, dS_cit = H_in - H_out",
+    "[3] a = substrate schema mass (a0*d_stalk, d=18); independent of leaf-count (no double-count)",
+    "[4] excitation friction: fixed complexity, decreasing E* -> dS decreases and crosses 0 (overheat threshold)",
+    "[5] overheat reject: low-excitation over-complex world -> dS < 0 -> is_bethe_citadel False",
+    "[6] valid worlds admitted: docking-bay ladder all Bethe-admissible (E* = realized beta_Z)",
+    "[7] observable always reported: api returns bethe_citadel block (E_star, H_in, H_out, dS_cit)",
+    "[8] opt-in gate: bethe_gate=True adds the constraint; default leaves H_verified unchanged",
+    "[9] determinism: dS_cit_bethe bit-stable (PYTHONHASHSEED=0)",
+    "[10] no regression: default H_verified for the docking bay unchanged vs EXP-508"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] E_star (beta_Z) fwd == mir (Zeeman energy is norm-derived, P_yz-invariant)",
+    "[3] dS_cit_bethe fwd == mir",
+    "[4] is_bethe_citadel decision fwd == mir",
+    "[5] N_f, N_gamma fwd == mir"
+  ],
+  "exp510_gate": {
+    "trigger": "thermodynamic firewall stable -> multi-velocity moving sections (Ghost #40)"
+  },
+  "declaration_hash": "58f3f306a8f48cbe7defa35291a8374a8a94ba7e37d02849c3807fa344c5eea2"
+}
