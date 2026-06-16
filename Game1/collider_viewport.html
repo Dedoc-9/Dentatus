@@ -53,7 +53,8 @@ document.getElementById("meTag").textContent="PLAYER "+ME;
 document.getElementById("meTag").style.color=ME==="A"?"var(--A)":"var(--B)";
 var cv=document.getElementById("cv"),cx=cv.getContext("2d");
 var W,Hh,DPR,GX=8,GY=6,FOCUS_R=2.2,RELAX_EFF=0.45;
-var St={tiles:[],focA:[1.5,5.5],focB:[6.5,5.5],frame:0,H:"—",pulse:0,resolutions:[],full_A:0,full_B:0,stale:0};
+var St={tiles:[],focA:[1.5,5.5],focB:[6.5,5.5],frame:0,H:"—",pulse:0,resolutions:[],full_A:0,full_B:0,stale:0,los_AB:{clear:true,block:null}};
+var aimBlocked=false;
 var disp=[]; for(var i=0;i<GX*GY;i++)disp.push({chi:0.25,hit:0,flash:0});
 var mouse={x:0,y:0},aim=-1,lastRecv=null,LIVE=false,cool=0;
 var myFoc={x:ME==='A'?1.5:6.5,y:5.5};            // MY FULL_VALID bubble centroid (WASD-driven, float grid coords)
@@ -66,6 +67,16 @@ addEventListener("resize",resize);resize();
 function board(){var pad=54,bw=W-pad*2,bh=Hh-pad*2,cs=Math.min(bw/GX,bh/GY);var ox=(W-cs*GX)/2,oy=(Hh-cs*GY)/2;return{cs:cs,ox:ox,oy:oy};}
 function tileAt(px,py){var b=board();var gx=Math.floor((px-b.ox)/b.cs),gy=Math.floor((py-b.oy)/b.cs);if(gx<0||gy<0||gx>=GX||gy>=GY)return -1;return gy*GX+gx;}
 function phaseColor(ph){return ph==="fluid"?[76,125,255]:ph==="glass"?[255,157,84]:[202,161,78];}
+function cellPx(gx,gy,b){return [b.ox+gx*b.cs+b.cs/2,b.oy+gy*b.cs+b.cs/2];}
+function rayCells(x0,y0,x1,y1){var cx=Math.floor(x0),cy=Math.floor(y0),ex=Math.floor(x1),ey=Math.floor(y1);
+  var dx=x1-x0,dy=y1-y0,cells=[[cx,cy]];if(dx===0&&dy===0)return cells;
+  var sx=dx>0?1:-1,sy=dy>0?1:-1,I=1e9;
+  var tmx=dx!==0?(((cx+(sx>0?1:0))-x0)/dx):I,tmy=dy!==0?(((cy+(sy>0?1:0))-y0)/dy):I;
+  var tdx=dx!==0?Math.abs(1/dx):I,tdy=dy!==0?Math.abs(1/dy):I,g=0;
+  while((cx!==ex||cy!==ey)&&g<256){g++;if(tmx<tmy){tmx+=tdx;cx+=sx;}else{tmy+=tdy;cy+=sy;}cells.push([cx,cy]);}
+  return cells;}
+function opaque(cx,cy){if(cx<0||cy<0||cx>=GX||cy>=GY)return false;var t=St.tiles[cy*GX+cx];return t&&(t.phase==="solid"||t.phase==="glass");}
+function losBlocked(x0,y0,tgx,tgy){var cs=rayCells(x0,y0,tgx+0.5,tgy+0.5);for(var i=1;i<cs.length-1;i++){if(opaque(cs[i][0],cs[i][1]))return cs[i];}return null;}
 
 function arena(){
   var b=board(),cs=b.cs;
@@ -104,6 +115,27 @@ function arena(){
   var myColor=ME==="A"?"#36d6e7":"#ffb454",enColor=ME==="A"?"#ffb454":"#36d6e7";
   drawFoc(ME==="A"?St.focB:St.focA,enColor,OTHER,b);      // enemy (authoritative)
   drawFoc([myFoc.x,myFoc.y],myColor,ME,b);               // me (local, zero-latency)
+  // CENTROID SIGHTLINE A<->B (authoritative los_AB): amber clear, fractured red at the occluder
+  var pa=cellPx(St.focA[0],St.focA[1],b),pb=cellPx(St.focB[0],St.focB[1],b);
+  if(St.los_AB&&St.los_AB.clear){
+    cx.strokeStyle="rgba(255,180,84,0.55)";cx.lineWidth=2;cx.setLineDash([]);
+    cx.beginPath();cx.moveTo(pa[0],pa[1]);cx.lineTo(pb[0],pb[1]);cx.stroke();
+  }else if(St.los_AB){var bt=St.los_AB.block,bp=cellPx(bt%GX,(bt/GX|0),b);
+    cx.strokeStyle="rgba(255,180,84,0.35)";cx.lineWidth=2;cx.setLineDash([2,4]);
+    cx.beginPath();cx.moveTo(pa[0],pa[1]);cx.lineTo(bp[0],bp[1]);cx.stroke();cx.setLineDash([]);
+    cx.strokeStyle="rgba(255,70,80,0.9)";cx.lineWidth=2;var r=b.cs*0.22;
+    cx.beginPath();cx.moveTo(bp[0]-r,bp[1]-r);cx.lineTo(bp[0]+r,bp[1]+r);cx.moveTo(bp[0]+r,bp[1]-r);cx.lineTo(bp[0]-r,bp[1]+r);cx.stroke();
+  }
+  // MY AIM LANE myFoc->aim (local prediction): green clear / red dashed BLOCKED
+  aimBlocked=false;
+  if(aim>=0){var agx=aim%GX,agy=(aim/GX|0),mp=cellPx(myFoc.x,myFoc.y,b),ap=cellPx(agx,agy,b);
+    var blk=losBlocked(myFoc.x,myFoc.y,agx,agy);
+    if(blk){aimBlocked=true;var bp2=cellPx(blk[0],blk[1],b);
+      cx.strokeStyle="rgba(255,70,80,0.8)";cx.lineWidth=2;cx.setLineDash([4,4]);
+      cx.beginPath();cx.moveTo(mp[0],mp[1]);cx.lineTo(bp2[0],bp2[1]);cx.stroke();cx.setLineDash([]);
+    }else{cx.strokeStyle="rgba(57,217,138,0.6)";cx.lineWidth=1.5;cx.setLineDash([]);
+      cx.beginPath();cx.moveTo(mp[0],mp[1]);cx.lineTo(ap[0],ap[1]);cx.stroke();}
+  }
   // crosshair on aimed tile
   if(aim>=0){var gx=aim%GX,gy=(aim/GX|0);var cxp=b.ox+gx*b.cs+b.cs/2,cyp=b.oy+gy*b.cs+b.cs/2;
     cx.strokeStyle=ME==="A"?"#36d6e7":"#ffb454";cx.lineWidth=2;
@@ -130,6 +162,7 @@ function hud(){
     p+='<div><span class="k">your vantage</span><span class="v" style="color:'+(tax?"#ffb454":"#39d98a")+'">'+myV+(tax?' · shear ×'+RELAX_EFF+' (blind)':' · verified ×1.0')+'</span></div>';
     p+='<div><span class="k">enemy vantage</span><span class="v">'+(ME==="A"?t.vB:t.vA)+'</span></div>';
     p+='<div><span class="k">Wi / yield</span><span class="v">'+t.wi.toFixed(2)+' · '+(t.prox*100|0)+'%</span></div>';
+    p+='<div><span class="k">firing lane</span><span class="v" style="color:'+(aimBlocked?"#ff5c6c":"#39d98a")+'">'+(aimBlocked?'BLOCKED · drill a fluid tunnel':'CLEAR')+'</span></div>';
   }
   document.getElementById("panel").innerHTML=p;
   // most recent resolution receipt
@@ -151,7 +184,7 @@ function loop(){moveFocus();arena();hud();if(cool>0)cool--;requestAnimationFrame
 loop();
 
 // ---- input ----
-function fire(){if(aim<0||cool>0)return;cool=3;var sec=aim;disp[sec].hit=1; // local prediction
+function fire(){if(aim<0||cool>0)return;cool=3;var sec=aim;disp[sec].hit=1;if(aimBlocked)disp[sec].flash=1; // local prediction (BLOCKED still logged server-side)
   send("/call/shear_fire",{player:ME,section:sec,wi:Math.abs(St.pulse)>0.78?0.11:0.09,synced:Math.abs(St.pulse)>0.78,game_stats:{p:ME,tile:sec}});}
 function anneal(){if(aim<0)return;var sec=aim;disp[sec].hit=0.6;
   send("/call/anneal",{player:ME,section:sec,synced:true,game_stats:{p:ME,tile:sec}});}
@@ -179,7 +212,7 @@ var BRIDGE=location.origin;
 function connect(){try{var es=new EventSource(BRIDGE+"/stream");
   es.onmessage=function(ev){var d=JSON.parse(ev.data);LIVE=true;
     St.tiles=d.tiles;St.focA=d.focA;St.focB=d.focB;St.frame=d.frame;St.H=d.H_verified;St.pulse=d.pulse_val;
-    St.full_A=d.full_A;St.full_B=d.full_B;St.stale=d.stale;St.resolutions=d.resolutions||[];
+    St.full_A=d.full_A;St.full_B=d.full_B;St.stale=d.stale;St.resolutions=d.resolutions||[];St.los_AB=d.los_AB||{clear:true,block:null};
     for(var k=0;k<St.resolutions.length;k++){var r=St.resolutions[k];disp[r.tile_id].flash=1;lastRecv=r;}
   };
   es.onerror=function(){LIVE=false;};}catch(e){LIVE=false;}}

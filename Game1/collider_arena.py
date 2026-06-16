@@ -91,6 +91,39 @@ class Collider:
     def _lod_eff(self, t, who):
         return 1.0 if self.vclass(t, who) == "FULL_VALID" else RELAX_EFF
 
+    def _ray_cells(self, x0, y0, x1, y1):
+        # Amanatides-Woo voxel traversal over unit grid cells -> every cell the segment enters.
+        cx, cy = int(math.floor(x0)), int(math.floor(y0)); ex, ey = int(math.floor(x1)), int(math.floor(y1))
+        dx, dy = x1 - x0, y1 - y0; cells = [(cx, cy)]
+        if dx == 0 and dy == 0: return cells
+        sx = 1 if dx > 0 else -1; sy = 1 if dy > 0 else -1; INF = float("inf")
+        tmx = (((cx + (1 if sx > 0 else 0)) - x0) / dx) if dx != 0 else INF
+        tmy = (((cy + (1 if sy > 0 else 0)) - y0) / dy) if dy != 0 else INF
+        tdx = abs(1.0 / dx) if dx != 0 else INF; tdy = abs(1.0 / dy) if dy != 0 else INF; g = 0
+        while (cx, cy) != (ex, ey) and g < 256:
+            g += 1
+            if tmx < tmy: tmx += tdx; cx += sx
+            else: tmy += tdy; cy += sy
+            cells.append((cx, cy))
+        return cells
+
+    def _opaque(self, cx, cy):
+        if not (0 <= cx < GX and 0 <= cy < GY): return False
+        return self.phase_of(self.chi(self.tiles[cy * GX + cx])) in ("solid", "glass")
+
+    def _los_blocked(self, p0, target_sec):
+        # opaque tile STRICTLY BETWEEN shooter centroid and target tile severs the lane (target itself is drillable).
+        tgx, tgy = target_sec % GX, target_sec // GX
+        for (cx, cy) in self._ray_cells(p0[0], p0[1], tgx + 0.5, tgy + 0.5)[1:-1]:
+            if self._opaque(cx, cy): return True, cy * GX + cx
+        return False, None
+
+    def _los_centroids(self):
+        a = self.foc["A"]; b = self.foc["B"]
+        for (cx, cy) in self._ray_cells(a[0], a[1], b[0], b[1])[1:-1]:
+            if self._opaque(cx, cy): return {"clear": False, "block": cy * GX + cx}
+        return {"clear": True, "block": None}
+
     def _fiedler(self):
         n = len(self.tiles); Lap = np.zeros((n, n)); stiff = [max(1e-3, 1.0 - self.chi(t)) for t in self.tiles]
         def idx(x, y): return y * GX + x
@@ -162,9 +195,28 @@ class Collider:
 
     def _resolve(self, sec, its):
         t = self.tiles[sec]; chi0 = self.chi(t)
-        shear_eff = sum(it["wi"] * self._lod_eff(t, it["player"]) for it in its if it["kind"] == "shear")
-        anneal_eff = sum(ANNEAL_BASE * self._lod_eff(t, it["player"]) for it in its if it["kind"] == "anneal")
+        shear_eff = 0.0; anneal_eff = 0.0; blocked = 0; n_shear = 0
+        for it in its:
+            if it["kind"] == "shear":
+                n_shear += 1
+                blk, _bt = self._los_blocked(self.foc[it["player"]], sec)
+                if blk: blocked += 1; continue            # firewall: no line-of-sight -> shot rejected
+                shear_eff += it["wi"] * self._lod_eff(t, it["player"])
+            else:
+                anneal_eff += ANNEAL_BASE * self._lod_eff(t, it["player"])
         synced = any(it["synced"] for it in its)
+        if n_shear and shear_eff == 0.0 and anneal_eff == 0.0:
+            chi_b = self.chi(t); Hv = self.world_H()
+            gs = {"section": sec, "verdict": "BLOCKED", "frame": self.frame}
+            comp = composite_address(Hv, gs); attest = session_attest(Hv, gs, SERVER_SECRET)
+            self.last = "tile %d · BLOCKED (no line-of-sight) · ⊕%s" % (sec, comp[:6])
+            return {"tile_id": sec, "geometry": self._tileH(t),
+                    "vantage_A": {"class": self.vclass(t, "A"), "address": self.vaddr(t, "A")},
+                    "vantage_B": {"class": self.vclass(t, "B"), "address": self.vaddr(t, "B")},
+                    "net_stress": {"strain": 0.0, "compliance": 0.0, "net_wi": 0.0, "verdict": "BLOCKED"},
+                    "op": "occluded", "chi": round(chi_b, 4), "phase": self.phase_of(chi_b),
+                    "dS_cit": 0.0, "H_verified": Hv, "composite": comp, "attestation": attest,
+                    "frame": self.frame, "blocked": int(blocked)}
         net_wi = shear_eff - anneal_eff * ANNEAL_GAIN
         t["wi"] = min(1.2, max(0.06, t["wi"] + net_wi)); t["hit"] = 1.0
         beta_eff = BETA * (1 + 0.6 * (1.0 if synced else self.pulse()[1]))
@@ -217,7 +269,8 @@ class Collider:
                     "full_A": int(fa), "full_B": int(fb), "stale": self.stale,
                     "resolutions": self.resolutions[-6:], "H_verified": self.world_H(),
                     "pulse_ph": round(ph, 4), "pulse_val": round(pv, 4),
-                    "red": int(red), "blue": int(blue), "event": self.last, "bpm": SEED["bpm"], "seed": SEED["hash"]}
+                    "red": int(red), "blue": int(blue), "los_AB": self._los_centroids(),
+                    "event": self.last, "bpm": SEED["bpm"], "seed": SEED["hash"]}
 
 
 WORLD = Collider()
