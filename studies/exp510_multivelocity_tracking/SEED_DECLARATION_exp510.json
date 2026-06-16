@@ -1,0 +1,60 @@
+{
+  "declaration_hash": "5f83cb5ac6b907e1fc618707b4d500f5e3a0dea44522fa1b70d07e2ecf38e579",
+  "experiment": "EXP-510",
+  "title": "Multi-Velocity Section Tracking (Ghost #40)",
+  "protocol_version": "exp510-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Per-section co-moving frames (one velocity v_s per section, EMA of observed displacement) hold track correspondence under DIFFERENTIAL (non-rigid) motion where a single global cumulative_motion (track_correspondence_505) fails, while keeping the stitched Fiedler fault continuous. The velocity-gradient tensor L = strain (sym) + vorticity (antisym) isolates TRUE non-rigidity (strain) from rigid rotation/translation.",
+  "state_variables": {
+    "forward": [
+      "leaves(center,size)",
+      "section_of",
+      "C_s (observed centroid)",
+      "field (stitched Fiedler)"
+    ],
+    "dual": [
+      "v_s (EMA velocity)",
+      "C_hat_s (predicted)",
+      "G_s (kinematic ghost #44 = C_match - C_hat)",
+      "Skin_s (EMA G)"
+    ]
+  },
+  "operator_order": "mu -> SEC(assign) -> PRED(C_hat) -> ASSOC(greedy gate) -> VEL(EMA) -> GHOST(G,Skin) -> OBS",
+  "constants": {
+    "VEL_EMA_ALPHA": 0.5,
+    "GHOST_EMA_ALPHA": 0.5,
+    "GATE_K": 1.5,
+    "NDIGITS": 6
+  },
+  "observables": [
+    "rigidity_R=||mean v||/mean||v||",
+    "strain=||sym L||_F (true non-rigidity)",
+    "vorticity=||antisym L||_F",
+    "divergence=tr(L)",
+    "match_rate",
+    "fault_continuity",
+    "ghost_kin_mean",
+    "skin_norm_total"
+  ],
+  "backreaction_firewall": "prediction informs CORRESPONDENCE only; section assignment uses OBSERVED centers; the dual (velocity/ghost) NEVER mutates forward geometry -> forward/dual orthogonality.",
+  "engine_scope": "GAME LAYER ONLY (game/observability/multivelocity.py). No engine/*.py edits. Consumes sectioned_fiedler + dentatus.core; never imports engine.*",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] rigid translation: strain=0, vorticity=0, div=0, R=1 (zero deformation)",
+    "[3] differential shear: match_rate=1.0 sustained (505-single-motion would tear)",
+    "[4] simple shear: strain>0 AND vorticity>0 AND div~0 (Cauchy split correct)",
+    "[5] isotropic expansion: div>0, vorticity=0 (dilation isolated)",
+    "[6] rotation: vorticity dominates strain (>3x) (near-rigid)",
+    "[7] kinematic ghost G_kin decays under constant velocity (EMA convergence)",
+    "[8] ghost never controls: assignment identical with/without Skin feedback path",
+    "[9] determinism: re-run -> identical hashes (bit-stable)",
+    "[10] fault continuity >=0.75 under differential motion (fault stays healed)"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz x->-x: per-frame hashes identical (reflection invariant)",
+    "[2] strain, vorticity, R, match counts invariant under reflection",
+    "[3] speeds multiset invariant",
+    "[4] divergence sign-invariant (scalar trace)",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

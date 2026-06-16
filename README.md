@@ -161,6 +161,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-604 | MCL Observability dashboard; content-addressed telemetry (Fiedler fault, firewall gauge, stress curve); WebGL; cache-by-H_state | `f1f9c1a4438c3c23` | **open** |
 | EXP-605 | Live SSE reality stream; keyframe+delta coarse codec; content-addressed sections; equilibrium heartbeats; bitrate ∝ change | `7e682b51a229f7e6` | **open** |
 | EXP-606 | LRU coarse cache; session H_coarse anchors; zero-cost state returns (coarse_ref); Ghost #41 resolved | `1bbbccefaec5ec17` | **open** |
+| EXP-510 | Multi-velocity section tracking; per-section co-moving frames (EMA v_s); Cauchy split L=strain⊕vorticity isolates true non-rigidity; Ghost #40/#44; game-layer, engine frozen | `5f83cb5ac6b907e1` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
