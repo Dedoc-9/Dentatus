@@ -1,0 +1,35 @@
+{
+  "declaration_hash": "32c1314a87fbd52301eeba7ddae8be59cc23999f2bb834acff312e794d912fd8",
+  "experiment": "EXP-518",
+  "title": "History Compaction (Fork upsilon): bounded memory, unbounded auditable history",
+  "protocol_version": "exp518-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Inactive (former-material) claims accumulated by EXP-517 injection (Ghost #51) can be EVICTED from the live working set with two inertness guarantees: (1) H-INERT -- H_t = HASH(Z+S+W+t) depends only on ACTIVE claims, so eviction leaves H_t bit-identical; (2) OBSERVATIONALLY INERT -- the only all-claims observable eta_CLT is preserved EXACTLY by retaining sufficient statistics (sum/count of evicted norms) instead of the objects. Tiered memory: a bounded SKELETON LINEAGE (deque of last N live snapshots) gives O(1) undo; the EXP-516 provenance DAG keeps every transition hash for unbounded cold history; look-back beyond the window requires DAG replay. Result: constant-time live performance with infinite auditable history. Engine FROZEN.",
+  "guarantees": {
+    "H_inert": "evict inactive claims -> live.H == uncompacted H (identity unchanged)",
+    "obs_inert": "eta_CLT via (sum_active + evict_sum)/(n_active + evict_n) == full-population eta_CLT",
+    "bounded": "working_set_size == |active| (independent of #transitions)",
+    "auditable": "DAG retains every transition (hashes/witnesses); skeleton retains last N for instant undo"
+  },
+  "governance_answer": "TIERED (not either/or): Skeleton Lineage (hot, O(1) undo within N) + provenance DAG (cold, hashes only, unbounded) + replay to bridge beyond the window -- the EXP-606 hot/cold pattern.",
+  "engine_scope": "NO engine edits. game/agency/compaction.py uses core (MuState) + game.injection + game.transition_dag. state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] H-inert eviction: compacted live.H == uncompacted H",
+    "[3] bounded working set: working_set_size == |active| constant across K injections (not O(K))",
+    "[4] unbounded history: DAG retains all K transitions",
+    "[5] observationally inert: eta_CLT() == non-compacting reference across a multi-melt chain",
+    "[6] skeleton undo: undo() restores prior live H (O(1))",
+    "[7] undo restores stats: eta_CLT after undo == prior value",
+    "[8] beyond-window: undo past N -> BeyondWindowError (replay required)",
+    "[9] determinism: H chain + DAG + eta_CLT bit-stable",
+    "[10] engine frozen: no engine.* import; original mu untouched"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: eta_CLT invariant under Sector-D reflection (norm-based)",
+    "[2] DAG child ids invariant (material-H payloads)",
+    "[3] working_set & history sizes invariant under reflection",
+    "[4] undo restores invariant eta_CLT",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}
