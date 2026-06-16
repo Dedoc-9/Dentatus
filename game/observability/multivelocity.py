@@ -401,10 +401,16 @@ def strain_field_for_halo(state, leaves, grid=(2, 2, 2), mode="mass"):
 # ============================================================
 
 def citadel_strain_coupling(state, leaves, beta_Z, n_fragments, n_gamma,
-                            grid=(2, 2, 2), mode="mass", eps_ref=None, reduce="max"):
+                            grid=(2, 2, 2), mode="mass", eps_ref=None, reduce="max",
+                            nondim=None, dt=1.0):
     """Couple EXP-511 boundary strain to the EXP-509 Bethe Citadel. The deforming seam (reduce="max")
-    or the mean field (reduce="mean") drains the excitation reservoir. Returns the EXP-512 observable
-    + verdict. Pure: does not modify state, geometry, or the forward E*.
+    or the mean field (reduce="mean") drains the excitation reservoir.
+
+    nondim (EXP-513 Fork eta) selects the strain non-dimensionalisation:
+        None           -> dimensional (EXP-512; eps_ref per-world)
+        "courant"      -> strain* = strain*dt   (dimensionless per-step; universal eps_ref)
+        "weissenberg"  -> strain* = strain/|vort|  (framerate-INDEPENDENT; vort from EXP-510 split)
+    Pure: does not modify state, geometry, or the forward E*.
     """
     from dentatus import core as _core
     sf = strain_field_for_halo(state, leaves, grid, mode=mode)
@@ -413,6 +419,10 @@ def citadel_strain_coupling(state, leaves, beta_Z, n_fragments, n_gamma,
     else:
         strain = float(np.max(sf)) if reduce == "max" else float(np.mean(sf))
     kw = {} if eps_ref is None else {"eps_ref": float(eps_ref)}
+    if nondim == "courant":
+        kw["dt"] = float(dt)
+    elif nondim == "weissenberg":
+        kw["vorticity"] = float(kinematic_decomposition(state)["vort"])
     bc = _core.bethe_citadel_strain_512(beta_Z, strain, n_fragments, n_gamma, **kw)
     bc["is_bethe_strain"] = bool(_core.is_bethe_strain_512(bc["dS_cit"]))
     bc["strain_reduce"] = reduce

@@ -1,0 +1,35 @@
+{
+  "declaration_hash": "e283bd260e380617500f9e6a7412633dc422c42ebd71086c460718771417f447",
+  "experiment": "EXP-513",
+  "title": "Dimensionless Strain (Fork eta): shear-Courant + Weissenberg non-dimensionalisation",
+  "protocol_version": "exp513-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Non-dimensionalising the EXP-512 strain promotes eps_ref from a per-world calibration (Ghost #46) to a universal engine constant STRAIN_STAR_REF. Two modes: (courant) strain*=strain*dt is a dimensionless shear-Courant/CFL number (per-step); (weissenberg) strain*=strain/|vorticity| is a dimensionless AND framerate-INDEPENDENT shear/spin ratio, consolidating EXP-510 vorticity. strain*=0 recovers EXP-509; dimensional path (no dt/vort) is byte-unchanged from EXP-512.",
+  "equations": {
+    "courant": "strain* = strain * dt   (CFL: shear accumulated per step relative to the cell)",
+    "weissenberg": "strain* = strain / (|vorticity| + eps)   (rate/rate; intrinsic, framerate-independent)",
+    "drain": "E*_eff = beta_Z*(1-(strain*/eps_ref)^2),  eps_ref = STRAIN_STAR_REF (universal) for both modes"
+  },
+  "eps_ref_governance": "STRAIN_STAR_REF is a PROTECTED constitutional constant (not a free L1 tunable): exposing it per-call would let a caller disable the mechanical firewall and would fragment H_verified content-addressing. Per-material variation must instead enter as a BOUNDED stiffness modulus chi in (0,1] DERIVED from the stalk material sector (declared state), eps_ref_eff = STRAIN_STAR_REF * chi -- declared-state response, never a verdict-bypassing knob (future fork).",
+  "backreaction_firewall": "strain* feeds the VERDICT only; never mutates geometry, eigenvector, or forward E*. Dimensional path unchanged -> EXP-512 + all prior forks green.",
+  "engine_scope": "engine/validity.py: bethe_citadel_strain_512 extended ADDITIVELY (dt, vorticity params; STRAIN_STAR_REF_512 + _VORT_EPS_513 constants). state/operators/confluence FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] backward compat: no dt/vort -> dimensional, byte-identical to EXP-512 (eps_ref=0.5)",
+    "[3] courant: strain*=strain*dt exactly; finer dt -> smaller strain* -> more permissive (monotone)",
+    "[4] courant universal: same STRAIN_STAR_REF rejects a per-step-unstable seam (strain*>eps_ref)",
+    "[5] weissenberg: strain*=strain/(|vort|+eps); rotation-dominated admits, shear-dominated rejects",
+    "[6] weissenberg FRAMERATE-INDEPENDENT: common rate-scaling of strain & vort -> identical Wi & verdict",
+    "[7] ghost #47 regularised: vorticity=0 finite (no div-by-zero), large strain* -> reject",
+    "[8] strain*=0 recovers EXP-509 dS_cit in every mode",
+    "[9] end-to-end: courant + weissenberg verdicts via citadel_strain_coupling on a shear scene",
+    "[10] determinism: re-run identical strain*/dS_cit (bit-stable)"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz x->-x: courant dS_cit invariant",
+    "[2] P_yz: weissenberg dS_cit invariant (strain & vorticity are Frobenius scalars)",
+    "[3] strain_star invariant under reflection (both modes)",
+    "[4] verdict invariant under reflection",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

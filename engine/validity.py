@@ -736,32 +736,57 @@ def is_bethe_citadel_509(dS_cit, floor=0.0):
 # ============================================================
 # EXP-512 — Strain -> Bethe coupling (Fork epsilon): deformation energy drains excitation.
 # ============================================================
-STRAIN_EPS_REF_512 = 0.5     # critical shear strain (dimensionless knob); at strain=eps_ref the
-                             # full excitation reservoir is sequestered into deformation (E*_eff=0).
+STRAIN_EPS_REF_512 = 0.5     # critical shear strain (DIMENSIONAL knob); per-world calibration (Ghost #46).
+# EXP-513 Fork eta: universal DIMENSIONLESS critical shear number (Courant/Weissenberg). A pure
+# number -> a constitutional constant alongside FIREWALL_EPSILON and the Citadel floor.
+STRAIN_STAR_REF_512 = 0.5
+_VORT_EPS_513 = 1e-9         # vorticity-singularity regulariser (Ghost #47)
 
 
 def bethe_citadel_strain_512(beta_Z, strain, n_fragments, n_gamma,
-                             eps_ref=STRAIN_EPS_REF_512, a0=BETHE_A0_509, d_stalk=18):
+                             eps_ref=None, a0=BETHE_A0_509, d_stalk=18,
+                             dt=None, vorticity=None):
     """EXP-509 Bethe Citadel with a deformation-energy drain on the excitation reservoir.
-        frac   = min((strain/eps_ref)^2, 1)      # elastic-energy fraction (quadratic, Hooke ~ 1/2 k x^2)
+        frac   = min((strain*/eps_ref)^2, 1)     # elastic-energy fraction (quadratic, Hooke ~ 1/2 k x^2)
         E*_eff = beta_Z * (1 - frac)             # deformation energy sequestered from the level density
         H_in   = 2*sqrt(a * E*_eff)/ln2,  H_out = log2(N_f+N_gamma),  dS_cit = H_in - H_out
+
+    Non-dimensionalisation of strain (EXP-513 Fork eta), selected by inputs:
+        vorticity given -> WEISSENBERG  strain* = strain / (|vorticity| + eps)   (rate/rate; dimensionless
+                           AND framerate-INDEPENDENT; consolidates EXP-510 vorticity). eps_ref defaults
+                           to the universal STRAIN_STAR_REF_512.
+        dt given        -> SHEAR-COURANT  strain* = strain * dt                  (dimensionless per-step;
+                           CFL-style). eps_ref defaults to STRAIN_STAR_REF_512.
+        neither         -> DIMENSIONAL  strain* = strain (EXP-512 original; eps_ref defaults to the
+                           per-world STRAIN_EPS_REF_512). Backward compatible.
+
     a = a0*d_stalk is UNCHANGED (substrate schema mass; strain is energetic, not structural -> never
-    scales a). strain=0 -> frac=0 -> E*_eff=beta_Z -> identical to bethe_citadel_509 (exact recovery).
-    P_yz: strain (Frobenius norm) and beta_Z are P_yz-invariant scalars -> dS_cit P_yz-invariant.
-    Returns dict(a, E_star, strain, E_strain_frac, E_star_eff, H_in, H_out, dS_cit, N_f, N_gamma,
-    quanta, eps_ref)."""
+    scales a). strain*=0 -> identical to bethe_citadel_509 (exact recovery). P_yz: strain, vorticity
+    (Frobenius norms) and beta_Z are P_yz-invariant scalars -> dS_cit P_yz-invariant."""
     a = float(a0) * int(d_stalk)
     E = max(float(beta_Z), 0.0)
     s = max(float(strain), 0.0)
-    er = float(eps_ref)
-    frac = min((s / er) ** 2, 1.0) if er > 0.0 else 0.0
+    if vorticity is not None:
+        s_star = s / max(abs(float(vorticity)), _VORT_EPS_513)   # Weissenberg (floor, not additive:
+        #                  exactly strain/|vort| above the floor -> ratio is EXACTLY scale-invariant)
+        er = STRAIN_STAR_REF_512 if eps_ref is None else float(eps_ref)
+        mode = "weissenberg"
+    elif dt is not None:
+        s_star = s * float(dt)                                   # shear-Courant (dimensionless per-step)
+        er = STRAIN_STAR_REF_512 if eps_ref is None else float(eps_ref)
+        mode = "courant"
+    else:
+        s_star = s                                               # dimensional (EXP-512 original)
+        er = STRAIN_EPS_REF_512 if eps_ref is None else float(eps_ref)
+        mode = "dimensional"
+    frac = min((s_star / er) ** 2, 1.0) if er > 0.0 else 0.0
     E_eff = E * (1.0 - frac)
     Nf = max(int(n_fragments), 0); Ng = max(int(n_gamma), 0)
     quanta = max(Nf + Ng, 1)
     H_in = float(2.0 * _math509.sqrt(a * E_eff) / _math509.log(2.0))
     H_out = float(_math509.log2(float(quanta)))
     return {"a": round(a, 9), "E_star": round(E, 9), "strain": round(s, 9),
+            "strain_star": round(s_star, 9), "nd_mode": mode,
             "E_strain_frac": round(frac, 9), "E_star_eff": round(E_eff, 9),
             "H_in": round(H_in, 9), "H_out": round(H_out, 9), "dS_cit": round(H_in - H_out, 9),
             "N_f": Nf, "N_gamma": Ng, "quanta": quanta, "eps_ref": round(er, 9)}
