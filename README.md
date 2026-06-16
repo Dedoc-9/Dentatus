@@ -9,7 +9,14 @@ dual ghost channels, and preregistered validity predicates.
 > Registry. Start there for the unified architecture (the Four-Faced Firewall + the Kinetic Lineage).
 
 **Primary architect**: Daniel J. Dillberg — bigdilly95@gmail.com  
-**License**: core under GNU Affero General Public License v3.0 (sole copyright ⇒ dual-licensing available) — see `AGPL-3.0`, `DEV_NOTES_clean_room.md`
+**License**: dual-licensed — GNU Affero General Public License v3.0 for the open track, commercial license for closed-source. See **[`DUAL_LICENSE.md`](DUAL_LICENSE.md)**, `AGPL-3.0`, `DEV_NOTES_clean_room.md`.
+
+> **🔐 Commercial / live deployment.** The game layer (`Game1/`) ships a live mission-control bridge
+> (`Game1/dentatus_bridge.py`) whose verified commits are gated by a server-signed composite attestation
+> (`game/observability/composite_witness.py`). The moat is the **`DENTATUS_SERVER_SECRET`** (HMAC key),
+> read from the environment only and never committed — see **[`Game1/ATTESTATION.md`](Game1/ATTESTATION.md)**
+> for secret isolation, key rotation, and incident response. The engine core stays frozen and runnable
+> under AGPL; the *official, attested, content-addressed universe* is the product.
 
 ---
 

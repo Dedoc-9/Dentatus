@@ -2,10 +2,36 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.env
 *.egg-info/
 dist/
 build/
 
 # Local handoff doc — not for the repo
 TAKEOVER_BRIEFING.md
+
+# ── Secret isolation (Dentatus attestation perimeter) ───────────────────────
+# DENTATUS_SERVER_SECRET (the HMAC attestation key) must NEVER be committed.
+# It is read from the environment only; these patterns block every common leak path.
+.env
+.env.*
+*.env
+secrets/
+secret/
+*.secret
+*.secret.*
+*secret*.txt
+*secret*.json
+*.key
+*.pem
+*.pfx
+*.p12
+id_rsa*
+*credentials*
+dentatus_secret*
+DENTATUS_SERVER_SECRET*
+Game1/__pycache__/
+
+# bridge runtime artifacts (ephemeral session / command logs; may carry world/session data)
+Game1/*.session
+Game1/cmdlog*.json
+*.attest.log

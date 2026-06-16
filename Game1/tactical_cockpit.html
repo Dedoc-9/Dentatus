@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>DENTATUS · SOVEREIGN UTILITY — Tactical Cockpit</title>
+<style>
+  :root{ --blk:#050400; --amb:#ffb000; --amb2:#b87d00; --amb3:#5a3f06; --phos:#3fd0c0; --phos2:#1f6e66;
+         --warn:#ff3b2f; --grid:#1a1404; --ink:#ffd98a; --dim:#7a5f1e; --mono:"Consolas",ui-monospace,Menlo,monospace; }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--blk);color:var(--amb);font-family:var(--mono);overflow:hidden;touch-action:none;letter-spacing:.4px}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.18) 2px 3px);opacity:.5}
+  #app{display:grid;grid-template-rows:34px 1fr 64px;height:100vh;gap:6px;padding:7px}
+  .hdr{display:flex;align-items:center;gap:16px;border:1px solid var(--amb3);padding:0 10px;font-size:12px;background:#0a0700}
+  .hdr .id{color:var(--amb);font-weight:700;letter-spacing:1px}
+  .hdr .k{color:var(--dim)}.hdr .v{color:var(--ink)}
+  .hdr .right{margin-left:auto;display:flex;gap:16px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--phos);box-shadow:0 0 8px var(--phos);display:inline-block;vertical-align:middle}
+  .dot.local{background:var(--dim);box-shadow:none}
+  #main{display:grid;grid-template-columns:1.5fr 1fr;gap:6px;min-height:0}
+  .pnl{border:1px solid var(--amb3);background:#070500;position:relative;min-height:0;overflow:hidden}
+  .pnl>.lbl{position:absolute;top:6px;left:9px;font-size:10px;color:var(--amb2);letter-spacing:1.5px;z-index:2}
+  .pnl>.lbl2{position:absolute;top:6px;right:9px;font-size:10px;color:var(--dim);z-index:2}
+  .corner{position:absolute;width:9px;height:9px;border:1px solid var(--amb);opacity:.6}
+  .corner.tl{top:-1px;left:-1px;border-right:0;border-bottom:0}.corner.tr{top:-1px;right:-1px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:-1px;left:-1px;border-right:0;border-top:0}.corner.br{bottom:-1px;right:-1px;border-left:0;border-top:0}
+  #map{width:100%;height:100%;display:block}
+  #side{display:flex;flex-direction:column;gap:6px;min-height:0}
+  .read{border:1px solid var(--amb3);background:#070500;padding:7px 10px;position:relative}
+  .read .rk{font-size:10px;color:var(--amb2);letter-spacing:1.5px}
+  .read .rv{font-size:30px;font-weight:700;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}
+  .read .ru{font-size:11px;color:var(--dim);margin-left:6px}
+  .read canvas{position:absolute;right:8px;bottom:7px;width:120px;height:30px}
+  #yield{border:1px solid var(--amb3);background:#0a0500;padding:8px 10px;display:flex;align-items:center;gap:10px;transition:background .1s,border-color .1s}
+  #yield.crit{border-color:var(--warn);background:#1c0301;animation:bz .5s steps(2) infinite}
+  @keyframes bz{50%{background:#2a0502}}
+  #yield .yk{font-size:11px;letter-spacing:1px;color:var(--amb2)}
+  #yield .yv{margin-left:auto;font-size:13px;font-weight:700}
+  #calls{border:1px solid var(--amb3);background:#070500;padding:7px 9px;flex:1;display:flex;flex-direction:column;gap:6px;min-height:0}
+  #calls .ch{font-size:10px;color:var(--amb2);letter-spacing:1.5px;margin-bottom:1px}
+  .call{border:1px solid var(--amb3);background:#0b0800;padding:6px 9px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px}
+  .call.sel{border-color:var(--amb);background:#1a1200;box-shadow:0 0 0 1px var(--amb3) inset}
+  .call .cn{color:var(--ink)}.call .ct{margin-left:auto;color:var(--phos);font-variant-numeric:tabular-nums}
+  .call .cf{color:var(--dim);font-size:10px}
+  #metaWrap{border:1px solid var(--amb3);background:#070500;display:grid;grid-template-columns:1fr 150px;align-items:center;gap:10px;padding:0 12px}
+  #metro{position:relative;height:34px;border:1px solid var(--amb3);background:#0a0700;overflow:hidden}
+  #metro .targ{position:absolute;top:0;bottom:0;width:8%;left:46%;background:rgba(63,208,192,.12);border-left:1px solid var(--phos);border-right:1px solid var(--phos)}
+  #metro .needle{position:absolute;top:0;bottom:0;width:2px;background:var(--amb);box-shadow:0 0 10px var(--amb);left:0}
+  #metro .lab{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--dim);letter-spacing:1px}
+  #manifest{height:42px;border:1px solid var(--amb);background:#1a1200;color:var(--amb);font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer}
+  #manifest:active{background:#2a1d00}
+  #manifest.armed{box-shadow:0 0 12px var(--amb)}
+  #log{position:absolute;bottom:7px;left:10px;font-size:11px;color:var(--phos);height:16px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <span class="id">DENTATUS // SOVEREIGN UTILITY</span>
+    <span class="k">SEED</span><span class="v" id="hSeed">—</span>
+    <span class="k">H_t</span><span class="v" id="hHt">WITNESSED</span>
+    <span class="right">
+      <span><span class="dot local" id="linkDot"></span> <span class="k">LINK</span> <span class="v" id="hLink">LOCAL</span></span>
+      <span><span class="v" id="hBpm">—</span> BPM</span>
+      <span class="k">OP</span><span class="v">ANNEALITE</span>
+    </span>
+  </div>
+  <div id="main">
+    <div class="pnl">
+      <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+      <span class="lbl">SPECTRAL INTEGRITY MAP // FIEDLER λ₂</span>
+      <span class="lbl2" id="mapStat">—</span>
+      <canvas id="map"></canvas>
+      <span id="log"></span>
+    </div>
+    <div id="side">
+      <div class="read"><div class="rk">ΔS_cit // CITADEL BUDGET</div><div><span class="rv" id="rDs">+0.0</span><span class="ru">bits</span></div><canvas id="spDs"></canvas></div>
+      <div class="read"><div class="rk">Wi // WEISSENBERG</div><div><span class="rv" id="rWi">0.00</span><span class="ru" id="rWiU">/ melt 0.21</span></div><canvas id="spWi"></canvas></div>
+      <div class="read"><div class="rk">χ // COMPLIANCE</div><div><span class="rv" id="rChi">0.00</span><span class="ru" id="rChiU">glass</span></div><canvas id="spChi"></canvas></div>
+      <div id="yield"><span class="yk">CRITICAL YIELD // Wi vs ε_ref·χ</span><span class="yv" id="yV">NOMINAL</span></div>
+      <div id="calls">
+        <div class="ch">SYSTEM CALLS // PENDING TAX (this pulse)</div>
+        <div class="call" data-c="Geodesic_Melt_515"><span class="cn">CALL: Geodesic_Melt_515</span><span class="cf">mech</span><span class="ct" id="t515">—</span></div>
+        <div class="call" data-c="Oriented_Nucleation_522"><span class="cn">CALL: Oriented_Nucleation_522</span><span class="cf">phase</span><span class="ct" id="t522">—</span></div>
+        <div style="margin-top:auto;font-size:10px;color:var(--dim)">SELECT A CALL · MANIFEST ON THE PULSE TO COMMIT</div>
+      </div>
+    </div>
+  </div>
+  <div id="metaWrap">
+    <div id="metro"><div class="targ"></div><div class="needle" id="needle"></div><span class="lab">NEURON PULSE // SYNC WINDOW</span></div>
+    <button id="manifest">MANIFEST</button>
+  </div>
+</div>
+<script>
+const TELE=
+{"seed":"9671566edf7b1103","bpm":39,"T":1.5385,"phase0":0.873,"fiedler":{"red":72,"blue":72,"fault_edges":12,"total_edges":324,"nodes":[{"x":0.0,"y":0.0,"z":0.0,"s":-1},{"x":0.0,"y":0.0,"z":1.0,"s":-1},{"x":0.0,"y":1.0,"z":0.0,"s":-1},{"x":0.0,"y":1.0,"z":1.0,"s":-1},{"x":0.0,"y":2.0,"z":0.0,"s":-1},{"x":0.0,"y":2.0,"z":1.0,"s":-1},{"x":0.0,"y":3.0,"z":0.0,"s":-1},{"x":0.0,"y":3.0,"z":1.0,"s":-1},{"x":0.0,"y":4.0,"z":0.0,"s":-1},{"x":0.0,"y":4.0,"z":1.0,"s":-1},{"x":0.0,"y":5.0,"z":0.0,"s":-1},{"x":0.0,"y":5.0,"z":1.0,"s":-1},{"x":1.0,"y":0.0,"z":0.0,"s":-1},{"x":1.0,"y":0.0,"z":1.0,"s":-1},{"x":1.0,"y":1.0,"z":0.0,"s":-1},{"x":1.0,"y":1.0,"z":1.0,"s":-1},{"x":1.0,"y":2.0,"z":0.0,"s":-1},{"x":1.0,"y":2.0,"z":1.0,"s":-1},{"x":1.0,"y":3.0,"z":0.0,"s":-1},{"x":1.0,"y":3.0,"z":1.0,"s":-1},{"x":1.0,"y":4.0,"z":0.0,"s":-1},{"x":1.0,"y":4.0,"z":1.0,"s":-1},{"x":1.0,"y":5.0,"z":0.0,"s":-1},{"x":1.0,"y":5.0,"z":1.0,"s":-1},{"x":2.0,"y":0.0,"z":0.0,"s":-1},{"x":2.0,"y":0.0,"z":1.0,"s":-1},{"x":2.0,"y":1.0,"z":0.0,"s":-1},{"x":2.0,"y":1.0,"z":1.0,"s":-1},{"x":2.0,"y":2.0,"z":0.0,"s":-1},{"x":2.0,"y":2.0,"z":1.0,"s":-1},{"x":2.0,"y":3.0,"z":0.0,"s":-1},{"x":2.0,"y":3.0,"z":1.0,"s":-1},{"x":2.0,"y":4.0,"z":0.0,"s":-1},{"x":2.0,"y":4.0,"z":1.0,"s":-1},{"x":2.0,"y":5.0,"z":0.0,"s":-1},{"x":2.0,"y":5.0,"z":1.0,"s":-1},{"x":3.0,"y":0.0,"z":0.0,"s":-1},{"x":3.0,"y":0.0,"z":1.0,"s":-1},{"x":3.0,"y":1.0,"z":0.0,"s":-1},{"x":3.0,"y":1.0,"z":1.0,"s":-1},{"x":3.0,"y":2.0,"z":0.0,"s":-1},{"x":3.0,"y":2.0,"z":1.0,"s":-1},{"x":3.0,"y":3.0,"z":0.0,"s":-1},{"x":3.0,"y":3.0,"z":1.0,"s":-1},{"x":3.0,"y":4.0,"z":0.0,"s":-1},{"x":3.0,"y":4.0,"z":1.0,"s":-1},{"x":3.0,"y":5.0,"z":0.0,"s":-1},{"x":3.0,"y":5.0,"z":1.0,"s":-1},{"x":4.0,"y":0.0,"z":0.0,"s":-1},{"x":4.0,"y":0.0,"z":1.0,"s":-1},{"x":4.0,"y":1.0,"z":0.0,"s":-1},{"x":4.0,"y":1.0,"z":1.0,"s":-1},{"x":4.0,"y":2.0,"z":0.0,"s":-1},{"x":4.0,"y":2.0,"z":1.0,"s":-1},{"x":4.0,"y":3.0,"z":0.0,"s":-1},{"x":4.0,"y":3.0,"z":1.0,"s":-1},{"x":4.0,"y":4.0,"z":0.0,"s":-1},{"x":4.0,"y":4.0,"z":1.0,"s":-1},{"x":4.0,"y":5.0,"z":0.0,"s":-1},{"x":4.0,"y":5.0,"z":1.0,"s":-1},{"x":5.0,"y":0.0,"z":0.0,"s":-1},{"x":5.0,"y":0.0,"z":1.0,"s":-1},{"x":5.0,"y":1.0,"z":0.0,"s":-1},{"x":5.0,"y":1.0,"z":1.0,"s":-1},{"x":5.0,"y":2.0,"z":0.0,"s":-1},{"x":5.0,"y":2.0,"z":1.0,"s":-1},{"x":5.0,"y":3.0,"z":0.0,"s":-1},{"x":5.0,"y":3.0,"z":1.0,"s":-1},{"x":5.0,"y":4.0,"z":0.0,"s":-1},{"x":5.0,"y":4.0,"z":1.0,"s":-1},{"x":5.0,"y":5.0,"z":0.0,"s":-1},{"x":5.0,"y":5.0,"z":1.0,"s":-1},{"x":6.0,"y":0.0,"z":0.0,"s":1},{"x":6.0,"y":0.0,"z":1.0,"s":1},{"x":6.0,"y":1.0,"z":0.0,"s":1},{"x":6.0,"y":1.0,"z":1.0,"s":1},{"x":6.0,"y":2.0,"z":0.0,"s":1},{"x":6.0,"y":2.0,"z":1.0,"s":1},{"x":6.0,"y":3.0,"z":0.0,"s":1},{"x":6.0,"y":3.0,"z":1.0,"s":1},{"x":6.0,"y":4.0,"z":0.0,"s":1},{"x":6.0,"y":4.0,"z":1.0,"s":1},{"x":6.0,"y":5.0,"z":0.0,"s":1},{"x":6.0,"y":5.0,"z":1.0,"s":1},{"x":7.0,"y":0.0,"z":0.0,"s":1},{"x":7.0,"y":0.0,"z":1.0,"s":1},{"x":7.0,"y":1.0,"z":0.0,"s":1},{"x":7.0,"y":1.0,"z":1.0,"s":1},{"x":7.0,"y":2.0,"z":0.0,"s":1},{"x":7.0,"y":2.0,"z":1.0,"s":1},{"x":7.0,"y":3.0,"z":0.0,"s":1},{"x":7.0,"y":3.0,"z":1.0,"s":1},{"x":7.0,"y":4.0,"z":0.0,"s":1},{"x":7.0,"y":4.0,"z":1.0,"s":1},{"x":7.0,"y":5.0,"z":0.0,"s":1},{"x":7.0,"y":5.0,"z":1.0,"s":1},{"x":8.0,"y":0.0,"z":0.0,"s":1},{"x":8.0,"y":0.0,"z":1.0,"s":1},{"x":8.0,"y":1.0,"z":0.0,"s":1},{"x":8.0,"y":1.0,"z":1.0,"s":1},{"x":8.0,"y":2.0,"z":0.0,"s":1},{"x":8.0,"y":2.0,"z":1.0,"s":1},{"x":8.0,"y":3.0,"z":0.0,"s":1},{"x":8.0,"y":3.0,"z":1.0,"s":1},{"x":8.0,"y":4.0,"z":0.0,"s":1},{"x":8.0,"y":4.0,"z":1.0,"s":1},{"x":8.0,"y":5.0,"z":0.0,"s":1},{"x":8.0,"y":5.0,"z":1.0,"s":1},{"x":9.0,"y":0.0,"z":0.0,"s":1},{"x":9.0,"y":0.0,"z":1.0,"s":1},{"x":9.0,"y":1.0,"z":0.0,"s":1},{"x":9.0,"y":1.0,"z":1.0,"s":1},{"x":9.0,"y":2.0,"z":0.0,"s":1},{"x":9.0,"y":2.0,"z":1.0,"s":1},{"x":9.0,"y":3.0,"z":0.0,"s":1},{"x":9.0,"y":3.0,"z":1.0,"s":1},{"x":9.0,"y":4.0,"z":0.0,"s":1},{"x":9.0,"y":4.0,"z":1.0,"s":1},{"x":9.0,"y":5.0,"z":0.0,"s":1},{"x":9.0,"y":5.0,"z":1.0,"s":1},{"x":10.0,"y":0.0,"z":0.0,"s":1},{"x":10.0,"y":0.0,"z":1.0,"s":1},{"x":10.0,"y":1.0,"z":0.0,"s":1},{"x":10.0,"y":1.0,"z":1.0,"s":1},{"x":10.0,"y":2.0,"z":0.0,"s":1},{"x":10.0,"y":2.0,"z":1.0,"s":1},{"x":10.0,"y":3.0,"z":0.0,"s":1},{"x":10.0,"y":3.0,"z":1.0,"s":1},{"x":10.0,"y":4.0,"z":0.0,"s":1},{"x":10.0,"y":4.0,"z":1.0,"s":1},{"x":10.0,"y":5.0,"z":0.0,"s":1},{"x":10.0,"y":5.0,"z":1.0,"s":1},{"x":11.0,"y":0.0,"z":0.0,"s":1},{"x":11.0,"y":0.0,"z":1.0,"s":1},{"x":11.0,"y":1.0,"z":0.0,"s":1},{"x":11.0,"y":1.0,"z":1.0,"s":1},{"x":11.0,"y":2.0,"z":0.0,"s":1},{"x":11.0,"y":2.0,"z":1.0,"s":1},{"x":11.0,"y":3.0,"z":0.0,"s":1},{"x":11.0,"y":3.0,"z":1.0,"s":1},{"x":11.0,"y":4.0,"z":0.0,"s":1},{"x":11.0,"y":4.0,"z":1.0,"s":1},{"x":11.0,"y":5.0,"z":0.0,"s":1},{"x":11.0,"y":5.0,"z":1.0,"s":1}],"cut":[[60,72],[61,73],[62,74],[63,75],[64,76],[65,77],[66,78],[67,79],[68,80],[69,81],[70,82],[71,83]]},"telemetry":[{"wi":0.05,"dS":6.864,"chi":0.42,"melt_thresh":0.21,"prox":0.2381,"critical":false},{"wi":0.0563,"dS":6.734,"chi":0.42,"melt_thresh":0.21,"prox":0.2683,"critical":false},{"wi":0.0627,"dS":6.587,"chi":0.42,"melt_thresh":0.21,"prox":0.2986,"critical":false},{"wi":0.069,"dS":6.423,"chi":0.42,"melt_thresh":0.21,"prox":0.3288,"critical":false},{"wi":0.0754,"dS":6.241,"chi":0.42,"melt_thresh":0.21,"prox":0.359,"critical":false},{"wi":0.0817,"dS":6.041,"chi":0.42,"melt_thresh":0.21,"prox":0.3893,"critical":false},{"wi":0.0881,"dS":5.821,"chi":0.42,"melt_thresh":0.21,"prox":0.4195,"critical":false},{"wi":0.0944,"dS":5.582,"chi":0.42,"melt_thresh":0.21,"prox":0.4497,"critical":false},{"wi":0.1008,"dS":5.321,"chi":0.42,"melt_thresh":0.21,"prox":0.48,"critical":false},{"wi":0.1071,"dS":5.038,"chi":0.42,"melt_thresh":0.21,"prox":0.5102,"critical":false},{"wi":0.1135,"dS":4.731,"chi":0.42,"melt_thresh":0.21,"prox":0.5404,"critical":false},{"wi":0.1198,"dS":4.399,"chi":0.42,"melt_thresh":0.21,"prox":0.5707,"critical":false},{"wi":0.1262,"dS":4.04,"chi":0.42,"melt_thresh":0.21,"prox":0.6009,"critical":false},{"wi":0.1325,"dS":3.652,"chi":0.42,"melt_thresh":0.21,"prox":0.6311,"critical":false},{"wi":0.1389,"dS":3.231,"chi":0.42,"melt_thresh":0.21,"prox":0.6614,"critical":false},{"wi":0.1452,"dS":2.775,"chi":0.42,"melt_thresh":0.21,"prox":0.6916,"critical":false},{"wi":0.1516,"dS":2.279,"chi":0.42,"melt_thresh":0.21,"prox":0.7218,"critical":false},{"wi":0.1579,"dS":1.737,"chi":0.42,"melt_thresh":0.21,"prox":0.7521,"critical":false},{"wi":0.1643,"dS":1.143,"chi":0.42,"melt_thresh":0.21,"prox":0.7823,"critical":false},{"wi":0.1706,"dS":0.486,"chi":0.42,"melt_thresh":0.21,"prox":0.8125,"critical":false},{"wi":0.177,"dS":-0.247,"chi":0.42,"melt_thresh":0.21,"prox":0.8428,"critical":false},{"wi":0.1833,"dS":-1.078,"chi":0.42,"melt_thresh":0.21,"prox":0.873,"critical":false},{"wi":0.1897,"dS":-2.04,"chi":0.42,"melt_thresh":0.21,"prox":0.9033,"critical":true},{"wi":0.196,"dS":-3.198,"chi":0.42,"melt_thresh":0.21,"prox":0.9335,"critical":true},{"wi":0.2024,"dS":-4.704,"chi":0.42,"melt_thresh":0.21,"prox":0.9637,"critical":true},{"wi":0.2087,"dS":-7.284,"chi":0.42,"melt_thresh":0.21,"prox":0.994,"critical":true},{"wi":0.2151,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.0242,"critical":true},{"wi":0.2214,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.0544,"critical":true},{"wi":0.2278,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.0847,"critical":true},{"wi":0.2341,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.1149,"critical":true},{"wi":0.2405,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.1451,"critical":true},{"wi":0.2468,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.1754,"critical":true},{"wi":0.2532,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.2056,"critical":true},{"wi":0.2595,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.2358,"critical":true},{"wi":0.2659,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.2661,"critical":true},{"wi":0.2722,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.2963,"critical":true},{"wi":0.2786,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.3265,"critical":true},{"wi":0.2849,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.3568,"critical":true},{"wi":0.2913,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.387,"critical":true},{"wi":0.2976,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.4172,"critical":true},{"wi":0.304,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.4475,"critical":true},{"wi":0.3103,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.4777,"critical":true},{"wi":0.3167,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.5079,"critical":true},{"wi":0.323,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.5382,"critical":true},{"wi":0.3294,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.5684,"critical":true},{"wi":0.3357,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.5986,"critical":true},{"wi":0.3421,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.6289,"critical":true},{"wi":0.3484,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.6591,"critical":true},{"wi":0.3548,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.6893,"critical":true},{"wi":0.3611,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.7196,"critical":true},{"wi":0.3675,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.7498,"critical":true},{"wi":0.3738,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.78,"critical":true},{"wi":0.3802,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.8103,"critical":true},{"wi":0.3865,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.8405,"critical":true},{"wi":0.3929,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.8707,"critical":true},{"wi":0.3992,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.901,"critical":true},{"wi":0.4056,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.9312,"critical":true},{"wi":0.4119,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.9615,"critical":true},{"wi":0.4183,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":1.9917,"critical":true},{"wi":0.4246,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":2.0219,"critical":true},{"wi":0.431,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":2.0522,"critical":true},{"wi":0.4373,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":2.0824,"critical":true},{"wi":0.4437,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":2.1126,"critical":true},{"wi":0.45,"dS":-9.087,"chi":0.42,"melt_thresh":0.21,"prox":2.1429,"critical":true}],"eps_ref":0.5,"chi":0.42,"beta":12.0,"calls":{"Geodesic_Melt_515":{"order":6,"tax_crest":-14.775,"tax_trough":-4.387,"face":"mechanical"},"Oriented_Nucleation_522":{"order":7,"tax_crest":-13.775,"tax_trough":-3.387,"face":"phase"}}};
+const SEED={T:TELE.T,phase0:TELE.phase0,beta:TELE.beta,A:0.6,a:2.7,eps_ref:TELE.eps_ref};
+document.getElementById('hSeed').textContent=TELE.seed;document.getElementById('hBpm').textContent=TELE.bpm;
+function pulseAt(t){let ph=((t/SEED.T)+SEED.phase0)%1;if(ph<0)ph+=1;return{ph:ph,val:Math.cos(2*Math.PI*ph)};}
+function Hin(E){return 2*Math.sqrt(SEED.a*Math.max(E,0))/Math.log(2);}
+function callTax(order,pv){return order-Hin(SEED.beta*(1+SEED.A*pv));}
+let St={wi:0.12,chi:TELE.chi,dS:0,sel:null,armed:false,red:TELE.fiedler.red,blue:TELE.fiedler.blue,cut:TELE.fiedler.fault_edges,Hv:null};
+let LIVE=false, liveNodes=TELE.fiedler.nodes, liveCut=TELE.fiedler.cut;
+const histDs=[],histWi=[],histChi=[];
+TELE.telemetry.forEach(h=>{histWi.push(h.wi);histDs.push(h.dS);histChi.push(h.chi);});
+function meltThresh(){return SEED.eps_ref*St.chi;}
+function prox(){return St.wi/meltThresh();}
+/* ===== LIVE bridge link (graceful fallback to embedded spine) ===== */
+const BRIDGE=(location.protocol==='file:'?'http://localhost:8770':'');
+function setLink(on){LIVE=on;document.getElementById('hLink').textContent=on?'LIVE':'LOCAL';
+  document.getElementById('hLink').style.color=on?'#3fd0c0':'#ffd98a';
+  document.getElementById('linkDot').classList.toggle('local',!on);}
+function connectLive(){
+  let es;try{es=new EventSource(BRIDGE+'/stream');}catch(e){return;}
+  es.onmessage=function(ev){const f=JSON.parse(ev.data);setLink(true);
+    St.wi=f.wi;St.chi=f.chi;St.dS=f.dS;St.red=f.fiedler.red;St.blue=f.fiedler.blue;St.cut=f.fiedler.fault_edges;St.Hv=f.H_verified;
+    histWi.push(f.wi);histDs.push(f.dS);histChi.push(f.chi);if(histWi.length>240){histWi.shift();histDs.shift();histChi.shift();}
+    document.getElementById('hHt').textContent=f.H_verified?f.H_verified.toUpperCase():'UNWITNESSED';
+    document.getElementById('hHt').style.color=f.H_verified?'#3fd0c0':'#ff3b2f';
+    if(f.event){log(f.event,f.event_bad);} };
+  es.onerror=function(){ if(!LIVE) setLink(false); };           // never connected -> stay LOCAL
+}
+function pollFiedler(){ if(!LIVE)return; fetch(BRIDGE+'/fiedler').then(r=>r.json()).then(d=>{liveNodes=d.nodes;liveCut=d.cut;}).catch(()=>{}); }
+setInterval(pollFiedler,2000);
+/* ===== spectral map ===== */
+const map=document.getElementById('map'),mx=map.getContext('2d');let MW,MH;
+function fitMap(){const r=map.getBoundingClientRect();const d=Math.min(devicePixelRatio||1,2);map.width=r.width*d;map.height=r.height*d;mx.setTransform(d,0,0,d,0,0);MW=r.width;MH=r.height;}
+function drawMap(t){
+  mx.clearRect(0,0,MW,MH);mx.strokeStyle='#140f02';mx.lineWidth=1;
+  for(let gx=0;gx<MW;gx+=28){mx.beginPath();mx.moveTo(gx,0);mx.lineTo(gx,MH);mx.stroke();}
+  for(let gy=0;gy<MH;gy+=28){mx.beginPath();mx.moveTo(0,gy);mx.lineTo(MW,gy);mx.stroke();}
+  const N=liveNodes,pad=34,xs=N.map(n=>n.x),ys=N.map(n=>n.y);
+  const minx=Math.min.apply(0,xs),maxx=Math.max.apply(0,xs),miny=Math.min.apply(0,ys),maxy=Math.max.apply(0,ys);
+  const px=n=>pad+(n.x-minx)/((maxx-minx)||1)*(MW-2*pad)+(n.z*4),py=n=>pad+(n.y-miny)/((maxy-miny)||1)*(MH-2*pad)+(n.z*4);
+  const crit=prox()>=0.90;mx.lineWidth=1.6;
+  for(const e of liveCut){const a=N[e[0]],b=N[e[1]];if(!a||!b)continue;mx.strokeStyle=crit?'rgba(255,59,47,.9)':'rgba(255,217,138,.9)';mx.beginPath();mx.moveTo(px(a),py(a));mx.lineTo(px(b),py(b));mx.stroke();}
+  for(const n of N){const X=px(n),Y=py(n),c=n.s>0?'255,176,0':'63,208,192';mx.fillStyle='rgba('+c+',0.85)';mx.beginPath();mx.arc(X,Y,3.4,0,6.28);mx.fill();mx.strokeStyle='rgba('+c+',0.25)';mx.lineWidth=1;mx.beginPath();mx.arc(X,Y,6,0,6.28);mx.stroke();}
+  let sx=0,k=0;for(const e of liveCut){if(N[e[0]]&&N[e[1]]){sx+=(px(N[e[0]])+px(N[e[1]]))/2;k++;}}
+  if(k){sx/=k;const pul=0.5+0.5*pulseAt(t).val;mx.strokeStyle=crit?'rgba(255,59,47,'+(0.4+0.5*pul)+')':'rgba(255,217,138,'+(0.25+0.4*pul)+')';mx.lineWidth=2;mx.beginPath();mx.moveTo(sx,8);mx.lineTo(sx,MH-8);mx.stroke();}
+  document.getElementById('mapStat').textContent='RED '+St.red+' / BLUE '+St.blue+' · CUT '+St.cut+'e';
+}
+function spark(cid,buf,lo,hi,col){const c=document.getElementById(cid),x=c.getContext('2d');const d=Math.min(devicePixelRatio||1,2);if(c.width!==c.clientWidth*d){c.width=c.clientWidth*d;c.height=c.clientHeight*d;}x.setTransform(d,0,0,d,0,0);const w=c.clientWidth,h=c.clientHeight;x.clearRect(0,0,w,h);const n=buf.length;if(n<2)return;const s=Math.max(0,n-w);x.strokeStyle=col;x.lineWidth=1.2;x.beginPath();for(let i=s;i<n;i++){const v=(buf[i]-lo)/(hi-lo);const X=(i-s);const Y=h-Math.max(0,Math.min(1,v))*h;i===s?x.moveTo(X,Y):x.lineTo(X,Y);}x.stroke();}
+function fmt(v,d){return(v>=0?'+':'')+v.toFixed(d);}
+function paint(t){const pl=pulseAt(t);
+  document.getElementById('rDs').textContent=fmt(St.dS,1);document.getElementById('rDs').style.color=St.dS>=0?'var(--ink)':'var(--warn)';
+  document.getElementById('rWi').textContent=St.wi.toFixed(3);document.getElementById('rWiU').textContent='/ melt '+meltThresh().toFixed(2);
+  document.getElementById('rChi').textContent=St.chi.toFixed(3);document.getElementById('rChiU').textContent=St.chi>0.7?'fluid':St.chi<0.25?'diamond':'glass';
+  spark('spDs',histDs,-10,24,'#ffb000');spark('spWi',histWi,0,0.5,'#3fd0c0');spark('spChi',histChi,0,1,'#b87d00');
+  const p=prox(),crit=p>=0.90,yw=document.getElementById('yield');yw.classList.toggle('crit',crit);
+  document.getElementById('yV').textContent=crit?('MELT IMMINENT '+(p*100|0)+'%'):(p>=0.75?'CAUTION '+(p*100|0)+'%':'NOMINAL '+(p*100|0)+'%');
+  document.getElementById('yV').style.color=crit?'var(--warn)':(p>=0.75?'var(--amb)':'var(--phos)');
+  document.getElementById('t515').textContent=fmt(callTax(TELE.calls.Geodesic_Melt_515.order,pl.val),2)+' bits';
+  document.getElementById('t522').textContent=fmt(callTax(TELE.calls.Oriented_Nucleation_522.order,pl.val),2)+' bits';
+  document.getElementById('needle').style.left=(pl.ph*100)+'%';document.getElementById('manifest').classList.toggle('armed',St.armed);
+  if(!LIVE){document.getElementById('hHt').textContent=St.dS>=0?'WITNESSED':'UNWITNESSED';document.getElementById('hHt').style.color=St.dS>=0?'#ffd98a':'#ff3b2f';}
+}
+const logEl=document.getElementById('log');
+function log(m,bad){logEl.textContent=m;logEl.style.color=bad?'#ff3b2f':'#3fd0c0';}
+document.querySelectorAll('.call').forEach(function(el){el.onclick=function(){document.querySelectorAll('.call').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');St.sel=el.dataset.c;St.armed=true;log('ARMED '+St.sel+' — MANIFEST ON THE PULSE');};});
+function manifest(){
+  if(!St.sel){log('NO CALL SELECTED',true);return;}
+  const t=performance.now()/1000,pl=pulseAt(t),synced=(pl.ph<0.06||pl.ph>0.94);
+  if(LIVE){ fetch(BRIDGE+'/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({call:St.sel,synced:synced,game_stats:{wi:St.wi,chi:St.chi,dS:St.dS,hp:St.hp}})})
+      .then(r=>r.json()).then(res=>{log(res.event,!res.accepted);}).catch(e=>log('LINK ERROR',true));
+  } else {
+    const tax=callTax(TELE.calls[St.sel].order,synced?1.0:pl.val);St.dS=-tax;
+    if(St.dS<0){log('CITADEL BREACH · '+St.sel+' tax '+tax.toFixed(2)+' bits — REJECTED',true);St.wi=Math.min(0.5,St.wi+0.05);}
+    else{log((synced?'SYNCED · ':'')+'COMMIT '+St.sel+' · tax '+tax.toFixed(2)+' bits',false);
+      if(St.sel==='Geodesic_Melt_515')St.chi=Math.min(1,St.chi+0.14);else St.chi=Math.max(0.08,St.chi-0.12);}
+  }
+  St.armed=false;St.sel=null;document.querySelectorAll('.call').forEach(e=>e.classList.remove('sel'));
+}
+document.getElementById('manifest').onclick=manifest;
+addEventListener('keydown',function(e){if(e.code==='Space'){e.preventDefault();manifest();}else if(e.key==='1'){St.sel='Geodesic_Melt_515';St.armed=true;document.querySelector('[data-c=Geodesic_Melt_515]').classList.add('sel');log('ARMED Geodesic_Melt_515');}else if(e.key==='2'){St.sel='Oriented_Nucleation_522';St.armed=true;document.querySelector('[data-c=Oriented_Nucleation_522]').classList.add('sel');log('ARMED Oriented_Nucleation_522');}});
+let pad=null,padA=false;addEventListener('gamepadconnected',e=>pad=e.gamepad.index);
+function pollPad(){if(pad==null)return;const g=navigator.getGamepads()[pad];if(!g)return;const a=g.buttons[0]&&g.buttons[0].pressed;if(a&&!padA)manifest();padA=a;}
+let acc=0;
+function tickLocal(t){if(LIVE)return;acc++;if(acc%6!==0)return;St.wi=Math.max(0.05,Math.min(0.5,St.wi+Math.sin(t*0.7)*0.004+0.0009));histWi.push(St.wi);histDs.push(St.dS);histChi.push(St.chi);if(histWi.length>240){histWi.shift();histDs.shift();histChi.shift();}}
+function frame(){const t=performance.now()/1000;pollPad();tickLocal(t);drawMap(t);paint(t);requestAnimationFrame(frame);}
+addEventListener('resize',fitMap);fitMap();setLink(false);connectLive();
+log('SYSTEM NOMINAL · '+TELE.fiedler.red+'/'+TELE.fiedler.blue+' SPECTRAL SPLIT · seeking live link…');frame();
+</script>
+</body>
+</html>
