@@ -13,7 +13,7 @@ guarded · ○ open. The defining residual `G_t = Z_t − Π_{W_t}(Z_t)` underli
 | 2 | Asymmetric budget (EXP-312) | ✓ |
 | 3 | Mass-weighted centroid divergence | ✓ |
 | 4 | κ P_yz symmetry | ✓ |
-| 5 | LOD_RELAXED validity propagation | ◐ |
+| 5 | LOD_RELAXED validity propagation | ✓ (EXP-523) |
 | 6 | Ω_AC primary-path degeneracy | ✓ |
 | 7–8 | numerical / block-diagonal skips | ◐ |
 | 9 | **Stale file write (NTFS Edit/Write truncation)** — tooling: use direct writes + `py_compile` | ◐ |

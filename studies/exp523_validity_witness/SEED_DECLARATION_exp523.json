@@ -1,0 +1,33 @@
+{
+  "declaration_hash": "1fc9721cf4e667cbf5c1baa277e639cc85f0471359ca04cc666921ed8987cd2b",
+  "experiment": "EXP-523",
+  "title": "Validity Witness (Fork omega): bind the SPRT integrity class to the verified address",
+  "protocol_version": "exp523-v1",
+  "date": "2026-06-15",
+  "hypothesis": "Closes Ghost #5. The engine H_t = HASH(Z+S+W+t) is the GEOMETRIC identity and does NOT encode the EXP-309 SPRT validity class, so a LOD_RELAXED state (a predicate bypassed at distance / level-of-detail) hashes identically to a FULL_VALID state of the same geometry -- a coarsened view could claim full integrity (integrity laundering). The hole is CONTAINED (Gamma_309, the only LOD_RELAXED producer, is not reachable from the dentatus.* facade; api.observe only mints FULL_VALID) but not CLOSED. A validity witness binds the class to the address: FULL_VALID -> H_t (unchanged, backward compatible); LOD_RELAXED -> HASH(H_t + class + pv) (distinct); INVALID -> None. A relaxed state can then never share an address with a full-valid one. Engine FROZEN (no _compute_H change).",
+  "mechanism": {
+    "verified_address": "INVALID->None; FULL_VALID->H_t; LOD_RELAXED->sha256(H_t \\x1f class \\x1f pv)[:16]",
+    "containment_bound": "Gamma_309 not in dentatus.core exports; api.observe has no validity_class reference",
+    "backward_compat": "FULL_VALID address == plain H_t -> every existing Series-500 H_verified unchanged"
+  },
+  "engine_scope": "NO engine edits. game/observability/integrity.py uses dentatus.core only. state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] confirm hole: engine H_t COLLIDES across validity classes (identical geometry -> identical H_t)",
+    "[3] FULL_VALID -> verified_address == H_t (backward compatible with EXP-602)",
+    "[4] LOD_RELAXED -> verified_address != H_t AND != FULL_VALID address (distinct, records bypass)",
+    "[5] INVALID -> verified_address None",
+    "[6] addresses_distinct == True (integrity laundering closed)",
+    "[7] containment: Gamma_309 not reachable from dentatus.* facade; api.observe has no validity_class ref",
+    "[8] no regression: Series-500 api.observe stays FULL_VALID -> H_verified bit-unchanged",
+    "[9] integrity_witness records the class + geometric H + bound address (auditable)",
+    "[10] determinism: verified_address bit-stable"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: validity_class label is geometry-independent (invariant)",
+    "[2] binding property holds in both orientations (FULL_VALID addr == H_t)",
+    "[3] addresses_distinct holds under reflection",
+    "[4] witness is_full_integrity invariant",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

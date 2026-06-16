@@ -178,6 +178,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-520 | Replay / Time-Travel Debugger (Fork τ); event-sourced command log + sparse checkpoints reconstruct any historical μ; VERIFIED replay (H_t match, tamper-evident); BeyondWindowError→cold restore; Ghost #53 checkpoint-cadence; engine frozen (core facade only) | `2e489550a816e08e` | **open** |
 | EXP-521 | Re-crystallization / Annealing (Fork ξ); distinct lower cooling threshold (Schmitt hysteresis) closes the one-way melt ratchet; reverse anisotropy geodesic (widen spectrum, det-preserving); χ–Wi hysteresis loop, chatter-free; **Ghost #49 closed**, #54 amorphous-lock; engine frozen (game/agency policy) | `8f9fcf2b21b0ce97` | **open** |
 | EXP-522 | Oriented Nucleation (Fork ψ); amorphous (total-melt) state re-crystallises along the strain principal axis (det-preserving, aligned to flow, alignment cos=1); isotropic-stress no-field is symmetry-correct; **Ghost #54 closed**; engine frozen (game/agency policy) | `851a4f654a262c2a` | **open** |
+| EXP-523 | Validity Witness (Fork ω); binds SPRT integrity class to the verified address (FULL_VALID→H_t backward-compatible, LOD_RELAXED→distinct); closes integrity-laundering across level-of-detail; **Ghost #5 closed**; three-facet identity (geometric/material/integrity); engine frozen (observability layer) | `1fc9721cf4e667cb` | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.

@@ -32,6 +32,7 @@ game layer). `PYTHONHASHSEED=0` required for cross-process bit-stability.
 | 520 | VI.5, II.2 | Replay / Time-Travel Debugger; event-sourced command log + checkpoints; VERIFIED reconstruction (tamper-evident); cold restore (Ghost #53) | `2e489550a816e08e` | τ |
 | 521 | VI.2, V | Re-crystallization / Annealing; distinct cooling threshold → true thermal hysteresis (χ–Wi loop, chatter-free); reverse anisotropy geodesic; closes Ghost #49 (opens #54) | `8f9fcf2b21b0ce97` | ξ |
 | 522 | VI.2, V | Oriented Nucleation; amorphous state re-crystallises along the strain principal axis (det-preserving, aligned to flow); closes Ghost #54 | `851a4f654a262c2a` | ψ |
+| 523 | II.3, VII | Validity Witness; binds the SPRT integrity class (FULL_VALID/LOD_RELAXED/INVALID) to the verified address; closes Ghost #5 (integrity laundering across LOD); backward-compatible | `1fc9721cf4e667cb` | ω |
 
 ## Series 600 — Developer Interface
 

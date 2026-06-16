@@ -83,10 +83,18 @@ Hashes function only as structural indices; they never encode semantic interpret
 `H_verified = H_t` iff the state is admissible (Article IV), else `⊥`; it is the permanent address of a
 realized reality.
 
-**II.3 Two-hash split (EXP-517).** `H_t` hashes the raw `Z` vector and is therefore **orientation-
-bearing** — it is the *live geometric* identity, and is *not* P_yz-invariant. Structural/material
-witnesses (track-DAG hash, material eigenvalue hash, χ) are built from **norms / eigenvalues** and *are*
-P_yz-invariant. Invariance holds where identity lives; orientation is carried where geometry lives.
+**II.3 Three facets of identity (EXP-517, EXP-523).** Identity has three orthogonal facets:
+- **Geometric** — `H_t = HASH(Z⊕S⊕W⊕t)` hashes the raw `Z` vector and is **orientation-bearing** (the
+  live geometric identity; *not* P_yz-invariant).
+- **Material** — structural/material witnesses (track-DAG hash, material eigenvalue hash, χ) are built
+  from **norms / eigenvalues** and *are* P_yz-invariant.
+- **Integrity** — the `verified_address` (EXP-523) binds the SPRT validity class
+  (`FULL_VALID`/`LOD_RELAXED`/`INVALID`) to `H_t`: a level-of-detail-relaxed state (a predicate bypassed
+  at distance) gets a **distinct** address and cannot launder full integrity. `FULL_VALID → H_t`
+  (backward compatible). Integrity is resolution-relative; the address now witnesses the resolution.
+
+Invariance holds where identity lives; orientation is carried where geometry lives; the integrity tag is
+a geometry-independent label.
 
 ---
 
