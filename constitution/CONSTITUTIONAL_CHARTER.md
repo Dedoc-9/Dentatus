@@ -322,12 +322,13 @@ gauges — one verdict, four faces, provably real.
    EXP-510/513              EXP-509/512                     EXP-508/509                          EXP-602
         │                         │                              │                                   │
    χ = f(spec Σ_D) ─────────────┘ (material narrows window)      │                          on breach: melt→inject→
-   EXP-514                                                        └── ΔS<0 ⇒ χ_required ⇒ ───▶  compact→DAG (EXP-515/517/518/516)
-```
+   EXP-514                                                        └── ΔS<0 ⇒ χ_required ⇒ ───▶  compact→DAG (EXP-515/51
 
-A world exists iff it is geometrically continuous, within budget, and thermodynamically-mechanically
-cool enough for its material to bear its shear. If it is not, it either melts to a compliant material
-and is re-admitted with a continuous, witnessed hash — or, past the limit of all matter, the firewall
-holds and it is rejected. Either way the truth is bit-perfect, content-addressed, and auditable forever.
+---
+
+## ANNEXES
+
+- **Annex I — The Axiomatic Metabolism** (`constitution/ANNEX_I_AXIOMATIC_METABOLISM.md`): canonical philosophical appraisal. What the engine genuinely achieves (detection-completeness + non-repudiable authority; execution fused with audit) and what it does not (it metabolizes signatures, not lies about the world). Non-normative; the code governs.
+s bit-perfect, content-addressed, and auditable forever.
 
 *See `GHOST_REGISTRY.md` for the catalogue of residuals and `EXPERIMENT_LEDGER.md` for the proof index.*
