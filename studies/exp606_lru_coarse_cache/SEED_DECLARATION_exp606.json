@@ -1,0 +1,37 @@
+{
+  "protocol": "exp606-v1",
+  "series": "600",
+  "inherits": "exp605-v1",
+  "title": "LRU Coarse Cache -- zero-cost state returns (Ghost #41)",
+  "gate_source": "EXP-605 Ghost #41: coarse content-addressed only vs immediate prev; returns re-send",
+  "operator": "game.observability.stream (session LRU of H_coarse -> anchors; coarse_ref event)",
+  "mechanism": {
+    "lru": "bounded session cache H_coarse -> coarse frame (default 16); LRU eviction",
+    "coarse_ref": "a world returning to ANY cached coarse emits coarse_ref {H_coarse} (zero anchor payload)",
+    "levels": "(1) immediate skip if H_coarse unchanged, (2) coarse_ref if in LRU, (3) keyframe/delta otherwise",
+    "eviction": "return to an evicted coarse re-sends (keyframe) -> bounded memory, graceful"
+  },
+  "assertions_fork_A": [
+    "[1] declaration_hash",
+    "[2] codec exact: decode(encode) reconstructs coarse field bit-exactly with LRU+refs",
+    "[3] zero-cost returns: loop A B A B A B -> 2 keyframes + 4 coarse_refs (returns not re-sent)",
+    "[4] coarse_ref payload minimal: sz(coarse_ref) < sz(keyframe)",
+    "[5] bitrate: LRU coarse bytes < no-LRU coarse bytes on a loop",
+    "[6] reconstruction parity: LRU field == no-LRU field (same result, fewer bytes)",
+    "[7] LRU eviction bounded: lru_size respected; return beyond window re-sends keyframe",
+    "[8] backward-compat: a non-looping stream emits no coarse_ref (EXP-605 behavior preserved)",
+    "[9] determinism: encode bit-stable (PYTHONHASHSEED=0)",
+    "[10] decoupled: game/ has no engine.* import (clean-room guard)"
+  ],
+  "assertions_fork_B": [
+    "[1] declaration_hash",
+    "[2] event-type counts fwd == mir on a loop stream",
+    "[3] coarse_ref count fwd == mir",
+    "[4] coarse bytes fwd == mir",
+    "[5] reconstruction fwd field multiset == mir"
+  ],
+  "exp509_gate": {
+    "trigger": "transport production-hardened -> Zeeman/Bethe Citadel (dynamic E*)"
+  },
+  "declaration_hash": "1bbbccefaec5ec174f95407e7f0abdcabd3e31d489b2b9327e4616fe9149a3d4"
+}
