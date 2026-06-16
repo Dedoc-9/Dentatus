@@ -55,11 +55,12 @@ guarded · ○ open. The defining residual `G_t = Z_t − Π_{W_t}(Z_t)` underli
 | 46 | ε_ref scale-relativity | dimensional strain made ε_ref per-world; closed by non-dimensionalisation | ✓ | 512→513 |
 | 47 | Vorticity singularity | Weissenberg `strain/‖Ω‖` divergent at ‖Ω‖→0; **floor** (not additive ε) preserves exact scale-invariance | ✓ | 513 |
 | 48 | Compliance-not-stiffness inversion | bounded multiplier must be *compliance* (χ≤1, narrows only); wiring as "stiffness" inverts the firewall | ✓ guard | 514 |
-| 49 | Melt hysteresis (entropy ratchet) | enacted melt is one-way; needs a distinct-threshold re-crystallisation operator (Fork ξ) | ○ open | 515 |
+| 49 | Melt hysteresis (entropy ratchet) | enacted melt was one-way; **closed** by EXP-521 re-crystallisation (distinct lower cooling threshold → true hysteresis, chatter-free) | ✓ | 515→521 |
 | 50 | Audit-vs-live gap; destination-confluence | DAG recorded valid nodes not in live state (closed by 517); path lives in edges, not node id | ✓ | 516→517 |
 | 51 | Injection ghost & inactive-claim accumulation | re-declaration jumps `Z` by `ΔZ`, absorbed into `S` via `next_S`; inactive claims accrue (→ compaction) | ✓ | 517→518 |
 | 52 | Compaction shadow & hot/cold undo asymmetry | `η_CLT` preserved only via permanently-retained sufficient statistics; undo O(1) hot, replay-cost cold | ◐ managed | 518 |
 | 53 | Checkpoint cadence & unbounded command log | `K` trades memory for replay latency (warm tail); the command log is the minimal unbounded tier; `verify_history` is a continuous determinism monitor | ◐ managed | 520 |
+| 54 | Amorphous lock | a fully isotropic (total-melt) state has no residual order to amplify → cannot spontaneously re-crystallise; needs an orienting field (Fork ψ). Minimal melts always re-crystallisable | ○ open | 521 |
 
 ## Principle
 

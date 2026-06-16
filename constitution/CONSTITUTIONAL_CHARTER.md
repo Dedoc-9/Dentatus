@@ -212,6 +212,13 @@ total   mode: t = 1                       (full isotropic melt)
 ```
 Outcomes are exhaustive: `stable | melted | unsurvivable`.
 
+**VI.2a Re-crystallization (EXP-521).** The reverse leg closes the thermal cycle with a *distinct*
+cooling threshold (Schmitt hysteresis): freeze fires only when `χ_cur − χ_required ≥ hysteresis` and
+re-orders down to `χ_required + hysteresis` (a margin above the melt boundary ⇒ chatter-free). Geometry
+is the reverse geodesic `ℓ_i(g) = ℓ̄ + g(ℓ_i − ℓ̄)`, `g > 1` widening the spectrum (det preserved). The
+dead-zone between the melt and freeze boundaries is **material memory** — a `χ`–`Wi` hysteresis loop. A
+totally-isotropic state is amorphous-locked (Ghost #54).
+
 **VI.3 Live injection (EXP-517).** The melted claim replaces the breached leaf in `W_t`; the engine
 re-seals; `H_t` advances continuously `H_before → H_after` — **the lineage is the state**.
 - *Interference* (intent computed against a superseded world) is resolved by **optimistic concurrency**:

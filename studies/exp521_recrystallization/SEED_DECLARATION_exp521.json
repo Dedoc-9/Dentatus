@@ -1,0 +1,40 @@
+{
+  "declaration_hash": "8f9fcf2b21b0ce974e0069b279e66ace9175fdc27acffde7aa3e7975bb449418",
+  "experiment": "EXP-521",
+  "title": "Re-crystallization / Annealing (Fork xi): true thermal hysteresis closes Ghost #49",
+  "protocol_version": "exp521-v1",
+  "date": "2026-06-15",
+  "hypothesis": "The EXP-515 melt is a one-way entropy ratchet. Re-crystallization adds the reverse leg with a DISTINCT lower cooling threshold (a Schmitt-trigger on the material state): melt fires at chi_required(Wi); freeze fires only when chi_cur - chi_required >= hysteresis, and re-orders only down to chi_required + hysteresis -- a margin above the melt boundary, so it cannot immediately re-melt (chatter-free). The dead-zone between is material memory. Geometry is the reverse of the melt geodesic: \u2113_i(g)=\u2113\u0304+g(\u2113_i-\u2113\u0304), g>1 widens the spectrum (regains order), det preserved. A fully isotropic (amorphous) state has no residual order to amplify and holds (Ghost #54). Result: a non-degenerate chi-vs-Wi hysteresis loop. Engine FROZEN.",
+  "constants": {
+    "HYSTERESIS_521": 0.15,
+    "ANNEAL_521": 0.25,
+    "G_MAX_521": 8.0,
+    "ISO_EPS_521": 1e-06
+  },
+  "thresholds": {
+    "melt_boundary": "chi_required(Wi)",
+    "freeze_boundary": "chi_required(Wi) + hysteresis",
+    "dead_zone": "chi_required < chi_cur < chi_required + hysteresis -> HOLD"
+  },
+  "backreaction_firewall": "re-crystallization reads stress + declared material and proposes a new Sector D; it is a witnessed transition (game layer), never an engine mutation. det Sigma preserved.",
+  "engine_scope": "NO engine edits. game/agency/recrystallize.py uses core (chi/bethe/cholesky) + dentatus.semantic. state/operators/confluence/validity FROZEN.",
+  "assertions_fork_A": [
+    "[1] declaration_hash self-consistent",
+    "[2] hold in dead-zone: headroom < hysteresis -> status=hold, stalk unchanged",
+    "[3] recrystallize: headroom >= hysteresis -> chi decreases (regains order)",
+    "[4] stays admissible (no immediate re-melt): chi_after > chi_required",
+    "[5] HYSTERESIS LOOP: up-path (melt) chi != down-path (freeze) chi at same Wi; loop area > 0; down lags up by ~hysteresis",
+    "[6] chatter-free: fixed low stress -> chi converges (no oscillation)",
+    "[7] anneal-rate limited: |chi_before - chi_after| <= anneal_rate + margin (slow cooling)",
+    "[8] amorphous guard: isotropic stalk (zero spread) -> amorphous_hold (no re-order)",
+    "[9] volume preserved: det(Sigma_after) == det(Sigma_before)",
+    "[10] determinism: chi_after + g bit-stable"
+  ],
+  "assertions_fork_B": [
+    "[1] P_yz: chi_after invariant under Sector-D reflection",
+    "[2] g (spectrum-widening factor) invariant",
+    "[3] det invariant under reflection",
+    "[4] status invariant",
+    "[5] cross-process bit-stability (PYTHONHASHSEED=0)"
+  ]
+}

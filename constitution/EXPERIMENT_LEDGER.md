@@ -30,6 +30,7 @@ game layer). `PYTHONHASHSEED=0` required for cross-process bit-stability.
 | 518 | VI.5 | History Compaction; H-inert + observationally-inert eviction; bounded memory (Ghost #52) | `32c1314a87fbd523` | υ |
 | 519 | X | Unified Kinetic Dashboard; WebGL replay of bit-perfect telemetry; diamond→glass→fluid→firewall-holds | capture (deterministic) | — |
 | 520 | VI.5, II.2 | Replay / Time-Travel Debugger; event-sourced command log + checkpoints; VERIFIED reconstruction (tamper-evident); cold restore (Ghost #53) | `2e489550a816e08e` | τ |
+| 521 | VI.2, V | Re-crystallization / Annealing; distinct cooling threshold → true thermal hysteresis (χ–Wi loop, chatter-free); reverse anisotropy geodesic; closes Ghost #49 (opens #54) | `8f9fcf2b21b0ce97` | ξ |
 
 ## Series 600 — Developer Interface
 
