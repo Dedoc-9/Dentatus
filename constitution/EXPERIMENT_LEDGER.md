@@ -90,3 +90,17 @@ entropic tax · `ξ` re-crysta
 - **Verification:** `forge/signature_proof.py` 7/7 — authorized boots; one-byte registry tamper, signature tamper, unauthorized signer, **wholesale-replace-and-re-sign**, missing-sig-strict, and present-but-bad-in-dev all fail closed. Live bridge boots through the airlock with the signed registry and REFUSES to boot on a tampered one.
 - **Honest trust-root note (recorded, not buried):** signing relocates the trust root from "any writer of the registry file" to "a holder of a listed private key OR a writer of the public-key allowlist." Real narrowing, not absolute — the allowlist itself must be protected out-of-band (committed, read-only deploy, signed release). Private key is gitignored, never committed; the server needs only the public key.
 - **Status:** Sealed · Engine Core Frozen (37/83/13/29) · full forge sweep (6 suites) 0 violations · requires `cryptography`.
+
+### EXP-532 · Autonomous Simulation Lab & Profiler
+- **Axiom:** Optimization without telemetry is a structural assumption; a next-gen kernel rewrite is prohibited until an empirical performance budget is breached.
+- **Mechanism:** server-authoritative B policy (FSM: rebuild / advance / drill / assault) + a runtime tick profiler, both inside `collider_duel.py`. The bot enqueues like a human combatant (replay-safe).
+- **Verification:** 300-tick continuous automated-combat benchmark — mean 2.9 ms · p50 2.8 ms · p95 4.9 ms · max 13.7 ms against the 100 ms (10 Hz) budget; sustainable ~73 Hz.
+- **Strategic Verdict:** greenfield `engine_v2/` remains UN-LICENSED — ~7× safety margin at 48-tile scale. The profiler ships in every `/stream` frame (`tick_ms`) so the budget-breach moment is observable in play.
+- **Balance finding:** at current tuning two equally-aggressive combatants stalemate (no breach in 300 ticks); the bot beats a passive opponent. Pacing/threshold tuning is a future pass, not a bug.
+
+### EXP-533 · Hardware-Invariant Pulse (Determinism Seal)
+- **Axiom:** No wall-clock value may enter a committed state transition; `H_verified` must re-derive bit-for-bit on any machine from the command log alone (EXP-520).
+- **Vulnerability:** off-beat (non-synced) commits computed `beta_eff` from `self.pulse()` = `time.time()`, so the melt verdict carried a trace of host timing — replay on different hardware would drift and throw an illegitimate `ReplayMismatch`.
+- **Correction:** committed pulse is now `_tick_pulse()` — a pure function of the integer frame (`frame/TICK_HZ`), never the clock. `synced` is server-confirmed against that deterministic pulse (also closes the always-claim-synced exploit). Each committed log entry records `tick_pulse` + `beta_eff`, so the replayer reads the value, not the clock. Display metronome stays wall-clock (cosmetic only).
+- **Verification:** `forge/duel_determinism_proof.py` — identical scripted runs produce identical H-chains; the SAME run with random wall-clock sleeps injected produces a BIT-IDENTICAL H-chain (hardware-invariance); every commit logs its pulse/beta.
+- **Status:** Sealed · Engine Core Frozen (37/83/13/29).

@@ -58,6 +58,7 @@ REBASE_WINDOW = 3
 MOVE_SPEED = 0.55              # tiles per /move pulse (body drift)
 BREACH_SHIELD = 0.18          # shield (local cover fraction) at/below which the firewall breaches the combatant
 BOT_B_DEFAULT = os.environ.get("DENTATUS_BOT_B", "0") == "1"   # scripted server-side opponent (iteration lab)
+CREST = 0.78               # deterministic crest window: a shear is "synced" only if the tick-pulse confirms it
 PORT = int(os.environ.get("DUEL_PORT", "8782"))
 SERVER_SECRET = os.environ.get("DENTATUS_SERVER_SECRET", "DEV_INSECURE_KEY").encode()
 
@@ -150,8 +151,15 @@ class Duel:
         return [int(x) for x in sg]
 
     def pulse(self):
+        # DISPLAY metronome only (smooth 60fps sweep for the client) — never enters committed math.
         t = time.time() - self.t0; ph = ((t / SEED["T"]) + SEED["phase0"]) % 1.0
         return ph, math.cos(2 * math.pi * ph)
+
+    def _tick_pulse(self):
+        # COMMITTED metronome: a pure function of the integer frame (tick time = frame/TICK_HZ), never the
+        # wall clock. EXP-533 — keeps beta_eff hardware-invariant so H_verified re-derives anywhere from the log.
+        ph = ((self.frame / TICK_HZ / SEED["T"]) + SEED["phase0"]) % 1.0
+        return math.cos(2 * math.pi * ph)
 
     def world_H(self):
         claims = {}
@@ -300,12 +308,13 @@ class Duel:
                 shear_eff += it["wi"] * self._lod_eff(t, it["player"])
             else:
                 anneal_eff += ANNEAL_BASE * self._lod_eff(t, it["player"])
-        synced = any(it["synced"] for it in its)
+        tp = self._tick_pulse()                                   # EXP-533 deterministic pulse (frame, not clock)
+        synced = any(it["synced"] for it in its) and tp >= CREST  # server CONFIRMS the crest -> deterministic + un-spoofable
         if n_shear and shear_eff == 0.0 and anneal_eff == 0.0:
             return self._receipt(sec, t, chi0, 0.0, 0.0, 0.0, "BLOCKED", "occluded", 0.0, blocked=blocked)
         net_wi = shear_eff - anneal_eff * ANNEAL_GAIN
         t["wi"] = min(1.2, max(0.06, t["wi"] + net_wi)); t["hit"] = 1.0
-        beta_eff = BETA * (1 + 0.6 * (1.0 if synced else self.pulse()[1]))
+        beta_eff = BETA * (1 + 0.6 * (1.0 if synced else tp))
         bc = core.bethe_citadel_strain_512(beta_eff, t["wi"] * VORT, NF, NG, vorticity=VORT, chi=chi0)
         shear_wins = shear_eff > anneal_eff * ANNEAL_GAIN
         verdict, op = "STABLE_GLASS", "none"
@@ -331,7 +340,8 @@ class Duel:
                 return self._receipt(sec, t, chi0, shear_eff, anneal_eff, net_wi, "CLAMP_REJECT", "reverted",
                                      0.0, clamp=_cn)
         Hv = self.world_H(); self.last_valid_H = Hv
-        self.log.append({"frame": self.frame, "section": sec, "verdict": verdict, "op": op, "H": Hv})
+        self.log.append({"frame": self.frame, "section": sec, "verdict": verdict, "op": op, "H": Hv,
+                         "tick_pulse": round(tp, 6), "beta_eff": round(beta_eff, 6)})   # replay reads this, not time.time()
         self.last = "tile %d · %s · χ %.2f→%.2f · A%.2f/B%.2f" % (sec, verdict, chi0, chi1, shear_eff, anneal_eff)
         return self._receipt(sec, t, chi1, shear_eff, anneal_eff, net_wi, verdict, op, round(bc["dS_cit"], 3))
 
