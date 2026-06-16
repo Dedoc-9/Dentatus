@@ -50,3 +50,12 @@ game layer). `PYTHONHASHSEED=0` required for cross-process bit-stability.
 
 `δ` anisotropic halo · `ι` per-section local Citadel · `μ` anisotropic χ tensor · `ν` cross-sector
 entropic tax · `ξ` re-crysta
+---
+
+### EXP-528 · Rolling Nonce-Chaining (Fork ι)
+- **Axiom:** Replay is a transport-layer exploit; it requires a transport-layer cryptographic fence *outside* the frozen core. The fence must not perturb engine determinism or the EXP-520 replay debugger.
+- **Mechanism:** deterministic hash-ratchet `N_{t+1} = SHA256(N_t ∥ H_t ∥ seq ∥ pv)`, head bound into `session_attest` as an **optional** parameter via backward-compatible canonicalization (`nonce=None` ⇒ pre-528 bytes byte-identical). The nonce is PUBLIC and secret-free; the secret enters only the HMAC.
+- **Replay immunity = two mechanisms, not one:** (a) the rolling head is bound into the signature, so a signature cannot be moved to another sequence position; (b) the verifier enforces a strictly-monotone accepted `seq`, so a re-sent *validly-signed* old frame is rejected as stale. (A stale frame's HMAC is still internally valid — it is rejected by ordering, not by signature failure.)
+- **Verification:** `forge/nonce_proof.py` — 0 violations across 5 properties: (1) backward-compat; (2) replay-reproducibility (EXP-520 recovers every nonce bit-for-bit from the command log); (3) replay immunity; (4) forge resistance (wrong secret hard-rejects; substituted nonce rejects); (5) fork sensitivity (one divergent H forks all subsequent nonces, no reconvergence).
+- **Wiring:** `Game1/dentatus_bridge.py` issues a nonce per commit, binds it into composite + attestation, logs `{seq,nonce}`. Collider/shear-rifle servers (no-nonce path) unaffected.
+- **Status:** Sealed · Engine Core Frozen (37/83/13/29) · Verification 5/5.

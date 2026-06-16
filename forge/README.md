@@ -14,6 +14,12 @@ record (Annex I): these tools certify **integrity** of a well-formed transition,
   replay-reproducibility (EXP-520), replay immunity (stale frame rejected), forge resistance, fork sensitivity.
   All 5 PASS, 0 violations. The nonce is a deterministic hash-ratchet over the sealed-H sequence; the secret
   never enters it; replay immunity = nonce bound into `session_attest` + strictly-monotone accepted seq.
+- **`chaos_harness.py`** — EXP-529 network sabotage engine. A deterministic L1 reducer (tick-batched NET
+  superposition + seal + EXP-528 nonce) fed through a seeded chaos transport (drop-cascade 30%, jitter-reorder,
+  latency-spike past the rebase window). Proves the committed `H_verified` timeline is a pure function of the
+  accepted set + server seq — independent of arrival order. 5/5 PASS: arrival-order invariance, chaos
+  determinism, bounded-rebase rejection (stale deterministic), drop resilience, liveness (no lock).
+  Honest scope: bounded-window order-invariance + deterministic stale-rejection — NOT zero-latency re-proof.
 - **`oracle_fuzz.py`** — differential / metamorphic fuzzer. Seeded-random well-formed inputs into the
   real operators, asserting: (1) clamps; (2) **metamorphic** relations needing no ground truth —
   `strain↑ ⇒ E*_eff↓`, `chi↑ ⇒ dS_cit↑` (EXP-514); (3) **determinism** — identical input ⇒ bit-identical
