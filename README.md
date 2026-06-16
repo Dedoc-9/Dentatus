@@ -179,6 +179,7 @@ Equilibrium: B_A* = B_D* at γ_A = γ_D. Engine self-regulates Zeeman field stre
 | EXP-521 | Re-crystallization / Annealing (Fork ξ); distinct lower cooling threshold (Schmitt hysteresis) closes the one-way melt ratchet; reverse anisotropy geodesic (widen spectrum, det-preserving); χ–Wi hysteresis loop, chatter-free; **Ghost #49 closed**, #54 amorphous-lock; engine frozen (game/agency policy) | `8f9fcf2b21b0ce97` | **open** |
 | EXP-522 | Oriented Nucleation (Fork ψ); amorphous (total-melt) state re-crystallises along the strain principal axis (det-preserving, aligned to flow, alignment cos=1); isotropic-stress no-field is symmetry-correct; **Ghost #54 closed**; engine frozen (game/agency policy) | `851a4f654a262c2a` | **open** |
 | EXP-523 | Validity Witness (Fork ω); binds SPRT integrity class to the verified address (FULL_VALID→H_t backward-compatible, LOD_RELAXED→distinct); closes integrity-laundering across level-of-detail; **Ghost #5 closed**; three-facet identity (geometric/material/integrity); engine frozen (observability layer) | `1fc9721cf4e667cb` | **open** |
+| EXP-524 | The Genesis Block (capstone walkthrough); one world through the entire constitution (create→stress→melt→inject→compact→replay-resurrect→nucleate→witness), self-verifying, deterministic; the proof-of-life + LLM handoff (constitution/CAPSTONE.md); engine frozen | walkthrough | **open** |
 
 Each study is gate-locked before implementation. `SEED_DECLARATION_*.json` hashes are
 immutable structural indices — not semantic labels.
@@ -968,101 +969,4 @@ EXP-407 v1 used `α_min=0.2`. At n≥15, α_eff≈0.22 — below α_crit. Ghost 
 ### Trajectory (N=20 sequential, α_min=0.7)
 
 ```
-bze_407: [2.0, 2.1, 2.32, 2.89, 4.08, 5.96, 7.43, 8.64, 8.08, 9.87,
-          9.13, 8.56, 11.13, 11.19, 11.24, 10.67, 10.98, 11.27, 10.78, 11.18]
-bze_406: [2.0, 2.35, 3.21, ..., 17.13]   fixed α=0.5
-alpha:   [0.9, 0.864, 0.834, ..., 0.704]  (decays to α_min=0.7)
-tail_range_407=2.71  vs  tail_range_406=9.17  (70% reduction) ✓
-last5_range_407=0.59 vs  last5_range_406=4.22 (7× tighter) ✓
-overshoot_407=1.008                            (vs 404: 1.33) ✓
-```
-
-Note: bze_407[-1]=11.18 < bze_406[-1]=17.13 — convergence rate reduced by high inertia floor. EXP-408 gate triggered.
-
-### Verified results
-
-| Fork | Assertions | Result |
-|------|-----------|--------|
-| Fork A (`run_seed_exp407.py`) | 10/10 | **PASS** |
-| Fork B (`run_p_invariance_exp407.py`) | 5/5 | **PASS** |
-
-```
-α_max=0.9  α_min=0.7  τ_α=5.0  (α_crit=0.667)
-tail_range_407=2.7114 < tail_range_406=9.1732 ✓
-last5_range_407=0.5939 < last5_range_406=4.2170 ✓
-overshoot_407=1.0083 < overshoot_404=1.33 ✓
-saturation_ratio=0.0000  lc_tail={64,71,106}
-P_yz: max|bze_fwd−mir|=7.11e-15 ✓
-```
-
-### EXP-408 gate
-
-**Trigger (proactive):** bze_407[-1]=11.18 < bze_406[-1]=17.13 — high α_min floor reduces convergence rate. Convergence-damping Pareto frontier not yet explored.  
-Options: (A) increase τ_α (slower decay, higher early damping), (B) decouple τ_warmup ≠ τ_α, (C) Pareto sweep (tail_range, convergence_speed) vs α_min ∈ [0.667, 0.95].
-
----
-
-## EXP-408 — Ascending α_bze Schedule (Bootstrap to Maintenance)
-
-**Declaration hash:** `d1945e6736a284a33cf648ac0d7d06491e0bea704bd6fa69ca7beac277562055`  
-**Gate source:** EXP-407: bze_407[-1]=11.18 < bze_406[-1]=17.13 (convergence lag from α_min=0.7 floor)
-
-### Operator: phi_fb_ascending_ema
-
-Inverts EXP-407's direction: α ramps UP from loose to tight.
-
-```
-α_eff(n) = α_max − (α_max − α_min) · exp(−n / τ_α)
-```
-
-Parameters: `α_min=0.2`, `α_max=0.9`, `τ_α=2.0` (decoupled from `τ_warmup=5.0`).
-
-**Timescale decoupling:** τ_α=2.0 < τ_warmup=5.0 — α locks above α_crit=0.667 at n≈2.2, before the bistable β_raw range activates at n≈4 (safety margin=1.8 steps).
-
-### Ghost #19 — Attraktorwahl (Attractor Selection)
-
-The ascending schedule's heavy maintenance inertia (α→0.9 by n=7) locks the system into whatever basin it occupies at the bistable transition. At n=9, lc switches to 64; α=0.892 → only 10% of raw per step. System converges stably to lc=64 equilibrium (bze→8) and cannot re-escape to lc=71 basin within N=20.
-
-```
-bze_408: monotone climb n=0-9; decaying from 8.89 to 8.62 (lc=64 basin)
-lc_408_tail=[64]   (single-attractor — but WRONG basin vs EXP-406/407)
-tail_range_408=0.93   (tightest of all experiments)
-bze_408[-1]=8.62  vs  bze_407[-1]=11.18  vs  bze_406[-1]=17.13
-```
-
-Bootstrap DID work (bze_408 led bze_407 for n=1-4, advantage up to Δ=+1.20 at n=3), but Attraktorwahl at n=9 overrode the early gain. The α schedule controls not only convergence rate but WHICH BASIN is captured.
-
-**Contrast:**
-- Ghost #18 (EXP-407 v1): α below α_crit at equilibrium → 2-cycle within the targeted basin  
-- Ghost #19 (EXP-408): α above α_crit, but maintenance lock prevents inter-basin transitions
-
-### Phi_fb Evolution Table
-
-| EXP | α schedule | tail_range | bze[-1] | lc_tail | Ghost |
-|-----|-----------|-----------|---------|---------|-------|
-| 404 | fixed γ | — | 17.19 | {71} | #15 overshoot=1.33 |
-| 405 | γ ramp↑ | 14.79 | 21.75 | {71,78} | #16 2-cycle |
-| 406 | fixed α=0.5 | 9.17 | 17.13 | {71,78} | #17 lag |
-| 407 | α ramp↓ (min=0.7) | 2.71 | 11.18 | {64,71,106} | #18 subcritical |
-| **408** | **α ramp↑ (max=0.9)** | **0.93** | **8.62** | **{64}** | **#19 Attraktorwahl** |
-
-### Verified results
-
-| Fork | Assertions | Result |
-|------|-----------|--------|
-| Fork A (`run_seed_exp408.py`) | 10/10 | **PASS** |
-| Fork B (`run_p_invariance_exp408.py`) | 5/5 | **PASS** |
-
-```
-α_min=0.2  α_max=0.9  τ_α=2.0  n_cross(α_crit)=2.20  α(n=4)=0.805
-tail_range_408=0.931 < tail_range_406=9.173 ✓  (2-cycle ratio=5.3% at α_max)
-last5_408=0.368 < last5_407=0.594 ✓
-overshoot_408=1.099 < overshoot_404=1.33 ✓
-Ω_inertia_max=0.469
-P_yz: max|bze_fwd−mir|=1.78e-15 ✓
-```
-
-### EXP-409 gate
-
-**Trigger (proactive):** Ghost #19. Neither descending (stable but sluggish) nor ascending (basin-locked) resolves convergence + basin-selection jointly.  
-Options: (A) hysteresis α — hold low until bze crosses basin threshold; (B) ascending to α_max=0.7 only (EXP-407 floor, not 0.9); (C) Pareto sweep (α_min, α_max, τ_α) vs (tail_range, bze[-1]); (D) two-timescale split with lc-stability signal.
+bze_407: [2.0, 2.1, 2.32, 2.89

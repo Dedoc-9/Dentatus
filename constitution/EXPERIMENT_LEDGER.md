@@ -33,6 +33,7 @@ game layer). `PYTHONHASHSEED=0` required for cross-process bit-stability.
 | 521 | VI.2, V | Re-crystallization / Annealing; distinct cooling threshold → true thermal hysteresis (χ–Wi loop, chatter-free); reverse anisotropy geodesic; closes Ghost #49 (opens #54) | `8f9fcf2b21b0ce97` | ξ |
 | 522 | VI.2, V | Oriented Nucleation; amorphous state re-crystallises along the strain principal axis (det-preserving, aligned to flow); closes Ghost #54 | `851a4f654a262c2a` | ψ |
 | 523 | II.3, VII | Validity Witness; binds the SPRT integrity class (FULL_VALID/LOD_RELAXED/INVALID) to the verified address; closes Ghost #5 (integrity laundering across LOD); backward-compatible | `1fc9721cf4e667cb` | ω |
+| 524 | ALL | The Genesis Block — full-system walkthrough; one world through the entire constitution, self-verifying & deterministic (capstone / proof-of-life) | walkthrough | — |
 
 ## Series 600 — Developer Interface
 
@@ -48,6 +49,4 @@ game layer). `PYTHONHASHSEED=0` required for cross-process bit-stability.
 ## Open fork backlog (declared, not yet built)
 
 `δ` anisotropic halo · `ι` per-section local Citadel · `μ` anisotropic χ tensor · `ν` cross-sector
-entropic tax · `ξ` re-crystallisation (melt hysteresis) · `ρ`→`σ` merge-aware lineage · `τ` replay /
-time-travel debugger · `υ`→`ψ` delta snapshots · `ω` checkpoint cadence · `φ` multi-leaf partial melt ·
-`χ` self-healing intent queue.
+entropic tax · `ξ` re-crysta

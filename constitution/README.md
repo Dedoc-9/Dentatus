@@ -8,7 +8,8 @@ This folder is the authoritative, consolidated specification. Read in order:
    room, observability. **Start here.**
 2. **[EXPERIMENT_LEDGER.md](EXPERIMENT_LEDGER.md)** — the proof index: each article backed by a
    preregistered, hash-locked study (Fork A determinism + Fork B P_yz).
-3. **[GHOST_REGISTRY.md](GHOST_REGISTRY.md)** — the catalogue of numeric residuals (#1–#52).
+3. **[GHOST_REGISTRY.md](GHOST_REGISTRY.md)** — the catalogue of numeric residuals (#1–#54).
+4. **[CAPSTONE.md](CAPSTONE.md)** — the Genesis Block: full-system walkthrough, file index, LLM handoff. Run `walkthrough_genesis.py` beside it.
 
 **Authority.** The charter governs the *law*; the studies govern the *proof*. The engine core
 (`engine/state.py`, `operators.py`, `confluence.py`) is frozen; behaviour is added only as additive
