@@ -31,7 +31,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The seven components
+## The eight components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -42,10 +42,11 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`assay/`](assay/README.md) | the **meta-audit layer** — makes "correct / fair / wise" judgments first-class, recomputable (metrics) or attributable (signed opinions), tamper-evident | `PYTHONHASHSEED=0 python3 demo_assay.py` |
 | [`manifold/`](manifold/README.md) | **topology-gated commits** — state as a graph; the diamond-hard gate is *exact* connectivity/bridges, the Fiedler λ₂ spectrum is a *captured* margin (never in the hash) | `PYTHONHASHSEED=0 python3 demo_manifold.py` |
 | [`anti_cheat/`](anti_cheat/README.md) | **server-authoritative match forensics** — exact occlusion gate refuses impossible (wallbang/teleport) hits; culling defeats wallhacks; sealed, replayable ticks | `PYTHONHASHSEED=0 python3 demo_anti_cheat.py` |
+| [`glitch/`](glitch/README.md) | **deterministic state-space explorer** — finds latent sequence-dependent invariant bugs; dedups states by content hash; shrinks to a minimal, signed, replayable counterexample | `PYTHONHASHSEED=0 python3 demo_glitch.py` |
 
-All seven refuse to run without `PYTHONHASHSEED=0`. Test suites total **96 unit tests across 9 suites**
+All eight refuse to run without `PYTHONHASHSEED=0`. Test suites total **104 unit tests across 10 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9, glitch 8) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 
@@ -317,19 +318,4 @@ These are the load-bearing design decisions a reader (or future maintainer) woul
   a public key pinned in config (`TRUSTED_PEP_PUBKEY`, the trusted-assessor registry). Verifying against a
   key supplied in the payload would defeat the whole property.
 
-- **HMAC fallback silently weakens the model from asymmetric to symmetric.** If `cryptography` is absent,
-  signing degrades to HMAC (with a loud stderr warning): tamper-evidence survives, but third-party
-  *verify-without-forge* is lost because the verifier then also holds the signing power. Install
-  `cryptography` for any third-party-audit claim.
-
-- **Demos write artifacts** (`ledger.json`, `ledger_store.jsonl`) into their own folders; these are
-  gitignored. The PEP and integration demos start a loopback HTTP server on an ephemeral port.
-
-- **Honest scope is repo-wide:** every component is a reference implementation, not a hardened product —
-  no access control, throughput tuning, TLS, or scale testing. The genuinely hard part of any real
-  deployment is making the decision logic deterministic; the capture seams lower that cost but do not
-  remove it.
-
-## Contributing / editing this repo
-
-Read [`AGENTS.md`](AGENTS.md) first — the system-context & handoff contract every change must honor (determinism, privilege-PEP, integrity≠truth, stdlib core + tiered cryp
+- **HMAC fallback silently weakens the model from asymmetric to symmetric.** If `cryptography` is absen
