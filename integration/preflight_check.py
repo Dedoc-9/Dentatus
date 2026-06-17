@@ -28,6 +28,7 @@ SUITES = [
     "anti_cheat/tests/test_anti_cheat.py",
     "glitch/tests/test_glitch.py",
     "dini/tests/test_dini.py",
+    "selfaudit/tests/test_selfaudit.py",
 ]
 PARITY = "integration/parity_proof.py"
 
