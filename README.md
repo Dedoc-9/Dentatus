@@ -1,64 +1,79 @@
-# chronicle — a verifiable decision recorder
+# Dentatus/Chronicle — a verifiable-computation workbench
 
-**Start here:** [`chronicle/`](chronicle/README.md)
+A set of small, deterministic, content-addressed components for making consequential automated decisions
+**auditable and reproducible by construction**. Stdlib-only cores; optional `cryptography` for asymmetric
+attestation. One idea runs through all of it: a tiny deterministic core (canonical bytes → content hash),
+plus one discipline — **capture nondeterminism at the boundary, never fake it away.** Everything else
+(replay court, signed verdicts, policy enforcement, separation of powers) is that idea wearing different
+hats. Philosophy: *build for extraction, not just execution.*
 
-`chronicle` is a tamper-evident **flight recorder + replay court** for consequential automated
-decisions (lending, eligibility, pricing, moderation, model scoring). Given a decision's hash it will
-**replay** the exact computation that produced it, prove the record and the rules were **not altered**,
-and prove the decision satisfied safety rules **committed before deployment** — on a separate machine,
-line by line, and (with Ed25519) without the power to forge.
+## Start here
 
-The stdlib-only core records and verifies with **zero dependencies**; optional layers add asymmetric
-attestation, determinism capture, and pluggable storage so a team can adopt it without re-architecting.
+[`chronicle/`](chronicle/README.md) — the foundational piece: a tamper-evident "flight recorder + replay
+court" for any consequential decision. Replays a decision bit-for-bit, proves the record and the rules
+were not altered, and refuses unsafe ones at write time.
 
 ```bash
-cd chronicle
-PYTHONHASHSEED=0 python3 demo_policy.py              # record, verify, tamper, rule-swap, capture, store
-PYTHONHASHSEED=0 python3 tests/test_chronicle.py     # 19 unit tests
+cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-> `demo_policy.py` refuses to run without `PYTHONHASHSEED=0` — bit-identical hashing across processes is
-> the premise of the replay court, so it fails fast rather than produce a chain you cannot reproduce.
+## The four components
 
-## What it proves (and what it doesn't)
+| Component | What it is | Run |
+|---|---|---|
+| [`chronicle/`](chronicle/README.md) | verifiable decision recorder — content-addressing, hash chaining, HMAC/Ed25519 attestation, determinism capture, pluggable append-only storage | `PYTHONHASHSEED=0 python3 demo_policy.py` |
+| [`llm_toolkit/`](llm_toolkit/README.md) | the pattern lifted onto LLM orchestration — captures prompt/tokens/logprobs/seed at the model boundary so agent runs replay bit-for-bit; Ed25519 precommitted guardrails, fail-closed | `PYTHONHASHSEED=0 python3 demo_agent_pipeline.py` |
+| [`guard_server/`](guard_server/README.md) | a localhost **Policy Enforcement Point** — server-pinned policy + signing key behind a boundary the agent calls but cannot weaken; returns signed, request-bound verdicts | `PYTHONHASHSEED=0 python3 demo_guard_server.py` |
+| [`integration/`](integration/README.md) | the **coupled full stack** — capture + PEP + ledger, with a separation-of-powers proof, plus a coupled-vs-uncoupled parity proof | `PYTHONHASHSEED=0 python3 demo_integration.py` |
 
-For each recorded decision the court checks five things and names the exact failure point: **chain**
-(no insert/delete/reorder), **rule-bound** (the audited logic source-hashes to the recorded ruleset),
-**replay** (inputs reproduce outputs bit-for-bit), **invariant** (a precommitted hard rule still holds;
-unsafe decisions are refused at record time, fail-closed), and **attest** (re-derived hash + signature
-match). It proves a record is *unforged, exactly reproducible, and rule-faithful* — **not** that the
-decision was correct or fair. Integrity is not truth.
+All four refuse to run without `PYTHONHASHSEED=0` (reproducible hashing is the premise of the replay
+court). Test suites: **52 unit tests total** (chronicle 19, llm_toolkit 18, guard_server 10, integration 5).
 
-See [`chronicle/README.md`](chronicle/README.md) for the full design, the three adoption blockers it
-addresses (the determinism tax, symmetric-key limitation, and missing integrations), and the file map.
+## Coupled and uncoupled — both, on purpose
+
+The workbench deliberately shows both architectural styles, and proves they are interchangeable:
+
+- **Uncoupled** (vendored, standalone): `chronicle/` and `llm_toolkit/` each carry their own copy of the
+  primitives — either lifts out as an independent repo, at the cost of small duplication.
+- **Coupled** (shared, imported): `guard_server/` and `integration/` import `llm_toolkit` — DRY, single
+  source of truth, components travel together.
+
+[`integration/parity_proof.py`](integration/parity_proof.py) runs the coupled (imported) and uncoupled
+(vendored) primitives over a battery of awkward payloads and asserts byte-identical `canonical_bytes`,
+`state_hash`, `source_hash`, and an identical Ed25519 signature:
+
+```
+RESULT: PARITY HOLDS — extraction is lossless; coupling is convenience, not correctness.
+```
+
+So import-vs-vendor is purely a packaging choice; no content address changes either way. A test fails
+loudly if the two ever diverge — "build for extraction" made checkable.
+
+## The one boundary that runs through every component
+
+**Integrity is not truth.** These tools prove a record is *unforged, exactly reproducible, and
+rule-faithful*, and (with the PEP) that an authorization was *genuinely granted under a pinned policy*.
+They do **not** claim the underlying decision — a refund, a loan, a model's answer — was correct, fair, or
+wise. That narrow, honest claim is exactly what makes the records usable to an auditor or a court.
 
 ## Background / lineage
 
-`chronicle` is distilled from the verification discipline of **Dentatus** (the "Reality Engine"), a
-deterministic, content-addressed state machine with a cryptographic audit trail. For an honest,
-de-inflated account of that project — what it is, what's genuinely solid, and what it is *not* — read
-[`OVERVIEW.md`](OVERVIEW.md).
-
-The full Dentatus / Citadel implementation (engine, game layer, forge test-harnesses, constitution,
-experiment runners, studies) has been moved under [`docs/archive/`](docs/archive/) so this directory
-leads with the active artifact. Its self-verifying proofs still run — from inside `docs/archive/`:
-
-```bash
-cd docs/archive
-PYTHONHASHSEED=0 python3 forge/oracle_fuzz.py         # differential fuzzer, 0 violations / 20k cases
-PYTHONHASHSEED=0 python3 walkthrough_genesis.py       # end-to-end self-verifying lifecycle
-```
-
-The legacy game client lives in [`Game1/`](Game1/), a separately-connected folder.
+Distilled from **Dentatus** (the "Reality Engine"). For an honest, de-inflated account of that project,
+read [`OVERVIEW.md`](OVERVIEW.md); for the design discipline behind the whole arc, see
+[`docs/LESSONS.md`](docs/LESSONS.md). The full legacy implementation is archived under
+[`docs/archive/`](docs/archive/); the legacy game client is in `Game1/` (a separately-connected folder).
 
 ## Repository map
 
 | Path | What it is |
 |---|---|
-| [`chronicle/`](chronicle/README.md) | **active** — verifiable decision recorder (library + CLI + tests) |
+| [`chronicle/`](chronicle/README.md) | **active** — verifiable decision recorder |
+| [`llm_toolkit/`](llm_toolkit/README.md) | **active** — reproducible-by-construction LLM orchestration |
+| [`guard_server/`](guard_server/README.md) | **active** — localhost Policy Enforcement Point |
+| [`integration/`](integration/README.md) | **active** — coupled full stack + parity proof |
 | [`OVERVIEW.md`](OVERVIEW.md) | honest technical overview of the Dentatus lineage |
-| [`docs/archive/`](docs/archive/) | archived Reality Engine / Citadel implementation + experiment runners |
-| [`docs/LESSONS.md`](docs/LESSONS.md) | design retrospective — what the Dentatus→chronicle arc taught |
+| [`docs/LESSONS.md`](docs/LESSONS.md) | design retrospective (Dentatus → chronicle) |
+| [`docs/archive/`](docs/archive/) | archived Reality Engine / Citadel implementation |
 | `Game1/` | archived game client (separately-connected folder) |
 | `LICENSE`, `DUAL_LICENSE.md` | licensing |
 
