@@ -80,13 +80,19 @@ recorder refuses, at write time, to log a decision that breaches a precommitted 
 the time to decide what is forbidden is *before* the decision, and the safe failure mode is to not record
 rather than to record-and-warn.
 
-## Lesson 7 — Distillation requires a clean-room boundary
+## Lesson 7 — Treat the repo as a workbench for purpose-built foundations
 
-The engine core was frozen and the game/test layers were forbidden from importing engine internals — a
-clean-room seam. That discipline is exactly what let chronicle be *extracted*: it has **zero** imports from
-the archived tree and depends only on the stdlib (plus optional `cryptography`). **Principle:** if you keep
-your layers honestly decoupled, the valuable core lifts out cleanly later. Coupling is a tax you pay at
-extraction time.
+The most useful reframe of the whole arc: this was never one monolith to ship — it was a **workbench** on
+which reusable, purpose-built foundations get forged, tested under load, and then lifted out as standalone
+components. The clean-room seam made that literal: the engine core stayed frozen, and the game/test layers
+were forbidden from importing engine internals, so each foundation matured behind a boundary instead of
+fusing into the whole. That is exactly what let chronicle be *extracted* cleanly — it has **zero** imports
+from the archived tree and depends only on the stdlib (plus optional `cryptography`). The same bench still
+holds other forge-able foundations (the differential fuzzer, the chaos/arrival-order harness, the Ed25519
+licensing airlock) that could be lifted out the same way. **Principle:** build for extraction, not just
+execution. Keep each foundation decoupled enough to stand alone, and the workbench keeps yielding
+purpose-built parts long after the original framing is retired. Coupling is the tax you would otherwise pay
+at extraction time.
 
 ## What carried over, explicitly
 
@@ -98,6 +104,7 @@ extraction time.
 | Integrity ≠ truth | the "what it does NOT claim" boundary in `README.md` |
 | Precommit + fail closed | `Recorder` invariant gate (`InvariantViolation`) |
 | Rules-didn't-change | source-hashed `ruleset_hash` bound into every receipt |
+| Workbench → extractable foundation | chronicle lifts out with **zero** archived-tree imports |
 | Honest provenance, no overclaim | [`../chronicle/RELATED_WORK.md`](../chronicle/RELATED_WORK.md) |
 
 ## The one durable takeaway
