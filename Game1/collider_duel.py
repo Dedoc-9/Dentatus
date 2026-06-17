@@ -231,7 +231,7 @@ class Duel:
                 bysec.setdefault(it["section"], []).append(it)
             self.resolutions = [self._resolve(sec, its) for sec, its in bysec.items()]
             for t in self.tiles:
-                t["wi"] = max(0.06, t["wi"] * 0.94); t["hit"] *= 0.82
+                t["wi"] = max(0.06, t["wi"] * 0.975); t["hit"] *= 0.82   # gentler decay: focused clicks accumulate to a melt
             if bysec or self.frame % 8 == 0:
                 self.signs = self._fiedler()
             self._evaluate_breach()
@@ -318,8 +318,11 @@ class Duel:
         bc = core.bethe_citadel_strain_512(beta_eff, t["wi"] * VORT, NF, NG, vorticity=VORT, chi=chi0)
         shear_wins = shear_eff > anneal_eff * ANNEAL_GAIN
         verdict, op = "STABLE_GLASS", "none"
-        if shear_wins and bc["dS_cit"] < 0 and bc["survivable_by_material"]:
-            ns, w = enact_phase_change_515(t["stalk"], beta_eff, t["wi"] * VORT, NF, NG, vorticity=VORT, mode="minimal")
+        if shear_wins and bc["dS_cit"] < 0:
+            # survivable breach -> graceful graded melt; UNsurvivable (too much shear) -> shatter (total melt).
+            # (was: unsurvivable did nothing, so a too-strong shot silently no-op'd -> the "clicks do nothing" bug.)
+            _mode = "minimal" if bc["survivable_by_material"] else "total"
+            ns, w = enact_phase_change_515(t["stalk"], beta_eff, t["wi"] * VORT, NF, NG, vorticity=VORT, mode=_mode)
             if w["status"] == "melted":
                 t["stalk"] = np.asarray(ns, float); verdict, op = "NET_MELT", "Geodesic_Melt_515"
         elif (not shear_wins) and chi0 > 0.30:

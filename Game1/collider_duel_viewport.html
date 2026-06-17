@@ -30,7 +30,7 @@
   #pulseWrap{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);width:min(38vw,330px);text-align:center}
   #pulseBar{height:7px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#06090e;position:relative}
   #pulseFill{position:absolute;inset:0;width:0;background:linear-gradient(90deg,#0b2230,var(--phos));opacity:.6}
-  #hint{font-size:10px;color:var(--ink2);margin-top:5px}
+  #hint{font-size:12px;color:var(--ink);margin-top:6px;max-width:min(92vw,640px);line-height:1.5}
   #recv{position:absolute;right:13px;bottom:12px;text-align:right;font-size:11px;line-height:1.5;text-shadow:0 0 8px #000}
   #recv .big{font-size:13px;font-weight:700}
   #conn{position:absolute;top:34px;right:13px;font-size:10px;color:var(--ink3)}
@@ -77,7 +77,7 @@
     </div>
     <div id="recv"></div>
     <div id="pulseWrap"><div id="pulseBar"><div id="pulseFill"></div></div>
-      <div id="hint">MOVE: WASD · AIM: mouse · SHEAR: click/Space · ANNEAL: right-click/E</div></div>
+      <div id="hint"><b style="color:var(--amber)">GOAL:</b> melt the tiles around the ENEMY circle to fluid to breach it. <b>CLICK</b> = drill (hold on ONE tile) · <b>E / right-click</b> = wall up · <b>WASD</b> = move · you cannot shoot through solid cover.</div></div>
   </div>
   <div id="breach"><div class="box">
     <div class="hdr">CITADEL BREACH DETECTED</div>
@@ -145,6 +145,8 @@ function draw(){
   else if(St.los_AB){var bt=St.los_AB.block,bp=cellPx(bt%GX,(bt/GX|0),b);
     cx.strokeStyle="rgba(255,180,84,0.3)";cx.lineWidth=2;cx.setLineDash([2,4]);cx.beginPath();cx.moveTo(pa[0],pa[1]);cx.lineTo(bp[0],bp[1]);cx.stroke();cx.setLineDash([]);
     cx.strokeStyle="rgba(255,70,80,.9)";cx.lineWidth=2;var r=cs*0.2;cx.beginPath();cx.moveTo(bp[0]-r,bp[1]-r);cx.lineTo(bp[0]+r,bp[1]+r);cx.moveTo(bp[0]+r,bp[1]-r);cx.lineTo(bp[0]-r,bp[1]+r);cx.stroke();}
+  if(tracer&&tracer.t>0.02){var fp=cellPx(tracer.fx,tracer.fy,b),tp2=cellPx(tracer.tx,tracer.ty,b);
+    cx.strokeStyle="rgba(255,240,200,"+tracer.t+")";cx.lineWidth=2+2*tracer.t;cx.beginPath();cx.moveTo(fp[0],fp[1]);cx.lineTo(tp2[0],tp2[1]);cx.stroke();tracer.t*=0.78;}
   // my aim lane (local prediction)
   window._aimBlocked=false;
   if(aimTile>=0){var agx=aimTile%GX,agy=(aimTile/GX|0),mp=cellPx(myPred.x,myPred.y,b),ap=cellPx(agx,agy,b),blk=losBlocked(myPred.x,myPred.y,agx,agy);
@@ -154,7 +156,8 @@ function draw(){
     cx.strokeStyle=pc?("rgb("+pc[0]+","+pc[1]+","+pc[2]+")"):meColor;cx.lineWidth=atile&&atile.critical?3:2;
     cx.beginPath();cx.arc(ap[0],ap[1],cs*0.4,0,7);cx.stroke();
     cx.beginPath();cx.moveTo(ap[0]-8,ap[1]);cx.lineTo(ap[0]+8,ap[1]);cx.moveTo(ap[0],ap[1]-8);cx.lineTo(ap[0],ap[1]+8);cx.stroke();
-    if(atile&&atile.critical){cx.strokeStyle="rgba(255,70,80,"+(0.5+0.5*Math.sin(St.frame*0.6))+")";cx.lineWidth=2;cx.beginPath();cx.arc(ap[0],ap[1],cs*0.55,0,7);cx.stroke();}}
+    if(atile&&atile.critical){cx.strokeStyle="rgba(255,70,80,"+(0.5+0.5*Math.sin(St.frame*0.6))+")";cx.lineWidth=2;cx.beginPath();cx.arc(ap[0],ap[1],cs*0.55,0,7);cx.stroke();}
+    if(blk){cx.fillStyle="rgba(255,70,80,0.95)";cx.font="bold 11px "+getComputedStyle(document.body).fontFamily;cx.textAlign="center";cx.fillText("BLOCKED - DRILL CLOSER",ap[0],ap[1]-cs*0.55);}}
 }
 function drawBody(gx,gy,c,lab,b,alive){var p=cellPx(gx,gy,b);
   cx.strokeStyle=c;cx.globalAlpha=alive?0.25:0.1;cx.lineWidth=1;cx.beginPath();cx.arc(p[0],p[1],FOCUS_R*b.cs,0,7);cx.stroke();cx.globalAlpha=1;
@@ -200,8 +203,10 @@ function hud(){
   } else ov.style.display="none";
 }
 function send(p,b){if(!LIVE)return;fetch(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).catch(function(){});}
-function fire(){if(aimTile<0||cool>0||St.round.over||!St.players[ME].alive)return;cool=3;disp[aimTile].hit=1;
-  send("/call/shear_fire",{player:ME,section:aimTile,wi:Math.abs(St.pulse)>0.78?0.10:0.08,synced:Math.abs(St.pulse)>0.78,game_stats:{p:ME,tile:aimTile}});}
+var tracer=null;
+function fire(){if(aimTile<0||cool>0||St.round.over||!St.players[ME].alive)return;cool=2;disp[aimTile].hit=1;
+  tracer={fx:myPred.x,fy:myPred.y,tx:aimTile%GX+0.5,ty:(aimTile/GX|0)+0.5,t:1};
+  send("/call/shear_fire",{player:ME,section:aimTile,wi:Math.abs(St.pulse)>0.78?0.16:0.13,synced:Math.abs(St.pulse)>0.78,game_stats:{p:ME,tile:aimTile}});}
 function anneal(){if(aimTile<0||St.round.over||!St.players[ME].alive)return;disp[aimTile].flash=0.6;
   send("/call/anneal",{player:ME,section:aimTile,synced:true,game_stats:{p:ME,tile:aimTile}});}
 
@@ -214,8 +219,8 @@ function loop(){
     aimW=worldAt(mouse.x,mouse.y);
     if(now-lastAim>90){lastAim=now;send("/aim",{player:ME,ax:aimW[0],ay:aimW[1],look_h:1.6});}
   }
-  // reconcile my predicted body gently toward the authoritative position
-  var sp=St.players[ME].pos;myPred.x+=(sp[0]-myPred.x)*0.12;myPred.y+=(sp[1]-myPred.y)*0.12;
+  var moving=(keys.w||keys.a||keys.s||keys.d||keys.arrowup||keys.arrowdown||keys.arrowleft||keys.arrowright);
+  var sp=St.players[ME].pos,kk=moving?0.18:0.4;myPred.x+=(sp[0]-myPred.x)*kk;myPred.y+=(sp[1]-myPred.y)*kk;
   if(cool>0)cool--;draw();hud();requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
