@@ -149,7 +149,7 @@ done
 PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLDS
 ```
 
-**Current verification state: 78 tests passing across 7 suites.**
+**Current verification state: 113 tests passing across 11 suites.**
 
 | Suite | Tests | Guards |
 |---|---|---|
@@ -160,6 +160,10 @@ PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLD
 | `guard_server/tests/test_isolated_pep.py` | 11 | path clamp, traversal/symlink escape, verdict binding, append-only log |
 | `integration/tests/test_integration.py` | 5 | coupled stack, separation of powers, coupled/uncoupled parity |
 | `assay/tests/test_assay.py` | 10 | recomputable metrics, attributed judgments, fudge/forgery |
+| `manifold/tests/test_manifold.py` | 9 | topology->world_H, exact connectivity/bridge gate, captured λ₂ |
+| `anti_cheat/tests/test_anti_cheat.py` | 9 | pinned visibility, occlusion gate, culling, replay/tamper |
+| `glitch/tests/test_glitch.py` | 8 | state-space explore, content-hash dedup, shrink, seal+replay |
+| `dini/tests/test_dini.py` | 9 | hyperbolic embedding sensor (captured observable, never a gate) |
 
 ### Definition of done
 
