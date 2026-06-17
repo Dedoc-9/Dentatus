@@ -1,0 +1,7 @@
+
+[chronicle] REFUSING TO RUN: PYTHONHASHSEED is not 0.
+  Deterministic, reproducible hashing is required for the replay court.
+  Re-run exactly as documented in README.md -> 'Run it':
+
+      PYTHONHASHSEED=0 python3 demo_policy.py
+

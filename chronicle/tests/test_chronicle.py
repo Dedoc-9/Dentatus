@@ -145,5 +145,21 @@ class TestStore(unittest.TestCase):
         os.remove(p)
 
 
+
+class TestFallback(unittest.TestCase):
+    def test_ed25519_missing_falls_back_to_hmac(self):
+        import signing
+        orig = signing.ed25519_available
+        signing.ed25519_available = lambda: False
+        try:
+            s = signing.make_signer({"algo": "ed25519", "secret": b"k"})
+            self.assertEqual(s.algo, "hmac-sha256")
+            with self.assertRaises(RuntimeError):
+                signing.make_signer({"algo": "ed25519"})            # no secret -> fail closed, clean error
+            with self.assertRaises(RuntimeError):
+                signing.make_signer({"algo": "ed25519", "secret": b"k"}, allow_fallback=False)
+        finally:
+            signing.ed25519_available = orig
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

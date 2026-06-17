@@ -25,6 +25,7 @@ re-signed under a stronger backend without changing its content addresses or cha
 """
 import hmac
 import hashlib
+import sys
 
 ALGO_HMAC = "hmac-sha256"
 ALGO_ED25519 = "ed25519"
@@ -141,16 +142,35 @@ class Ed25519Verifier:
 
 
 # ----------------------------------------------------------------------------- factory
-def make_signer(spec):
+def _warn(msg):
+    sys.stderr.write("[chronicle.signing] %s\n" % msg)
+
+
+def make_signer(spec, allow_fallback=True):
     """Build a signer from a small spec dict, e.g.
         {"algo": "hmac-sha256", "secret": "..."}
         {"algo": "ed25519", "private_key_hex": "..."}   (sign + verify)
         {"algo": "ed25519", "public_key_hex": "..."}    (verify only)
+
+    Graceful degradation: if Ed25519 is requested but the `cryptography` package is unavailable, and a
+    `secret` is present in the spec, this prints a gentle warning and falls back to the stdlib HMAC
+    backend rather than raising an unhandled ImportError. The warning is loud about the consequence:
+    HMAC is SYMMETRIC, so the fallback gives up third-party non-repudiation (the verifier can forge).
+    Set allow_fallback=False to require Ed25519 and fail closed instead.
     """
     algo = spec.get("algo", ALGO_HMAC)
     if algo == ALGO_HMAC:
         return HmacSigner(spec["secret"])
     if algo == ALGO_ED25519:
+        if not ed25519_available():
+            if allow_fallback and spec.get("secret") is not None:
+                _warn("Ed25519 requested but 'cryptography' is not installed; falling back to HMAC. "
+                      "NOTE: HMAC is symmetric -- the verifier can forge, so third-party "
+                      "non-repudiation is LOST. Install 'cryptography' to restore asymmetric audit.")
+                return HmacSigner(spec["secret"])
+            raise RuntimeError(
+                "Ed25519 backend requires the 'cryptography' package (pip install cryptography), and no "
+                "HMAC `secret` was provided to fall back to. Either install cryptography or pass a secret.")
         if spec.get("private_key_hex"):
             return Ed25519Signer(spec["private_key_hex"])
         if spec.get("public_key_hex"):

@@ -9,6 +9,22 @@ chronicle/demo_policy.py — end-to-end proof on a rules-based credit-eligibilit
   F. DURABLE STORE             — the same flow written through an append-only JSONL LedgerStore.
 """
 import json, copy
+import os, sys
+
+
+def _require_deterministic_hashing():
+    """Fail fast if not launched with PYTHONHASHSEED=0. Bit-identical hashes across processes/machines
+    are the whole premise of the replay court; refuse to produce a ledger under a randomized seed so a
+    user never trusts a chain they cannot reproduce. See README 'Run it'."""
+    if os.environ.get("PYTHONHASHSEED") != "0":
+        sys.stderr.write(
+            "\n[chronicle] REFUSING TO RUN: PYTHONHASHSEED is not 0.\n"
+            "  Deterministic, reproducible hashing is required for the replay court.\n"
+            "  Re-run exactly as documented in README.md -> 'Run it':\n\n"
+            "      PYTHONHASHSEED=0 python3 demo_policy.py\n\n")
+        raise SystemExit(2)
+
+
 import core
 from court import verify_chain, print_verdict
 from signing import HmacSigner, Ed25519Signer, Ed25519Verifier, ed25519_available
@@ -63,6 +79,7 @@ def fair_lending_invariant_captured(inputs, outputs):
 
 
 if __name__ == "__main__":
+    _require_deterministic_hashing()
     print("A) RECORD three live underwriting decisions (HMAC backend):")
     ledger = build_ledger(HmacSigner(SECRET))
     json.dump(ledger, open("ledger.json", "w"), indent=2)

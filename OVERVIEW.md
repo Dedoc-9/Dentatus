@@ -1,5 +1,10 @@
 # Dentatus — an honest technical overview
 
+> **Repo layout note.** The active, recommended artifact is [`chronicle/`](chronicle/README.md) — a
+> small, dependency-light verifiable decision recorder distilled from this project. The full legacy
+> Reality Engine / Citadel implementation described below now lives under [`docs/archive/`](docs/archive/);
+> run its proofs from there (`cd docs/archive` first). The separately-connected game client remains in `Game1/`.
+
 *Plain-English entry point for a technical reader. The `README.md` and `constitution/` are written in an
 in-world vocabulary ("Reality Engine," "Citadel," "manifold," "physical law"); this document is the
 de-inflated translation. Where the in-world docs and this one disagree on what the system actually
@@ -57,7 +62,7 @@ The methodology is more interesting than any feature, and the repo's history sho
   hash, so replay would drift across machines — diagnosed, fixed (frame-derived), and proven.
 - **Epistemic honesty as a hard rule** (`MCL_OBS2` witness protocol): *a chain hash certifies integrity,
   never truth.* The system refuses to emit verdict-shaped outputs and requires a falsification condition
-  before any experiment is registered. The capstone self-critique (`constitution/ANNEX_I_AXIOMATIC_
+  before any experiment is registered. The capstone self-critique (`docs/archive/constitution/ANNEX_I_AXIOMATIC_
   METABOLISM.md`) argues *against* the project's own grander claims.
 
 ## Honest scope — what it is NOT
@@ -74,13 +79,14 @@ The methodology is more interesting than any feature, and the repo's history sho
 ## How to evaluate it in ten minutes
 
 ```
+cd docs/archive                                          # legacy implementation now lives here
 PYTHONHASHSEED=0 python3 forge/oracle_fuzz.py            # 0 violations over 20k fuzzed cases
 PYTHONHASHSEED=0 python3 forge/duel_determinism_proof.py # hardware-invariant replay
 PYTHONHASHSEED=0 python3 forge/nonce_proof.py            # replay immunity
 PYTHONHASHSEED=0 python3 walkthrough_genesis.py          # end-to-end self-verifying lifecycle
 ```
 
-Then read `constitution/ANNEX_I_AXIOMATIC_METABOLISM.md` for the project's own honest verdict on what it
+Then read `docs/archive/constitution/ANNEX_I_AXIOMATIC_METABOLISM.md` for the project's own honest verdict on what it
 did and did not achieve.
 
 ## One-line summary

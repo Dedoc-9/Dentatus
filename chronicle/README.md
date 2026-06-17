@@ -18,8 +18,10 @@ and audit core, without the game/physics framing.
 
 ```
 PYTHONHASHSEED=0 python3 demo_policy.py      # end-to-end: record, verify, tamper, rule-swap, capture, store
-PYTHONHASHSEED=0 python3 tests/test_chronicle.py   # 18 unit tests
+PYTHONHASHSEED=0 python3 tests/test_chronicle.py   # 19 unit tests
 ```
+
+> `demo_policy.py` **refuses to run** without `PYTHONHASHSEED=0` and points back here: reproducible hashing across processes is the premise of the replay court.
 
 The demo prints, in order: a clean verify, a flipped denial caught as REPLAY drift, a secretly-loosened
 ruleset caught as RULESET changed, an unsafe decision refused at record time, an Ed25519 third-party
@@ -75,7 +77,7 @@ the court — so any append-only store you operate becomes a verifiable decision
 | `capture.py` | record-replay of nondeterministic reads + determinism leak-detector |
 | `store.py` | `LedgerStore` ABC, `MemoryStore`, durable `JsonlStore`, adapter sketches |
 | `demo_policy.py` | end-to-end proof on a credit-eligibility flow |
-| `tests/test_chronicle.py` | 18 unit tests covering all guarantees + hardening |
+| `tests/test_chronicle.py` | 19 unit tests covering all guarantees + hardening |
 
 ## Honest scope
 
