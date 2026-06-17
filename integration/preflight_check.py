@@ -2,7 +2,7 @@
 integration/preflight_check.py — an HONEST session preflight for the Chronicle workbench.
 
 Per AGENTS.md it does NOT relabel a determinism guard as a security verdict and it does NOT print
-"ready" without evidence. It actually RUNS the verification contract (the 7 suites + the parity proof)
+"ready" without evidence. It actually RUNS the verification contract (all suites + the parity proof)
 as subprocesses under PYTHONHASHSEED=0 and reports true results. Exit 0 only if everything actually
 passed; exit 1 otherwise. Stdlib-only.
 
@@ -30,31 +30,32 @@ SUITES = [
     "dini/tests/test_dini.py",
     "selfaudit/tests/test_selfaudit.py",
     "wobble/tests/test_wobble.py",
+    "ration/tests/test_ration.py",
+    "stride/tests/test_stride.py",
+    "pact/tests/test_pact.py",
 ]
 PARITY = "integration/parity_proof.py"
 
 
 def _run(relpath, expect_substr=None):
     """Run a script under PYTHONHASHSEED=0; return (ok, detail). We SET the seed for the child rather
-    than demanding the caller's env be 0 (that would be the cargo-cult check AGENTS.md §5 forbids)."""
+    than demanding the caller's env be 0 (that would be the cargo-cult check AGENTS.md S5 forbids)."""
     env = dict(os.environ, PYTHONHASHSEED="0")
     env.setdefault("CHRONICLE_SIGNER_PASSPHRASE", "preflight")
     try:
         p = subprocess.run([sys.executable, os.path.join(ROOT, relpath)],
-                           capture_output=True, text=True, env=env, cwd=ROOT, timeout=120)
+                           capture_output=True, text=True, env=env, cwd=ROOT, timeout=180)
     except Exception as e:
         return False, "could not run (%s)" % e
     out = p.stdout + p.stderr
     if expect_substr is not None:
-        return (expect_substr in out), ("found %r" % expect_substr if expect_substr in out else "missing %r" % expect_substr)
-    # unittest prints "OK" on success and exits 0
+        return (expect_substr in out), ("found" if expect_substr in out else "missing %r" % expect_substr)
     return (p.returncode == 0), ("rc=%d" % p.returncode)
 
 
 def preflight():
-    print("Chronicle workbench preflight — running the verification contract (not just env checks).\n")
+    print("Chronicle workbench preflight - running the verification contract (not just env checks).\n")
     if os.environ.get("PYTHONHASHSEED") != "0":
-        # informational only: we set it for children. NOT a hard fail (it is a determinism guard).
         print("  note: caller PYTHONHASHSEED != 0; setting it for the child runs.\n")
 
     results = []
@@ -70,7 +71,6 @@ def preflight():
     all_ok = all(results)
     print()
     if all_ok:
-        # status block is EMITTED only after real verification — never pasted by hand to assert state.
         print("[FOUNDRY VERIFIED]")
         print("  - %d/%d suites green; primitive parity holds (parity_proof.py)" % (len(SUITES), len(SUITES)))
         print("  - Out-of-process policy clamps + tiered hardware signer present and tested")
@@ -78,7 +78,7 @@ def preflight():
         print("    host integrity, input honesty, or decision correctness)")
         print("\nProceed with refactoring bounds secured.")
     else:
-        print("[FOUNDRY BLOCKED] one or more checks failed above. Fix the change, not the test (AGENTS.md §6).")
+        print("[FOUNDRY BLOCKED] one or more checks failed above. Fix the change, not the test (AGENTS.md S6).")
     return 0 if all_ok else 1
 
 

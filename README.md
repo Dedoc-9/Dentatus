@@ -46,6 +46,9 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`dini/`](dini/README.md) | **hyperbolic novelty compass** — embeds the execution DAG in the Poincare disk; a captured `dini_distance` sensor gives an agent novelty-seeking + drift-anomaly signals (never a gate; **dual-use** — see its README's responsible-use note) | `PYTHONHASHSEED=0 python3 demo_dini.py` |
 | [`selfaudit/`](selfaudit/README.md) | **the workbench evaluates itself** — determinism/parity/frozen-core/Sibling-Law checks sealed via `assay`, replayed by the assay court; emits a `workbench_H` baseline | `PYTHONHASHSEED=0 python3 evaluate.py` |
 | [`wobble/`](wobble/README.md) | **verifiable synthetic-gene design** — protein is the content identity (synonymous codons collapse); exact GC/homopolymer/restriction gate; CAI as a captured observable | `PYTHONHASHSEED=0 python3 demo_wobble.py` |
+| [`ration/`](ration/README.md) | **deterministic resource clamps** — gates on exact integer *logical steps* (hardware-invariant); physical CPU/memory cost is a captured observable; fail-closed `QuotaBreached` | `PYTHONHASHSEED=0 python3 demo_ration.py` |
+| [`stride/`](stride/README.md) | **epistemic state-transport** — receiver verifies its environment fingerprint exactly matches the sender (`EnvironmentMismatch` else); network telemetry captured; replay without re-transmit | `PYTHONHASHSEED=0 python3 demo_stride.py` |
+| [`pact/`](pact/README.md) | **multi-agent cross-attestation covenant** — pinned peer registry; binds each agent's state hash to the prior agent's; multi-chain audit isolates the exact deviating agent (no blockchain) | `PYTHONHASHSEED=0 python3 demo_pact.py` |
 
 All fourteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **160 unit tests across 16 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
@@ -299,6 +302,36 @@ that still passes every check, and the rollback enforces only the precommitted p
 frozen execution trail" — a **checkable floor** for computational integrity: reproducible, tamper-evident,
 provenance-complete, so reviewers stop chasing vanished reproducibility. It is a *floor, not a ceiling*: a
 bit-perfectly reproducible result can still be wrong science. Integrity is not truth.
+
+## Use case — orchestration: resource, transport, and multi-agent accountability
+
+The three newest layers extend the same primitive — *canonical bytes → content hash* — from a single
+machine onto resource budgeting, cross-machine migration, and multi-party agreements. Each keeps the
+exact-gate / captured-observable split and states its bound.
+
+**Hardware-invariant resource budgets (`ration/`).** OS timeouts and cgroups key off the system clock, so
+an autonomous loop or a `glitch/` fuzzer fails on a slow box and passes on a fast one — breaking
+reproducibility. `ration` gates on **exact integer logical steps** (iterations, tokens, mutations, nodes)
+against a pinned ceiling; a runaway loop is refused fail-closed (`QuotaBreached`), and an audit on a
+decade-old laptop resolves the identical budget-exhaustion point as an enterprise array. Physical CPU/memory
+cost is a captured observable, never the gate. *Bound:* it stops *logical* runaway and is bit-identical
+across machines — it does **not** prevent an OS OOM-kill if the ceiling is set too loose.
+
+**Verifiable cross-machine migration (`stride/`).** Moving a deterministic computation to cloud/edge via raw
+snapshots leaks environment drift — a different library or arch forks the replayed path. `stride` makes the
+receiver verify its **environment fingerprint exactly matches the sender's** (e.g. `selfaudit`'s
+`workbench_H`) before accepting any state; a single byte of drift raises `EnvironmentMismatch` and the
+inbound path refuses to start. Network telemetry is captured, so a post-migration audit replays from the
+record without reopening a socket. *Bound:* proves *structural* environment identity and exact recorded
+inputs — **not** transport security (wrap TLS externally) and **not** that the remote hardware is honest.
+
+**Multi-agent accountability without a blockchain (`pact/`).** When independent agents or companies exchange
+state, a malicious party can inject corruption that's impossible to attribute. `pact` has each agent verify
+its peer against a **pinned registry** and sign a cross-attestation binding its new state hash to the
+prior agent's — so a later injection or rule breach is isolatable to the **exact agent and link**, even when
+that agent holds a legitimate key. *Bound:* non-repudiation **under the pinned-key assumption** and forensic
+attribution; it does **not** force a peer to be honest, and there is no broadcast or consensus — a breach is
+self-evident to anyone who verifies with the pinned keys, not "to the whole network." Not a blockchain.
 
 ## The boundary that runs through everything — and one level up
 
