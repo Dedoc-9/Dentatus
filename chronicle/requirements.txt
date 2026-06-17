@@ -1,0 +1,3 @@
+# Core library is stdlib-only — nothing required to record/verify with HMAC.
+# Optional: asymmetric (Ed25519) attestation for third-party audit without forge power.
+cryptography>=42.0  ; extra == "ed25519"
