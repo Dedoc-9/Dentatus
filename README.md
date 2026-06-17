@@ -83,7 +83,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The eighteen components
+## The nineteen components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -105,10 +105,11 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`lockstep/`](lockstep/README.md) | **what becomes truth at frame rates** — decouples an integer, content-addressed truth-tick stream from the render rate; 240fps frames are exact interpolated *observables*, never gated; revert-to-last-valid-hash rollback converges clients | `PYTHONHASHSEED=0 python3 demo_lockstep.py` |
 | [`syracuse/`](syracuse/README.md) | **Collatz map as integrity≠truth** — pure-integer orbits, content-addressed and replayable; verify any trajectory exactly, refuse the conjecture structurally; a hardware-invariant reference workload for `ration`/`lockstep` | `PYTHONHASHSEED=0 python3 demo_syracuse.py` |
 | [`tessera/`](tessera/README.md) | **portable replayable proof shard** — `{seed, rule, path_hash}` a stranger replays offline to confirm a deterministic computation's exact process history; trustless replay, signed authorship, immutable lineage, exact divergence locator | `PYTHONHASHSEED=0 python3 demo_tessera.py` |
+| [`crucible/`](crucible/README.md) | **reverse-Collatz adversary** — grows the pre-image tree upward to forge deterministic hard seeds (stopping time = reverse depth) and fires them at `ration`/`tessera`; controlled chaos, no RNG; content-addressed difficulty manifest | `PYTHONHASHSEED=0 python3 demo_crucible.py` |
 
-All eighteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **217 unit tests across 20 suites**
+All nineteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **227 unit tests across 21 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15, tessera 12) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15, tessera 12, crucible 10) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 
