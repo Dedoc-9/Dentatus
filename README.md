@@ -191,6 +191,59 @@ does not discharge the reviewer's own judgment about whether those rules were th
 decision stays human. (`assay/` can record *that* judgment too, signed and attributed, but still does not
 make it true.)
 
+## Compliance mapping — evidence toward, not "satisfaction of"
+
+**This workbench does not "satisfy" SOC 2 or the EU AI Act, and any claim that code *instantly* does is
+false.** SOC 2 Type II is an opinion a licensed CPA firm issues about an *organization's* controls operating
+over a months-long period; the EU AI Act is a legal regime (risk management, data governance, technical
+documentation, human oversight, conformity assessment) whose high-risk obligations reach full application on
+**2 August 2026**. Code is, at most, *one technical control* contributing *evidence* toward specific
+requirements. And `integrity ≠ truth`: a tamper-evident ledger proves the record is honest and reproducible,
+**not** that the underlying decision complied with anything. With that stated plainly, here is the honest map.
+
+### SOC 2 — Processing Integrity (PI1.1–PI1.5)
+
+| Criterion (what it asks) | Evidence this workbench provides | What it does **not** cover |
+|---|---|---|
+| **PI1.1** processing requirements are defined | `ruleset_hash` binds the exact decision/invariant **source** into every receipt — "correct processing" is pinned and provable | writing/approving the business requirements themselves |
+| **PI1.2** inputs are complete & valid | fail-closed invariants + the PEP's pinned policy reject malformed/out-of-policy inputs at the commit boundary | upstream data-quality / source-of-record controls |
+| **PI1.3** processing is accurate; errors caught | the Replay Court re-derives each decision bit-for-bit; any drift/tamper fails at the exact step | correctness of the logic *itself* (integrity ≠ truth) |
+| **PI1.4** output is delivered to the right place intact | signed, hash-chained receipts; third-party (Ed25519) verification of output integrity | transport/delivery infrastructure, access control |
+| **PI1.5** records & logs retained and protected | append-only `JsonlStore` (fsync'd) + WORM adapter sketches; hardware/Ed25519 attestation resists tampering | a durable retention *policy*, backups, the production WORM store, key management |
+
+Auditors trace the *full lifecycle* of transactions and look for a tamper-evident record of every event —
+which is precisely what the ledger + Replay Court produce as evidence. They still need the observation
+period, change management, access control, monitoring, and the auditor's opinion; none of those are code.
+
+### EU AI Act — Article 12 (record-keeping / automatic logging / traceability)
+
+Article 12 requires high-risk systems to **automatically record events over their lifetime**, with
+traceability appropriate to purpose, supporting risk identification, post-market monitoring, and operation
+monitoring. The workbench's ledger is a strong fit for that *logging* obligation:
+
+| Article 12 asks for | Evidence this workbench provides |
+|---|---|
+| automatic, lifetime event logging | every state transition is recorded as a signed, hash-chained receipt |
+| tamper-evident, retrievable records | content-addressed chain; the Replay Court detects any post-hoc edit |
+| traceability to operation & changes | `ruleset_hash`/`policy_hash` version-bind the logic in force at each event |
+| (biometric systems) period of use, inputs, persons involved | capture these as recorded inputs via the capture seam |
+
+**It addresses the Article 12 *slice* only.** The Act also requires risk management (Art. 9), data
+governance (Art. 10), technical documentation (Art. 11), transparency (Art. 13), human oversight (Art. 14),
+accuracy/robustness (Art. 15), and a conformity assessment. This is record-keeping infrastructure, not
+conformity.
+
+### Non-claims (read before quoting any of the above)
+
+- **Not a certification, not an attestation, not legal advice.** No SOC 2 report or AI Act conformity is
+  conferred by running this code.
+- **Nothing is "instant" or automatic.** Both frameworks require organizational process, an audit/assessment,
+  and (for SOC 2 Type II) an observation period.
+- **Integrity is not truth.** A perfectly sealed, replayable receipt can record a *non-compliant* decision.
+  This proves the record's honesty, not the decision's compliance.
+- **Verify the specifics yourself.** Criteria and article numbers/dates above are summarized from public
+  sources (linked below) as of mid-2026; confirm against the authoritative texts with your auditor/counsel.
+
 ## The boundary that runs through everything — and one level up
 
 **Integrity is not truth.** chronicle / llm_toolkit / guard_server / integration prove a record is
