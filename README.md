@@ -1,12 +1,25 @@
 # Dentatus/Chronicle — a verifiable-computation workbench
 
-A set of small, deterministic, content-addressed components for making consequential automated decisions
-**auditable and reproducible by construction** — then for auditing the *audits themselves*. Stdlib-only
-cores; optional `cryptography` for asymmetric attestation. One idea runs through all of it: a tiny
-deterministic core (canonical bytes → content hash), plus one discipline — **capture nondeterminism at
-the boundary, never fake it away.** Everything else (replay court, signed verdicts, policy enforcement,
-quality assessment) is that idea wearing different hats. Philosophy: *build for extraction, not just
-execution.*
+A set of small, deterministic, content-addressed components that make consequential automated decisions
+**auditable and reproducible by construction** — and then audit the *audits themselves*. The cores are
+standard-library only; `cryptography` is an optional add-on for asymmetric (Ed25519) attestation, never a
+hard dependency of a core path.
+
+The whole workbench reduces to **one idea and one discipline**. The idea: a tiny deterministic core —
+*canonical bytes → SHA-256 content hash* — so a record's identity *is* its content and cannot be changed
+without changing its address. The discipline: **capture nondeterminism at the boundary, never fake it
+away** — clocks, RNGs, GPU float drift, model calls, and external reads are recorded as inputs at write
+time and replayed at audit time, so a workflow re-runs bit-for-bit on any machine. Everything else — the
+replay court, signed verdicts, out-of-process policy enforcement, the quality meta-audit, topology gates,
+match forensics — is that one idea wearing a different hat.
+
+Two principles keep it honest. *Build for extraction, not just execution:* every component is decoupled
+enough to lift out and stand alone (a parity proof guarantees it). And *integrity is not truth:* these
+tools prove a record is unforged, exactly reproducible, and rule-faithful — never that the underlying
+decision was correct, fair, or wise.
+
+**Author:** Daniel J. Dillberg · **Contact:** [bigdilly95@gmail.com](mailto:bigdilly95@gmail.com)
+**License:** dual-licensed (AGPL-3.0 open track / commercial closed track) — see [`DUAL_LICENSE.md`](DUAL_LICENSE.md).
 
 ## Start here
 
