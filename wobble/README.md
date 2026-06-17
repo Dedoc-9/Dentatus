@@ -69,6 +69,47 @@ third-party-verifiable *record* of a genetic design — proof that a design was 
 a precommitted policy, and exactly reproducible from the moment it was conceived. It does **not** predict
 biological truth or substitute for biosecurity screening. A clean record is the floor, not the ceiling.
 
+## Use-case deep dive — a verifiable floor for the reproducibility crisis (synthetic biology)
+
+Synthetic-biology and biophysics results are notoriously hard to reproduce: a codon-optimization run,
+an mRNA-folding score, or a designed construct rarely re-derives bit-for-bit on a peer's machine —
+hardware differences, silent float reassociation across library updates, and missing provenance trails get
+in the way. `wobble/` attacks the **computational-reproducibility** half of that problem for gene design.
+It does **not** address the other half — whether the construct actually works in a cell (see the boundary
+below). Keeping those two apart is the whole point.
+
+**1. Hard biochemistry vs. fluid hypotheses, kept separate.** In ordinary design scripts the non-negotiable
+constraints (the genetic code itself, GC limits, restriction-site bans) sit tangled with speculative,
+re-parameterized models (expression curves, folding energies), so a model tweak silently breaks a hard
+rule. `wobble/` forces the split: the **exact gate** is the translation table + GC clamp + homopolymer
+limit + restriction-site scan + protein identity, in pure integer/string logic; the **captured
+observable** is the model-dependent metric (CAI today against a *pinned* table; mRNA ΔG tomorrow). A
+researcher can swap or re-tune the speculative model freely and never risk a silent breach of a
+foundational invariant — and the record always shows *which* model produced a number.
+
+**2. A forensics court for computational peer review.** A reviewer handed a paper + a messy repo cannot
+tell whether a published construct came from *that exact optimizer on those exact inputs*, or was nudged
+afterward to look cleaner. Here every design transition — chosen codons, the optimizer's id/seed/usage
+table, the rule version — is locked into a content-addressed hash chain, optionally hardware-signed. The
+reviewer drops the public receipt into the Replay Court (`court.py`): it re-runs the design bit-for-bit,
+confirms the rules did not change mid-run (`source_hash`), and shows the published sequence is the exact,
+untampered consequence of the *recorded* inputs. *Bound:* it proves the **design computation** is
+reproducible and unaltered — not that the sequence expresses, folds, or is correct.
+
+**3. High-velocity AI co-piloting under regression control.** A lab can hand an LLM agent a long leash to
+aggressively mutate wobble positions and chase a translation-efficiency target at speed, because the
+host-side gate fails closed — a forced homopolymer run, a GC-clamp breach, or an accidental EcoRI site is
+caught, logged, and rolled back the instant the agent tries to commit — and `selfaudit` separately proves
+the workbench's own cores haven't drifted against the pinned `workbench_H` baseline. *Bound:* the gate
+refuses exactly what the precommitted predicate encodes (not unsafety you never wrote down, and **not**
+anything a biosecurity screen would catch — see the responsible-use note); `selfaudit` catches core drift
+and suite regressions, not a logic bug in new code that still passes every check.
+
+**The honest leap.** This shifts a *digital* genetic claim from "trust our methods text" to "verify our
+frozen design trail" — a checkable floor for design integrity: reproducible, tamper-evident,
+provenance-complete, third-party-verifiable (with Ed25519). It is a **floor, not a ceiling**: a
+bit-perfectly reproducible design can still fail in vitro. Integrity is not biological truth.
+
 ## Honest boundary (integrity ≠ biological truth)
 
 This proves a design record is **unforged, functionally reproducible, and rule-faithful to a precommitted
