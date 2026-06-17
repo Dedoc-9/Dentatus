@@ -31,7 +31,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The eleven components
+## The fourteen components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -47,9 +47,9 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`selfaudit/`](selfaudit/README.md) | **the workbench evaluates itself** — determinism/parity/frozen-core/Sibling-Law checks sealed via `assay`, replayed by the assay court; emits a `workbench_H` baseline | `PYTHONHASHSEED=0 python3 evaluate.py` |
 | [`wobble/`](wobble/README.md) | **verifiable synthetic-gene design** — protein is the content identity (synonymous codons collapse); exact GC/homopolymer/restriction gate; CAI as a captured observable | `PYTHONHASHSEED=0 python3 demo_wobble.py` |
 
-All eleven refuse to run without `PYTHONHASHSEED=0`. Test suites total **139 unit tests across 13 suites**
+All fourteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **160 unit tests across 16 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 
