@@ -104,6 +104,10 @@ These are the load-bearing design decisions a reader (or future maintainer) woul
   deployment is making the decision logic deterministic; the capture seams lower that cost but do not
   remove it.
 
+## Contributing / editing this repo
+
+Read [`AGENTS.md`](AGENTS.md) first — the system-context & handoff contract every change must honor (determinism, privilege-PEP, integrity≠truth, stdlib core + tiered crypto, the 78-test verification contract).
+
 ## Background / lineage
 
 Distilled from **Dentatus** (the "Reality Engine"). For an honest, de-inflated account of that project,
