@@ -31,6 +31,38 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 All five refuse to run without `PYTHONHASHSEED=0`. Test suites total **62 unit tests** (chronicle 19,
 llm_toolkit 18, guard_server 10, integration 5, assay 10).
 
+## Three structural guarantees an LLM or agent framework can't give you alone
+
+A model and a standard agent framework, by themselves, can't provide these — not because they're badly
+built, but because the guarantees live *outside* the model, at the host boundary.
+
+**1. Host-enforced, fail-closed invariants.** Standard LLM safety is *soft*: prompt rules or an auxiliary
+classifier that a jailbreak, token fragmentation, or an exploit can route around. Here, safety is
+host-side Python checked at the ledger's commit boundary. If a generation would breach a precommitted
+rule — leak PII, escape an allow-listed folder, exceed a budget ceiling — the state machine **refuses to
+commit and rolls back** (`InvariantViolation` / `TransitionRefused`), and the out-of-process PEP only
+hands back signed, action-bound tickets the agent cannot forge. The model can hallucinate freely; it has
+no *authority to commit* an action the gate rejects. (Honest bound: the gate catches exactly what the
+precommitted predicate encodes — not unsafety you never wrote down.)
+
+**2. Forensic replay over model drift.** A deployed agent is non-deterministic: an upstream vendor model
+swap, an API-latency shift, or GPU float reassociation can make Monday's working prompt fail on Friday,
+and ordinary logs only tell you *that* it failed. `capture.py` freezes the boundary — exact prompt, system
+context, seed, token logprobs, generated strings — into the ledger. The Replay Court then re-runs the
+whole workflow against that frozen telemetry, **without touching the live API or GPU**, so you debug agent
+loops line-by-line with bit-perfect reproducibility. (The key move: you replay the *captured output*, so
+you never need the model itself to be deterministic — which it isn't.)
+
+**3. Non-repudiable, asymmetric audit trails.** Application logs (Splunk, Datadog, a database table) are
+editable by an insider or a malicious local process covering its tracks. Here, every state transition is
+linked into a SHA-256 hash chain sealed by a pluggable signer. With a **Tier 1 hardware token** (TPM /
+YubiKey via PKCS#11) the private key never enters your program's memory at all; with **Tier 2** software
+Ed25519 it is encrypted at rest and in RAM only during the signing call. Either way a jailbroken agent
+cannot harvest the key to forge its own history, and a third party can verify the chain with only the
+**public** key — turning passive text logs into independently checkable proofs. (Honest bound: this proves
+the record was not altered after capture — not that the captured action was honest; see §3 of
+[`AGENTS.md`](AGENTS.md) on the single-host capture-path limit. Integrity is not truth.)
+
 ## The boundary that runs through everything — and one level up
 
 **Integrity is not truth.** chronicle / llm_toolkit / guard_server / integration prove a record is
