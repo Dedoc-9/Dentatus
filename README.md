@@ -26,6 +26,50 @@ have not drifted, so your review shifts from line-by-line diff-reading to the on
 cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
 its checks cover, not arbitrary badness — integrity is not truth.)
 
+### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
+
+Deploying Sibling 13 (`quorum/`) alongside `pact/` composes a **2D attestation lattice** for an untrusted
+LLM runtime. The **lateral** axis is multi-witness agreement at a tick `t` (k-of-n independently-keyed
+nodes must produce the *same* exact 256-bit state hash); the **temporal** axis is covenant continuity
+across `t → t+1` (`pact` binds each round's certified state to the prior). An action is admissible only if
+it survives **both** axes — reproduces a local invariant *vertically* and matches independent witnesses
+*horizontally* — or it is refused fail-closed. This is **bounded authority, not a "cage":** it does not
+make a model safe; it strips a single jailbroken or hallucinating instance of the power to act alone. Four
+classes of leverage follow for an enterprise putting an agent behind real authority:
+
+- **Containment of autonomous financial/operational agents.** To force an unauthorized action (a B2B wire,
+  an infra mutation, a record update), an attacker must *both* jailbreak the local model *and* get ≥k
+  independent, separately-keyed witnesses to agree on the same malicious hash in the same round. A local
+  invariant breach fails vertically; a cross-instance divergence fails laterally. (Honest bound: if the
+  witnesses are not actually independent — same operator, shared image — the protection collapses toward a
+  single node; independence is a *trust input*, not a proven property.)
+
+- **Catching the silent-hallucination / drift exploit.** Because the tally is exact integer counting with
+  no float epsilon, agreement is binary (`h_i == h_j` or not). Run N independently-seeded paths — or
+  *different* models (e.g. node 1 Claude, node 2 another vendor, node 3 a local GGUF) — as witnesses; if one
+  suffers a reasoning slip or a float-reassociation drift, its hash forks from the majority and the lattice
+  isolates the exact node and input and refuses the commit (rollback = decline to adopt) before it reaches a
+  production store. (Honest bound: this catches divergence *among* witnesses, not an error they all share.)
+
+- **Tamper-evidence against insider/log tampering.** Every state change sits in a grid where rows need a
+  k-quorum of independent signatures and columns need unbroken `pact` covenant. A rogue admin with root can
+  still *destroy* data, but cannot silently *rewrite history* undetectably: altering one byte breaks the
+  cross-attested chain, and a third party holding only the pinned public keys can verify the whole 2D trail.
+  This is **tamper-evident, not tamper-proof**, and **verifiable under the pinned-key assumption** — not
+  "100% certainty," and never proof the decision itself was right.
+
+- **Ghost radar — early warning of systemic model drift.** Rather than discard the outvoted minority,
+  `quorum` keeps it as a dissent *ghost* and `ghost.py` accumulates it across rounds into a slow pressure
+  `S_{t+1} = αS_t + (1−α)g_t`. When an upstream vendor quietly ships a weight update, honest nodes begin
+  registering dissenting hashes and `S_t` rises — a measurable drift signal before a hard failure. (Honest
+  bound: `S_t` is a *sensor, never a gate*; a rising ghost flags disagreement, not which side is correct.)
+
+The operating posture this enables: let the LLM generate and orchestrate at maximum velocity while the
+lattice — not your attention — holds the containment boundary, so you and the model spend review on whether
+the logic is *right* rather than on diffing for hidden regressions. The standing caveat survives intact:
+consensus is a stronger, fully-attributable claim than a single integrity — and still **not truth** (a
+colluding ≥k majority agrees on a falsehood just as cleanly).
+
 **Author:** Daniel J. Dillberg · **Contact:** [bigdilly95@gmail.com](mailto:bigdilly95@gmail.com)
 **License:** dual-licensed (AGPL-3.0 open track / commercial closed track) — see [`DUAL_LICENSE.md`](DUAL_LICENSE.md).
 
@@ -59,9 +103,9 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`pact/`](pact/README.md) | **multi-agent cross-attestation covenant** — pinned peer registry; binds each agent's state hash to the prior agent's; multi-chain audit isolates the exact deviating agent (no blockchain) | `PYTHONHASHSEED=0 python3 demo_pact.py` |
 | [`quorum/`](quorum/README.md) | **exact integer consensus** — k-of-n independently-keyed witnesses must agree on the same content hash; equivocation caught, dissent kept as a ghost; `lattice.py` binds it to `pact` into a 2D (lateral×temporal) attestation lattice | `PYTHONHASHSEED=0 python3 demo_quorum.py` |
 
-All fifteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **173 unit tests across 17 suites**
+All fifteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **177 unit tests across 17 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 13) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 

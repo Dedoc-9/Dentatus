@@ -4,6 +4,7 @@ _Q = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _Q)
 import tally as Q
 import lattice as L
+import ghost as G
 
 WS = ["w1", "w2", "w3", "w4"]
 
@@ -105,6 +106,41 @@ class Lattice(unittest.TestCase):
                   ("1", votes(self.s, "1", {"w1": {"a": 1}, "w2": {"a": 2}, "w3": {"a": 3}, "w4": {"a": 4}}))]
         r = L.evaluate(rounds, 3, self.reg, "notary", self.notary, self.preg, monotonic)
         self.assertFalse(r["ok"]); self.assertEqual(r["fault"]["axis"], "lateral")
+
+
+
+class Ghost(unittest.TestCase):
+    def setUp(self):
+        self.s, self.reg = setup()
+
+    def _cert(self, rid, states, k=3):
+        return Q.tally(votes(self.s, rid, states), k, self.reg, rid)
+
+    def test_unanimous_keeps_pressure_low(self):
+        acc = G.GhostAccumulator(alpha=0.9)
+        for r in range(5):
+            acc.update(self._cert(r, {w: {"x": 1} for w in WS}))
+        self.assertEqual(acc.pressure(), 0.0)                 # no dissent -> S stays 0
+
+    def test_persistent_dissent_raises_pressure(self):
+        acc = G.GhostAccumulator(alpha=0.5)
+        s_prev = 0.0
+        for r in range(6):                                    # w4 forks every round (divergence 0.25)
+            s = acc.update(self._cert(r, {"w1": {"x": 1}, "w2": {"x": 1}, "w3": {"x": 1}, "w4": {"x": 9}}))
+            self.assertGreaterEqual(s, s_prev); s_prev = s    # monotonic rise toward 0.25
+        self.assertGreater(acc.pressure(), 0.0)
+        self.assertTrue(acc.spiking(0.1))
+
+    def test_pressure_never_gates(self):
+        # the certificate certifies on the integer count regardless of accumulated pressure
+        acc = G.GhostAccumulator(alpha=0.5)
+        c = self._cert(0, {"w1": {"x": 1}, "w2": {"x": 1}, "w3": {"x": 1}, "w4": {"x": 9}})
+        acc.update(c)
+        self.assertTrue(c["certified"])                       # 3/4 >= k even as S rises
+
+    def test_alpha_bounds(self):
+        with self.assertRaises(ValueError):
+            G.GhostAccumulator(alpha=1.0)
 
 
 if __name__ == "__main__":

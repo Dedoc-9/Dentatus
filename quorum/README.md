@@ -30,7 +30,7 @@ chosen parameter, named as such, never an inherent limit.
 
 ```
 PYTHONHASHSEED=0 python3 demo_quorum.py            # tally cases A–E + the 2D lattice F
-PYTHONHASHSEED=0 python3 tests/test_quorum.py      # 13 unit tests
+PYTHONHASHSEED=0 python3 tests/test_quorum.py      # 17 unit tests
 ```
 
 ## The tally (lateral axis)
@@ -60,6 +60,8 @@ vector, so `G_t` is the part of the vote that does not lie in the agreed subspac
 (localizing the fork), accumulable as a dissent ratio `divergence = |G|/n`, and **never allowed to flip a
 certificate** — a lone honest dissenter may be the only correct one when the majority colludes, so dissent is
 preserved, not discarded. This is `integrity ≠ truth` applied recursively: **consensus is not truth either.**
+
+`ghost.py` is the only place the residual *persists* across rounds, as an EMA `S_{t+1} = αS_t + (1−α)g_t` over the per-round divergence ratio `g_t`. `S_t` is a pure **drift-pressure** observable — a slow rise when honest, outvoted witnesses begin disagreeing more often (e.g. a quiet upstream model-weight update forking one node). It is a sensor, never a gate, and it never says *which* side is correct.
 
 ### Pure observables
 
@@ -118,5 +120,6 @@ and still **not truth**.
 |---|---|
 | `tally.py` | witnesses, pinned registry, signed votes, the exact integer tally, equivocation, ghost, observables, certificate hash |
 | `lattice.py` | composes `quorum` (lateral) with `pact` (temporal) into the 2D attestation lattice |
+| `ghost.py` | EMA accumulator that persists the per-round dissent ratio as a slow `S_t` drift-pressure observable (never a gate) |
 | `demo_quorum.py` | cases A–E (tally) + F (lattice happy / lateral fault / temporal fault) |
-| `tests/test_quorum.py` | 13 unit tests |
+| `tests/test_quorum.py` | 17 unit tests (tally, lattice, ghost) |

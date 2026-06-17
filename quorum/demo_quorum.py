@@ -15,6 +15,7 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tally as Q
 import lattice as L
+import ghost as G
 
 WS = ["w1", "w2", "w3", "w4"]
 
@@ -85,6 +86,20 @@ def main():
     res = L.evaluate(badtmp, 3, reg, "notary", notary, preg, monotonic)
     print("   temporal fault: ok=%s  axis=%s (round index regressed; covenant rule broke)" % (res["ok"], res["fault"]["axis"]))
     print("\n   Two orthogonal residuals — lateral dissent and temporal break — never collapsed into one number.")
+
+    print("\nG) GHOST RADAR: persistent dissent pressure S_t (EMA of the per-round divergence)")
+    acc = G.GhostAccumulator(alpha=0.6)
+    print("   unanimous rounds -> S stays flat:")
+    for r in range(3):
+        s = acc.update(Q.tally(votes(signers, r, {w: {"v": 1} for w in WS}), 3, reg, r))
+        print("     round %d  g_t=0.00  S=%.3f" % (r, s))
+    print("   one node now forks every round (a quiet model drift) -> S climbs as honest dissent registers:")
+    for r in range(3, 8):
+        c = Q.tally(votes(signers, r, {"w1": {"v": 1}, "w2": {"v": 1}, "w3": {"v": 1}, "w4": {"v": 2}}), 3, reg, r)
+        s = acc.update(c)
+        print("     round %d  g_t=%.2f  S=%.3f  certified=%s%s" %
+              (r, c["observables"]["divergence"], s, c["certified"], "   <-- alert" if acc.spiking(0.2) else ""))
+    print("   S_t is a sensor, never a gate: every round still certified on the exact integer count.")
 
 
 if __name__ == "__main__":
