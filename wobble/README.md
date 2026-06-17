@@ -30,6 +30,45 @@ The demo seals a valid `MAGE` design, **refuses** four breaches fail-closed (GC 
 homopolymer, an EcoRI site, and a protein that doesn't match the target), and the Replay Court reproduces
 the sealed design bit-for-bit — **without re-simulating any biology**.
 
+## What's genuinely new here (and what isn't)
+
+Content-addressing, deterministic replay, and out-of-process privilege separation are **not** new in
+computer science. What's new is *transferring that exact discipline onto biological sequence design*, where
+the status quo treats DNA/RNA as flat text in a database and codon optimization as a loosely-logged,
+non-deterministic generation task. `wobble/` upends that on three vectors — each with its honest bound.
+
+**1. Functional identity vs. volatile representation.** Standard bioinformatics fingerprints a gene by its
+*nucleotide* hash. But the code is degenerate: many distinct nucleotide strings translate to the identical
+protein. `wobble/` content-addresses the **protein** (`functional_hash` over the exact amino-acid
+translation), so synonymous third-base "wobble" mutations collapse to one identity while the codon choice
+is cleanly isolated as a recorded, volatile representation. *Bound:* this is primary-structure identity —
+same hash ≠ same biology (codon choice still affects translation/folding), which is exactly why the choice
+is recorded, not erased.
+
+**2. The exact-gate / captured-observable split, applied to biology.** Biophysics tooling suffers model
+drift: mRNA-folding (ΔG) and translation-efficiency models get re-parameterized, so historical simulations
+stop reproducing. `wobble/` splits the pipeline — the **diamond-hard gate** is only the *exactly* computable
+string/integer rules (GC clamp, homopolymer limit, restriction-site match, protein identity), fail-closed
+and host-side; the **model-dependent metrics** (CAI today, ΔG tomorrow) are computed at the boundary and
+captured into the ledger inputs. *Result:* the Replay Court never re-simulates an unstable biological model
+during an audit — it reads the frozen metrics from the record, so verification is bit-identical on any
+machine. *Bound:* it verifies the *design trail*, not the biology; a captured CAI is only as meaningful as
+its pinned table.
+
+**3. Machine-checkable governance for automated gene editors.** As LLM agents design sequences at speed, a
+reviewer cannot eyeball thousands of bases for a forbidden restriction site or a GC breach. `wobble/` moves
+that to a signed, precommitted predicate at the ledger boundary: an agent that mutates wobble positions to
+chase a metric but trips a homopolymer run or a GC clamp gets an immediate `InvariantViolation` and a
+rollback. *Bound:* the gate refuses **exactly what the precommitted predicate encodes** — not unsafety you
+never wrote down, and not anything a biosecurity screen would catch (see the responsible-use note). The
+agent cannot *commit* a design the gate rejects; that is enforcement of a declared policy, not a claim of
+biological safety.
+
+**The modest baseline.** Net: `wobble/` offers a tamper-evident, reproducible, and (with Ed25519)
+third-party-verifiable *record* of a genetic design — proof that a design was untampered, rule-faithful to
+a precommitted policy, and exactly reproducible from the moment it was conceived. It does **not** predict
+biological truth or substitute for biosecurity screening. A clean record is the floor, not the ceiling.
+
 ## Honest boundary (integrity ≠ biological truth)
 
 This proves a design record is **unforged, functionally reproducible, and rule-faithful to a precommitted
