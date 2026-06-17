@@ -245,6 +245,50 @@ session on a regression, and only because it actually ran (not because a banner 
 way the attention tax drops on everything the checks cover, and your review goes where a machine cannot
 certify: whether the new logic is actually *right*.
 
+### Use case — streamlining the project itself (beyond a single coding loop)
+
+The same primitives that secure one decision also remove whole categories of project overhead. Each item
+states the leverage *and* its bound — the point is throughput you can actually trust, not a faster way to be
+wrong (§3).
+
+1. **One replayable gate instead of a CI matrix (`integration/preflight_check.py` + `parity_proof.py`).**
+   The preflight *is* the definition of done: it runs all 18 suites + the coupled/uncoupled parity proof as
+   subprocesses under `PYTHONHASHSEED=0` and names the exact failing suite/file. You stop maintaining a
+   sprawling pipeline and a pile of green-banner screenshots. *Bound:* it asserts what the suites assert —
+   no regressions + frozen cores + lawful structure — not that uncovered new logic is correct.
+
+2. **Parallel exploration with exact dedup (`quorum/` + `glitch/`).** Fan an LLM (or several) across N
+   branches of a design space, content-address each candidate's resulting state, and let `quorum`'s exact
+   integer tally collapse the ones that truly converge while isolating the genuine forks — redundant work is
+   identified mechanically instead of by re-reading every diff. *Bound:* agreement is on exact hashes, not
+   semantic equivalence; two correct-but-differently-canonicalized outputs read as divergent (and a
+   colluding-style shared bug agrees just as cleanly — consensus ≠ truth).
+
+3. **Hardware-invariant budgets & benchmarks (`ration/` + `stride/` + `lockstep/`).** `ration` gates on
+   exact integer *logical steps*, so a runaway loop or a benchmark passes/fails identically on a decade-old
+   laptop and an enterprise array; `stride` refuses a migrated computation whose environment fingerprint
+   doesn't match; `lockstep` decouples the truth-tick from wall-clock so timing variance never changes the
+   outcome. Reproducible perf work without a reference machine. *Bound:* logical determinism, not physical
+   cost — it won't stop an OS OOM-kill or model real latency; those stay captured observables.
+
+4. **Multi-model arbitration to shrink review (`quorum/`).** Route a refactor or a decision through several
+   independently-seeded paths or different vendors as witnesses, commit only on quorum agreement, and let the
+   dashboard surface the rounds that forked. Review shifts from "read every diff" to "look only where the
+   models disagreed." *Bound:* catches divergence *among* witnesses, not an error they all share; the gate is
+   agreement, not correctness.
+
+5. **Audit-ready by construction for regulated work (`chronicle/` + `assay/` + `pact/`).** Because every
+   consequential decision is recorded, replayable, and signed as it runs, the audit trail is a *byproduct of
+   execution*, not a separate documentation phase bolted on before a review. `assay` makes the quality
+   judgments themselves recomputable; `pact` attributes multi-party steps to the exact agent. *Bound:*
+   evidence *toward* a standard (SOC 2 / EU AI Act traceability), not *satisfaction* of it; integrity ≠ truth.
+
+6. **Real-time/game projects get determinism up front, not retrofitted (`lockstep/` + `anti_cheat/`).**
+   Separating the integer truth-tick from the render rate at the start means netcode rollback, bit-exact
+   replay, and server-authoritative anti-cheat all read one authoritative stream — you never rebuild
+   determinism after the fact when 1440p/240fps presentation and a 120 Hz simulation have to agree. *Bound:*
+   `lockstep` is the reconciliation core, not a GPU renderer; it produces the stream a render thread consumes.
+
 ### The velocity equation — why this accelerates an LLM project
 
 The point of the 14-component workbench is to move the bottleneck from human code-review to automated
