@@ -126,6 +126,8 @@ not reduce to those two things, it probably does not belong.
 - Reading a clock / RNG / network inside state logic instead of via the capture seam.
 - Claiming a record proves a decision is correct/fair/safe. It proves integrity, not truth.
 - "Improving" determinism by hand-rolling crypto or collapsing the dual (coupled/uncoupled) representations.
+- Reporting a change as *done* — or emitting any green/`[FOUNDRY]` status — without actually running
+  `integration/preflight_check.py`. A status you did not earn by running is integrity-theater.
 
 ---
 
@@ -156,6 +158,19 @@ PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLD
 | `integration/tests/test_integration.py` | 5 | coupled stack, separation of powers, coupled/uncoupled parity |
 | `assay/tests/test_assay.py` | 10 | recomputable metrics, attributed judgments, fudge/forgery |
 
+### Definition of done
+
+A change is not complete until **all three** hold — anything less is not "done":
+
+1. `integration/preflight_check.py` prints `[FOUNDRY VERIFIED]` (it actually ran the 7 suites + parity).
+2. A **Verification Record** is produced for review — the copy-paste template, run triggers, and reject
+   criteria live in `README.md` -> *"Using this in a project"*. Hand a reviewer only **public** material
+   (ledger + public key + hashes); never a private key or HMAC secret.
+3. Any `ruleset_hash` / `policy_hash` / `guardrail_hash` that changed is a **deliberate, documented**
+   version bump (editing rule/guard source invalidates prior attestations — see §4 `source_hash`).
+
+Do not state "done" or paste a green status you did not earn by running the contract.
+
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
 wrong by definition here — fix the change, not the test.
 
@@ -166,6 +181,7 @@ wrong by definition here — fix the change, not the test.
 ```
 ACK: deterministic-capture=enforced  privilege-pep=required  integrity!=truth=acknowledged
      stdlib-core=required  crypto=optional-tiered  parity=must-hold  fail-closed=required
+     done=preflight-green+verification-record  status=earned-not-pasted
 ```
 
 Proceed under these constraints.
