@@ -78,6 +78,7 @@ the court — so any append-only store you operate becomes a verifiable decision
 | `store.py` | `LedgerStore` ABC, `MemoryStore`, durable `JsonlStore`, adapter sketches |
 | `demo_policy.py` | end-to-end proof on a credit-eligibility flow |
 | `tests/test_chronicle.py` | 19 unit tests covering all guarantees + hardening |
+| `RELATED_WORK.md` | honest prior-art / provenance — what chronicle borrows, and its non-claims |
 
 ## Honest scope
 

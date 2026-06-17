@@ -58,6 +58,7 @@ The legacy game client lives in [`Game1/`](Game1/), a separately-connected folde
 | [`chronicle/`](chronicle/README.md) | **active** — verifiable decision recorder (library + CLI + tests) |
 | [`OVERVIEW.md`](OVERVIEW.md) | honest technical overview of the Dentatus lineage |
 | [`docs/archive/`](docs/archive/) | archived Reality Engine / Citadel implementation + experiment runners |
+| [`docs/LESSONS.md`](docs/LESSONS.md) | design retrospective — what the Dentatus→chronicle arc taught |
 | `Game1/` | archived game client (separately-connected folder) |
 | `LICENSE`, `DUAL_LICENSE.md` | licensing |
 
