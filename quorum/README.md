@@ -123,3 +123,4 @@ and still **not truth**.
 | `ghost.py` | EMA accumulator that persists the per-round dissent ratio as a slow `S_t` drift-pressure observable (never a gate) |
 | `demo_quorum.py` | cases A–E (tally) + F (lattice happy / lateral fault / temporal fault) |
 | `tests/test_quorum.py` | 17 unit tests (tally, lattice, ghost) |
+| `THREAT_MODEL.md` | trust assumptions + adversary ladder; what the lattice + guard_server resist (and what compels them, incl. the Fable 5 sovereign-intervention class) |
