@@ -21,7 +21,7 @@ decision was correct, fair, or wise.
 In practice this changes your role on an AI project. Treat the LLM as a high-velocity but untrusted
 *engine* and the frozen cores as a rigid *chassis*: it generates fast while the workbench — not your
 attention — tracks determinism, structural purity, privilege isolation, and resource budgets.
-`integration/preflight_check.py` runs the whole 16-suite contract and `selfaudit/` proves the cores
+`integration/preflight_check.py` runs the whole 17-suite contract and `selfaudit/` proves the cores
 have not drifted, so your review shifts from line-by-line diff-reading to the one thing a machine
 cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
 its checks cover, not arbitrary badness — integrity is not truth.)
@@ -39,7 +39,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The fourteen components
+## The fifteen components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -48,7 +48,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`guard_server/`](guard_server/README.md) | a localhost **Policy Enforcement Point** — server-pinned policy + signing key behind a boundary the agent calls but cannot weaken; returns signed, request-bound verdicts | `PYTHONHASHSEED=0 python3 demo_guard_server.py` |
 | [`integration/`](integration/README.md) | the **coupled full stack** — capture + PEP + ledger, with a separation-of-powers proof, plus a coupled-vs-uncoupled parity proof | `PYTHONHASHSEED=0 python3 demo_integration.py` |
 | [`assay/`](assay/README.md) | the **meta-audit layer** — makes "correct / fair / wise" judgments first-class, recomputable (metrics) or attributable (signed opinions), tamper-evident | `PYTHONHASHSEED=0 python3 demo_assay.py` |
-| [`manifold/`](manifold/README.md) | **topology-gated commits** — state as a graph; the diamond-hard gate is *exact* connectivity/bridges, the Fiedler λ₂ spectrum is a *captured* margin (never in the hash) | `PYTHONHASHSEED=0 python3 demo_manifold.py` |
+| [`manifold/`](manifold/README.md) | **topology-gated commits** — state as a graph; the commit gate is *exact* connectivity/bridges, the Fiedler λ₂ spectrum is a *captured* margin (never in the hash) | `PYTHONHASHSEED=0 python3 demo_manifold.py` |
 | [`anti_cheat/`](anti_cheat/README.md) | **server-authoritative match forensics** — exact occlusion gate refuses impossible (wallbang/teleport) hits; culling defeats wallhacks; sealed, replayable ticks | `PYTHONHASHSEED=0 python3 demo_anti_cheat.py` |
 | [`glitch/`](glitch/README.md) | **deterministic state-space explorer** — finds latent sequence-dependent invariant bugs; dedups states by content hash; shrinks to a minimal, signed, replayable counterexample | `PYTHONHASHSEED=0 python3 demo_glitch.py` |
 | [`dini/`](dini/README.md) | **hyperbolic novelty compass** — embeds the execution DAG in the Poincare disk; a captured `dini_distance` sensor gives an agent novelty-seeking + drift-anomaly signals (never a gate; **dual-use** — see its README's responsible-use note) | `PYTHONHASHSEED=0 python3 demo_dini.py` |
@@ -57,10 +57,11 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`ration/`](ration/README.md) | **deterministic resource clamps** — gates on exact integer *logical steps* (hardware-invariant); physical CPU/memory cost is a captured observable; fail-closed `QuotaBreached` | `PYTHONHASHSEED=0 python3 demo_ration.py` |
 | [`stride/`](stride/README.md) | **epistemic state-transport** — receiver verifies its environment fingerprint exactly matches the sender (`EnvironmentMismatch` else); network telemetry captured; replay without re-transmit | `PYTHONHASHSEED=0 python3 demo_stride.py` |
 | [`pact/`](pact/README.md) | **multi-agent cross-attestation covenant** — pinned peer registry; binds each agent's state hash to the prior agent's; multi-chain audit isolates the exact deviating agent (no blockchain) | `PYTHONHASHSEED=0 python3 demo_pact.py` |
+| [`quorum/`](quorum/README.md) | **exact integer consensus** — k-of-n independently-keyed witnesses must agree on the same content hash; equivocation caught, dissent kept as a ghost; `lattice.py` binds it to `pact` into a 2D (lateral×temporal) attestation lattice | `PYTHONHASHSEED=0 python3 demo_quorum.py` |
 
-All fourteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **160 unit tests across 16 suites**
+All fifteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **173 unit tests across 17 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 13) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 
@@ -313,9 +314,9 @@ bit-perfectly reproducible result can still be wrong science. Integrity is not t
 
 ## Use case — orchestration: resource, transport, and multi-agent accountability
 
-The three newest layers extend the same primitive — *canonical bytes → content hash* — from a single
-machine onto resource budgeting, cross-machine migration, and multi-party agreements. Each keeps the
-exact-gate / captured-observable split and states its bound.
+These layers extend the same primitive — *canonical bytes → content hash* — from a single machine onto
+resource budgeting, cross-machine migration, multi-party agreements, and multi-witness agreement. Each
+keeps the exact-gate / captured-observable split and states its bound.
 
 **Hardware-invariant resource budgets (`ration/`).** OS timeouts and cgroups key off the system clock, so
 an autonomous loop or a `glitch/` fuzzer fails on a slow box and passes on a fast one — breaking
@@ -341,6 +342,18 @@ that agent holds a legitimate key. *Bound:* non-repudiation **under the pinned-k
 attribution; it does **not** force a peer to be honest, and there is no broadcast or consensus — a breach is
 self-evident to anyone who verifies with the pinned keys, not "to the whole network." Not a blockchain.
 
+**Multi-witness agreement — operational truth from many integrities (`quorum/`).** A single verified ledger
+is honest but possibly *wrong*; nothing in it can catch an honest-but-mistaken or singly-compromised node,
+because integrity-alone has no second opinion. `quorum` defines operational truth as the exact state hash
+on which a **k-of-n quorum of independently-keyed, integrity-holding witnesses coincide** — exact integer
+consensus on 256-bit hashes (no epsilon, so no arbitrary tolerance; the only declared cut is the threshold
+`k`). Equivocation (a witness double-signing one round) is caught and named; the dissenting minority is
+kept as a recorded *ghost*, never allowed to flip a certificate. `lattice.py` composes it with `pact` into
+a 2D attestation lattice: each round must reach quorum (lateral) **and** the certified rounds must form an
+unbroken covenant (temporal), with the two faults reported on separate axes. *Bound:* a quorum tally, not
+asynchronous BFT (no leader, no liveness under partition); witness independence is a trust input, not
+proven (no Sybil defense); a colluding ≥k majority certifies a falsehood — consensus is not truth either.
+
 ## The boundary that runs through everything — and one level up
 
 **Integrity is not truth.** chronicle / llm_toolkit / guard_server / integration prove a record is
@@ -348,4 +361,14 @@ self-evident to anyone who verifies with the pinned keys, not "to the whole netw
 under a pinned policy*. They do **not** claim the underlying decision was correct, fair, or wise.
 
 `assay` then applies the same discipline to the *judgments about* those decisions. It still does not
-certify truth — it makes a quality judgment a fir
+certify truth — it makes a quality judgment a first-class, recomputable (metrics) or attributable (signed
+opinion) artifact, so a claim of "correct / fair / wise" is itself auditable, not asserted.
+
+`quorum` is the **other half of that boundary**. `integrity ⊬ truth` is one clause — a lone verified
+record is honest and can still be wrong. `quorum` supplies the complementary clause that defines the
+truth you *can* operate on: `Truth_op := the exact hash on which a k-quorum of independent integrities
+coincide`. The two only close together — integrity is necessary per-witness; operational truth is the
+emergent agreement across witnesses. It is **analytic** (the coincidence *is* the truth), not correspondent
+(it is never checked against an external world), and it is honest about its ceiling: a colluding majority
+agrees on a falsehood just as cleanly. Consensus is a stronger, fully-attributable claim than integrity —
+and still not truth.
