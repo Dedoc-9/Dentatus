@@ -1,0 +1,57 @@
+# wobble — verifiable synthetic-gene design (codon degeneracy as a data structure)
+
+A Sibling-Law component: it imports the frozen [`chronicle`](../chronicle/README.md) core read-only and
+treats the genetic translation pipeline as a deterministic state machine. Strip the biology to the data
+structure and one fact does the work: the genetic code is **degenerate** — synonymous codons (often
+differing only at the 3rd "wobble" base) translate to the same amino acid (GGT/GGC/GGA/GGG → Glycine). So
+the **protein is the content-addressable functional identity; the nucleotide string is the volatile
+representation.**
+
+## Run it
+
+```bash
+PYTHONHASHSEED=0 python3 demo_wobble.py        # functional identity, exact structural gate, capture+replay
+PYTHONHASHSEED=0 python3 tests/test_wobble.py  # 15 tests
+```
+
+## What it does — the exact / observable split
+
+| Layer | What | Where it runs |
+|---|---|---|
+| **Functional identity** (`canonical_codon.py`) | `functional_hash` = hash of the translated protein; synonymous sequences collapse to one hash, a non-synonymous change forks it (NCBI standard code, exact table lookup) | the commit hash (deterministic) |
+| **Diamond-hard gate** (`wobble_capture.py`) | **exact** structural rules: GC-content clamp, homopolymer-run limit, forbidden restriction sites, protein-match | the precommitted invariant (fail-closed) |
+| **Biophysical observable** | **CAI** (Codon Adaptation Index) vs a *pinned* codon-usage table — exact given the table, but the table is a parameter, not ground truth; mRNA folding ΔG / expression curves would also be captured here | a captured observable, **never** the gate, **never** in the hash |
+
+The genuinely non-deterministic thing is the **design choice** — which synonymous codons a model picked.
+That choice is recorded as input with its provenance (`design_provenance`: model id, usage table, seed),
+exactly as `llm_toolkit` records a model call. Once the codons are fixed, every metric is exact.
+
+The demo seals a valid `MAGE` design, **refuses** four breaches fail-closed (GC > 60 %, a 6-base
+homopolymer, an EcoRI site, and a protein that doesn't match the target), and the Replay Court reproduces
+the sealed design bit-for-bit — **without re-simulating any biology**.
+
+## Honest boundary (integrity ≠ biological truth)
+
+This proves a design record is **unforged, functionally reproducible, and rule-faithful to a precommitted
+structural policy.** It does **not** prove the gene will express in a living cell, that the policy captures
+real biology, or that the CAI table is accurate. Crucially, **same functional hash ≠ same biology** —
+synonymous codon choice still affects translation efficiency and folding, which is *why* codon choice is
+recorded rather than erased.
+
+## ⚠️ Biosecurity & responsible use
+
+This is gene-design bookkeeping (translate, GC, homopolymer, restriction-site scan, content-addressing) —
+**not** a biosecurity screen, hazard classifier, or biocontainment control, and it makes no judgment about
+whether a sequence is safe to synthesize. Use it only for authorized work on benign sequences. Legitimate
+synthesis runs through providers that screen orders against controlled-/select-agent sequence databases
+and applicable export-control and biosafety law; this module neither performs nor replaces that screening.
+Capability is not permission.
+
+## Files
+
+| File | Role |
+|---|---|
+| `canonical_codon.py` | NCBI standard code, exact `translate`, `functional_hash` (protein = identity), `synonymous` |
+| `wobble_capture.py` | exact `gc_content`/`max_homopolymer_run`/`restriction_sites`, CAI observable, design provenance |
+| `demo_wobble.py` | functional identity + exact gate + capture/seal/replay |
+| `tests/test_wobble.py` | 15 tests: genetic code, metrics, gated design (seal + every breach refused), tamper |

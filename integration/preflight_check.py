@@ -29,6 +29,7 @@ SUITES = [
     "glitch/tests/test_glitch.py",
     "dini/tests/test_dini.py",
     "selfaudit/tests/test_selfaudit.py",
+    "wobble/tests/test_wobble.py",
 ]
 PARITY = "integration/parity_proof.py"
 
