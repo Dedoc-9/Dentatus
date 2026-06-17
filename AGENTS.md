@@ -286,6 +286,32 @@ frozen cores are the chassis, the preflight is the gate. The honest version of t
 real: this removes the attention tax on everything the checks cover. It is *not* "the code is correct" —
 integrity is not truth (§3).
 
+### The foundry at a glance
+
+```
+[ THE CHRONICLE FOUNDRY WORKBENCH ]
+   |
+   |-- chronicle/      --> [CORE 1] Immutable ledger, Replay Court, tiered signers (TPM/Ed25519/HMAC)
+   |-- llm_toolkit/    --> [CORE 2] Deterministic orchestration & API capture seams
+   |
+   |-- guard_server/   --> Sibling 1:  OS-level privilege-isolation PEP server
+   |-- integration/    --> Sibling 2:  Stack interop, master preflight, coupled/uncoupled parity proof
+   |-- assay/          --> Sibling 3:  Meta-audit quality review (recomputable metrics + signed opinions)
+   |-- manifold/       --> Sibling 4:  Topological connectivity gate (exact union-find / bridges)
+   |-- anti_cheat/     --> Sibling 5:  Server-authoritative match flight-log (occlusion gate + culling)
+   |-- glitch/         --> Sibling 6:  Deterministic state-space fuzzer (content-hash dedup + shrinking)
+   |-- dini/           --> Sibling 7:  Hyperbolic coverage compass (Poincare/Mobius) -- sensor, dual-use
+   |-- selfaudit/      --> Sibling 8:  Reflexive drift & parity detector (pinned workbench_H baseline)
+   |-- wobble/         --> Sibling 9:  Verifiable synthetic-gene structural design log
+   |-- ration/         --> Sibling 10: Integer-based complexity resource budgeting (hardware-invariant)
+   |-- stride/         --> Sibling 11: Environment-isolated cross-boundary state transport
+   `-- pact/           --> Sibling 12: Cross-attested multi-agent forensic covenant engine
+```
+
+Cores are frozen; the twelve siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps the
+two cores honest against a pinned baseline; `integration/preflight_check.py` runs all sixteen suites + the
+parity proof as the one gate.
+
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
 wrong by definition here — fix the change, not the test.
 
