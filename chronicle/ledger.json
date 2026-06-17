@@ -1,0 +1,62 @@
+[
+  {
+    "frame": {
+      "seq": 0,
+      "decision_id": "DEC-001",
+      "inputs": {
+        "monthly_debt": 1500,
+        "monthly_income": 6000,
+        "credit_score": 710
+      },
+      "outputs": {
+        "approved": true,
+        "dti": 0.25
+      },
+      "ruleset_hash": "cab7551c92fedde7",
+      "prev": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "state_hash": "4c34c5c4353b82e1df9c4e4cb6cd639bb19b79c10c5b2034014e815a7b908cf7",
+    "committed_hash": "59eb8ebc4d77c763e4c5f23121958a89d234fcd6765fb650b23fa47cc6da3fa1",
+    "signature": "0ee72a7027960845849b986b8ced0d3e6915a98c86cb0f3a50491d9650debbf5"
+  },
+  {
+    "frame": {
+      "seq": 1,
+      "decision_id": "DEC-002",
+      "inputs": {
+        "monthly_debt": 3000,
+        "monthly_income": 5000,
+        "credit_score": 680
+      },
+      "outputs": {
+        "approved": false,
+        "dti": 0.6
+      },
+      "ruleset_hash": "cab7551c92fedde7",
+      "prev": "59eb8ebc4d77c763e4c5f23121958a89d234fcd6765fb650b23fa47cc6da3fa1"
+    },
+    "state_hash": "c8ea4b050cb636245cb5b4b9cebb588b640a02590c78602582e0671f89af1762",
+    "committed_hash": "a3007b277a0e39918823417011b7ba9cd3f47f9bfb2e37dcae4996f047dac4ae",
+    "signature": "c8bc9d0c23e60880f1fc4d4b5933a55ee0e5edcfe83385690a9a6c4e1e877a41"
+  },
+  {
+    "frame": {
+      "seq": 2,
+      "decision_id": "DEC-003",
+      "inputs": {
+        "monthly_debt": 2000,
+        "monthly_income": 5200,
+        "credit_score": 600
+      },
+      "outputs": {
+        "approved": false,
+        "dti": 0.3846
+      },
+      "ruleset_hash": "cab7551c92fedde7",
+      "prev": "a3007b277a0e39918823417011b7ba9cd3f47f9bfb2e37dcae4996f047dac4ae"
+    },
+    "state_hash": "4a03899c13056a9dad9fb883cb218fca98e1b08af541f4b228b8345f041d3805",
+    "committed_hash": "17825065e3f9b317f16673b77e66847431f37bb4a2bbb5926af17d34111aed64",
+    "signature": "ae6e111c76c250425ebcc430b06b8b85b9b8276c3e510ab0783bb1e1d3664bfb"
+  }
+]
