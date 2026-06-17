@@ -91,6 +91,9 @@ not reduce to those two things, it probably does not belong.
 - **Build for extraction, not just execution.** Keep modules decoupled. Core
   logic is **standard-library only**; `cryptography` is an *optional* enhancement
   (asymmetric attestation), never a hard import in a core path.
+- **Sibling Law:** add capability as a NEW sibling component that imports the frozen cores read-only;
+  never edit a core to add a feature. A new component is "in" only when its suite passes, it is in
+  `integration/preflight_check.py`, and the cores' tests + `parity_proof.py` still pass. (See README -> *The Sibling Law*.)
 - `chronicle/` and `llm_toolkit/` deliberately **vendor** their own copy of the
   primitives so each lifts out as a standalone repo. That duplication is
   intentional; [`integration/parity_proof.py`](integration/parity_proof.py) is

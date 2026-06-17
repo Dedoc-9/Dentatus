@@ -18,7 +18,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The five components
+## The six components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -27,9 +27,31 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`guard_server/`](guard_server/README.md) | a localhost **Policy Enforcement Point** — server-pinned policy + signing key behind a boundary the agent calls but cannot weaken; returns signed, request-bound verdicts | `PYTHONHASHSEED=0 python3 demo_guard_server.py` |
 | [`integration/`](integration/README.md) | the **coupled full stack** — capture + PEP + ledger, with a separation-of-powers proof, plus a coupled-vs-uncoupled parity proof | `PYTHONHASHSEED=0 python3 demo_integration.py` |
 | [`assay/`](assay/README.md) | the **meta-audit layer** — makes "correct / fair / wise" judgments first-class, recomputable (metrics) or attributable (signed opinions), tamper-evident | `PYTHONHASHSEED=0 python3 demo_assay.py` |
+| [`manifold/`](manifold/README.md) | **topology-gated commits** — state as a graph; the diamond-hard gate is *exact* connectivity/bridges, the Fiedler λ₂ spectrum is a *captured* margin (never in the hash) | `PYTHONHASHSEED=0 python3 demo_manifold.py` |
 
-All five refuse to run without `PYTHONHASHSEED=0`. Test suites total **62 unit tests** (chronicle 19,
-llm_toolkit 18, guard_server 10, integration 5, assay 10).
+All six refuse to run without `PYTHONHASHSEED=0`. Test suites total **87 unit tests across 8 suites**
+(chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
+manifold 9) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+
+## The Sibling Law — how the workbench grows
+
+The cores (`chronicle`, `llm_toolkit`) are **frozen**. New capability is never added by editing them; it
+is added as a **new sibling component** that *imports* the frozen primitives read-only — exactly how
+`guard_server`, `integration`, `assay`, and `manifold` were built. The rule:
+
+1. **Never edit a frozen core to add a feature.** If you need new behavior, add a sibling that composes the
+   existing `sign()/verify()`, canonicalization, capture seam, and recorder. (`chronicle` and `llm_toolkit`
+   each vendor their own primitives so they stay independently extractable; siblings import them.)
+2. **A new component is "in" only when** its own test suite passes, it is added to
+   `integration/preflight_check.py`, and the cores' tests + `parity_proof.py` still pass unchanged. A core
+   whose hashes shifted means you edited something you shouldn't have.
+3. **Determinism boundary holds at the seam.** Anything nondeterministic a new component introduces (a
+   float eigensolver, a clock, a model call) goes through the capture seam or is computed with exact
+   arithmetic — never into the commit hash. (`manifold` is the worked example: the *gate* is exact integer
+   topology; the Fiedler λ₂ *spectrum* is a captured observable.)
+
+This is "build for extraction, not just execution" stated as a growth rule: the tool stays a closed,
+immutable instrument while the workbench around it keeps gaining purpose-built parts.
 
 ## Three structural guarantees an LLM or agent framework can't give you alone
 
@@ -261,6 +283,7 @@ read [`OVERVIEW.md`](OVERVIEW.md); for the design discipline behind the whole ar
 | [`guard_server/`](guard_server/README.md) | **active** — localhost Policy Enforcement Point |
 | [`integration/`](integration/README.md) | **active** — coupled full stack + parity proof |
 | [`assay/`](assay/README.md) | **active** — meta-audit layer for correct/fair/wise |
+| [`manifold/`](manifold/README.md) | **active** — topology-gated commits (exact gate + captured spectral margin) |
 | [`OVERVIEW.md`](OVERVIEW.md) | honest technical overview of the Dentatus lineage |
 | [`docs/LESSONS.md`](docs/LESSONS.md) | design retrospective (Dentatus → chronicle) |
 | [`docs/archive/`](docs/archive/) | archived Reality Engine / Citadel implementation |

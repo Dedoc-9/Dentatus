@@ -24,6 +24,7 @@ SUITES = [
     "guard_server/tests/test_isolated_pep.py",
     "integration/tests/test_integration.py",
     "assay/tests/test_assay.py",
+    "manifold/tests/test_manifold.py",
 ]
 PARITY = "integration/parity_proof.py"
 
