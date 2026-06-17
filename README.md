@@ -261,6 +261,45 @@ conformity.
 - **Verify the specifics yourself.** Criteria and article numbers/dates above are summarized from public
   sources (linked below) as of mid-2026; confirm against the authoritative texts with your auditor/counsel.
 
+## Use case — a verifiable floor for the reproducibility crisis
+
+Across computational science — biophysics, climate, ML — a published result is rarely bit-for-bit
+reproducible by an external peer: hardware differences, silent float reassociation across library updates,
+and missing provenance make it hard to even *re-run* a computation, let alone audit it. The workbench
+attacks the **computational-reproducibility** half of that crisis directly. It does **not** address the
+other half — whether the finding is *true* (see the boundary below); these are different problems and
+conflating them is the mistake to avoid.
+
+**1. Hard laws vs. fluid hypotheses, kept separate.** Physical invariants (mass/charge balance, integer
+stoichiometry, topological connectivity, an exact translation table) get tangled with speculative empirical
+models in ordinary scripts, so a model tweak silently breaks an invariant. The **exact-gate / captured-
+observable split** forces them apart: *gates* are the non-negotiable laws in exact integer/string logic
+(`manifold` connectivity, `wobble` translation); *observables* are the model-dependent metrics frozen at
+the boundary. A researcher can re-parameterize a speculative model freely without ever risking a silent
+breach of a foundational invariant — the gate is unyielding, and *which* model produced a number stays on
+the record.
+
+**2. A forensics court for computational peer review.** Today a reviewer gets a PDF and a link to a messy
+repo, and cannot tell whether a figure came from *that exact code on those exact inputs* or was nudged
+afterward. Here every transition, seed, and rule version is locked into a content-addressed hash chain,
+optionally sealed by a hardware signer. A reviewer drops the public receipt into the Replay Court
+(`court.py`): it re-runs the workflow bit-for-bit, confirms the rules did not change mid-run (`source_hash`),
+and shows the published output is the exact, untampered consequence of the *recorded* inputs. *Bound:* this
+proves the **computation** is reproducible and unaltered — not that the model, assumptions, or conclusion
+are *correct*.
+
+**3. High-velocity AI co-piloting under regression control.** A lab can hand an LLM agent a long leash to
+mutate sequences or run optimization loops fast, because `selfaudit` continuously proves the workbench's own
+structural laws against a pinned `workbench_H` baseline and the host-side gates fail closed: a one-character
+serialization drift or a breached biochemistry constraint is caught, logged, and rolled back. *Bound:*
+`selfaudit` catches **core drift** plus the suite's regressions; it does not catch a logic bug in new code
+that still passes every check, and the rollback enforces only the precommitted predicate.
+
+**The honest leap.** This shifts a digital scientific claim from "trust our methods text" to "verify our
+frozen execution trail" — a **checkable floor** for computational integrity: reproducible, tamper-evident,
+provenance-complete, so reviewers stop chasing vanished reproducibility. It is a *floor, not a ceiling*: a
+bit-perfectly reproducible result can still be wrong science. Integrity is not truth.
+
 ## The boundary that runs through everything — and one level up
 
 **Integrity is not truth.** chronicle / llm_toolkit / guard_server / integration prove a record is
