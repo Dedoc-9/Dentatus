@@ -34,6 +34,7 @@ SUITES = [
     "stride/tests/test_stride.py",
     "pact/tests/test_pact.py",
     "quorum/tests/test_quorum.py",
+    "lockstep/tests/test_lockstep.py",
 ]
 PARITY = "integration/parity_proof.py"
 
