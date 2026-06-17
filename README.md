@@ -18,6 +18,14 @@ enough to lift out and stand alone (a parity proof guarantees it). And *integrit
 tools prove a record is unforged, exactly reproducible, and rule-faithful — never that the underlying
 decision was correct, fair, or wise.
 
+In practice this changes your role on an AI project. Treat the LLM as a high-velocity but untrusted
+*engine* and the frozen cores as a rigid *chassis*: it generates fast while the workbench — not your
+attention — tracks determinism, structural purity, privilege isolation, and resource budgets.
+`integration/preflight_check.py` runs the whole 16-suite contract and `selfaudit/` proves the cores
+have not drifted, so your review shifts from line-by-line diff-reading to the one thing a machine
+cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
+its checks cover, not arbitrary badness — integrity is not truth.)
+
 **Author:** Daniel J. Dillberg · **Contact:** [bigdilly95@gmail.com](mailto:bigdilly95@gmail.com)
 **License:** dual-licensed (AGPL-3.0 open track / commercial closed track) — see [`DUAL_LICENSE.md`](DUAL_LICENSE.md).
 
@@ -340,57 +348,4 @@ self-evident to anyone who verifies with the pinned keys, not "to the whole netw
 under a pinned policy*. They do **not** claim the underlying decision was correct, fair, or wise.
 
 `assay` then applies the same discipline to the *judgments about* those decisions. It still does not
-certify truth — it makes a quality judgment a first-class, signed, (for metrics) recomputable record. You
-cannot prove a decision was fair, but you can prove **nobody fudged the fairness report**, that a
-correctness check really ran against the stated ground truth, and that a "this was wise" verdict is
-attributable to a named reviewer under a named rubric. Integrity, all the way up.
-
-## Coupled and uncoupled — both, on purpose
-
-The workbench deliberately shows both architectural styles and proves they are interchangeable. The
-dependency edges:
-
-```
-chronicle      (standalone — vendors its own primitives)
-llm_toolkit     (standalone — vendors its own primitives)
-guard_server  → llm_toolkit
-integration   → llm_toolkit, guard_server
-assay         → llm_toolkit
-```
-
-[`integration/parity_proof.py`](integration/parity_proof.py) runs the coupled (imported) and uncoupled
-(vendored) primitives over a battery of awkward payloads and asserts byte-identical `canonical_bytes`,
-`state_hash`, `source_hash`, and an identical Ed25519 signature: `PARITY HOLDS`. So import-vs-vendor is
-purely a packaging choice — no content address changes either way, and a test fails loudly if the two
-ever diverge.
-
-## Notes that aren't obvious from the tree
-
-These are the load-bearing design decisions a reader (or future maintainer) would otherwise trip on:
-
-- **`PYTHONHASHSEED=0` is a discipline guard, not a load-bearing dependency of the hashing.** The content
-  hashes use SHA-256 over `sort_keys` JSON, which is *not* affected by Python's randomized `hash()`. The
-  demos refuse to run without the flag on purpose — to enforce the reproducible-invocation habit and match
-  the documented run command — but chronicle's own integrity does not silently depend on it. (One real
-  exception: `llm_toolkit`'s `MockLLMClient` uses `hash()` for pseudo-generation; that only affects demo
-  *content*, never the ledger, because what gets hashed is the **captured** payload.)
-
-- **Two cores are duplicated on purpose.** `chronicle` and `llm_toolkit` each carry their own copy of the
-  canonicalization/signing primitives so either can be lifted out as an independent repo. That duplication
-  is intentional, not drift — `parity_proof.py` is the regression guard that keeps the copies identical.
-
-- **`source_hash` binds logic by its exact source text** (`inspect.getsource`). This is what proves "the
-  rules didn't change" — but it also means reformatting, renaming, or even re-commenting a decision/guard
-  function changes its hash and **invalidates prior attestations**. Treat rule functions as frozen once
-  recorded; version them deliberately.
-
-- **Float canonicalization is `format(x, ".12g")` — a 12-significant-digit floor.** Values that need more
-  precision (money, high-precision scores) should be carried as integers / fixed-point, not floats, or
-  they may canonicalize identically when they shouldn't.
-
-- **The trust boundaries depend on *pinned* keys, never on keys taken from inputs.** `guard_server`'s
-  separation-of-powers and `assay`'s anti-impersonation both work only because the verifier checks against
-  a public key pinned in config (`TRUSTED_PEP_PUBKEY`, the trusted-assessor registry). Verifying against a
-  key supplied in the payload would defeat the whole property.
-
-- **HMAC fallback silently weakens the model from asymmetric to symmetric.** If `cryptography` is absen
+certify truth — it makes a quality judgment a fir

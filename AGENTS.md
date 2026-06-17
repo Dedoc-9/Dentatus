@@ -245,6 +245,47 @@ session on a regression, and only because it actually ran (not because a banner 
 way the attention tax drops on everything the checks cover, and your review goes where a machine cannot
 certify: whether the new logic is actually *right*.
 
+### The velocity equation — why this accelerates an LLM project
+
+The point of the 14-component workbench is to move the bottleneck from human code-review to automated
+verification: you offload tracking of determinism, structural purity, privilege isolation, and resource
+budgets to the math, and spend your attention only on what a machine cannot judge. Four concrete speedups,
+each bounded:
+
+1. **Refactoring-drift detection (`selfaudit/` + `parity_proof.py`).** When an LLM optimizes or refactors,
+   it reliably introduces silent decay — changed iteration order, float/serialization drift, duplicated
+   utilities. Run the preflight: a touched frozen core mismatches the pinned `workbench_H` baseline, the
+   audit fails closed and *names the drifted file*, and parity breaks if a primitive changed. You stop
+   reading diffs for structural purity. (`dini/` gives a structural map as an observable — it is not the
+   detector; `selfaudit`/parity are.) *Bound:* catches core drift + parity + suite regressions, not a logic
+   bug in new code that still passes every check.
+
+2. **Model-drift debugging (`llm_toolkit/` + `court.py`).** An upstream vendor model swap can break Friday
+   what worked Monday; ordinary logs only say *that* it failed. `capture.py` freezes the boundary (prompt,
+   seed, logprobs); the Replay Court re-runs the workflow against the frozen telemetry **without the live
+   API/GPU**, isolating *your* logic bug from an upstream change. *Bound:* you replay the captured output —
+   it does not re-derive the model.
+
+3. **Zero-trust sandboxing (`guard_server/isolated_pep.py`).** Let an agent write/run files fast under an
+   out-of-process PEP on a separate OS user; the symlink-proof `realpath` clamp + signed action-bound
+   tickets confine it to the workspace. *Bound:* this is OS privilege separation, **not** "physically
+   barred" — it holds only if the PEP runs as a different user and the agent has no bypass path (§2/§3).
+
+4. **Fail-closed coding loops (`chronicle/` invariants).** Have the agent write a strict validity predicate
+   FIRST; if its later code produces a breaching state, the recorder refuses the write (`InvariantViolation`)
+   and the agent gets the exact error to self-correct, with rollback to the last valid hash. *Bound:* the
+   gate enforces exactly what the predicate encodes — not unsafety you never wrote down.
+
+```
+[ Traditional flow ]  Code -> manual review -> debug non-determinism -> slow deploy
+[ Workbench flow ]    Generate -> preflight (16 suites) -> replay verification -> fast deploy
+```
+
+The role-shift: you go from anxious code supervisor to systems architect — the LLM is the engine, the
+frozen cores are the chassis, the preflight is the gate. The honest version of the claim is narrow and
+real: this removes the attention tax on everything the checks cover. It is *not* "the code is correct" —
+integrity is not truth (§3).
+
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
 wrong by definition here — fix the change, not the test.
 
