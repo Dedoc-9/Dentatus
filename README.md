@@ -43,7 +43,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`manifold/`](manifold/README.md) | **topology-gated commits** — state as a graph; the diamond-hard gate is *exact* connectivity/bridges, the Fiedler λ₂ spectrum is a *captured* margin (never in the hash) | `PYTHONHASHSEED=0 python3 demo_manifold.py` |
 | [`anti_cheat/`](anti_cheat/README.md) | **server-authoritative match forensics** — exact occlusion gate refuses impossible (wallbang/teleport) hits; culling defeats wallhacks; sealed, replayable ticks | `PYTHONHASHSEED=0 python3 demo_anti_cheat.py` |
 | [`glitch/`](glitch/README.md) | **deterministic state-space explorer** — finds latent sequence-dependent invariant bugs; dedups states by content hash; shrinks to a minimal, signed, replayable counterexample | `PYTHONHASHSEED=0 python3 demo_glitch.py` |
-| [`dini/`](dini/README.md) | **hyperbolic novelty compass** — embeds the execution DAG in the Poincare disk; a captured `dini_distance` sensor gives an agent novelty-seeking + drift-anomaly signals (never a gate) | `PYTHONHASHSEED=0 python3 demo_dini.py` |
+| [`dini/`](dini/README.md) | **hyperbolic novelty compass** — embeds the execution DAG in the Poincare disk; a captured `dini_distance` sensor gives an agent novelty-seeking + drift-anomaly signals (never a gate; **dual-use** — see its README's responsible-use note) | `PYTHONHASHSEED=0 python3 demo_dini.py` |
 
 All nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **113 unit tests across 11 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,

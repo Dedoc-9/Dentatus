@@ -67,3 +67,30 @@ PYTHONHASHSEED=0 python3 tests/test_dini.py  # 9 tests
 A reading, not a verdict. It does not make the agent safer or smarter; it gives it a *direction* to steer
 by, and a number to notice when it has wandered. Pairs naturally with [`glitch/`](../glitch/README.md)
 (embed its exploration DAG to see where the search spread vs. clustered). **Integrity is not truth.**
+
+
+## Dual use & responsible use (note for security testers)
+
+Be honest about what a novelty compass is: **direction-agnostic**. The exact loop that helps a defender's
+fuzzer reach untested code — "if `dini_distance` stalls, push toward distant, unexplored branches" — is the
+same loop that would help an **autonomous exploit crawler** or an **LLM-jailbreak search** map a target's
+input/prompt space efficiently. The mathematics doesn't know whose side it's on. Flipped over, `dini/` is a
+coverage baseline for offense as readily as for defense.
+
+We state that openly instead of pretending otherwise, and we draw the line at *use*, not at the math:
+
+- **Authorized testing only.** Use it for your own systems, or under an explicit engagement (defined scope,
+  rules of engagement, written permission) — pentests, red-team exercises, defensive coverage, research.
+  Pointing a `dini`-guided crawler at systems, models, or services you do not own or are not authorized to
+  test may be illegal (e.g. computer-misuse / unauthorized-access law) and violate terms of service. That
+  is a *you* decision with real legal weight; this note is not legal advice — get authorization and counsel.
+- **No operational uplift here.** This module ships a coverage *sensor* and a navigation aid. It contains no
+  exploit payloads, no jailbreak prompts, and no logic that targets safety filters or vulnerabilities; we
+  won't add any. What you steer with the sensor is your responsibility.
+- **The accountability cuts both ways — use it.** `dini` lives on a workbench whose whole point is the
+  tamper-evident ledger. An *authorized* red-team run sealed through `chronicle` is itself auditable: every
+  probe and path is recorded, signed, and replayable, which is exactly what a clean engagement report and a
+  defensible scope boundary need. The honest move is to run offense *inside* that accountability, not around it.
+
+**Integrity is not truth, and capability is not permission.** A compass that finds a path does not grant the
+right to walk it.
