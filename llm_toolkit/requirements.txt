@@ -1,0 +1,2 @@
+# Core toolkit is stdlib-only. Optional: asymmetric (Ed25519) guardrail attestation for third-party audit.
+cryptography>=42.0  ; extra == "ed25519"

@@ -1,0 +1,5 @@
+
+[llm_toolkit] REFUSING TO RUN: PYTHONHASHSEED is not 0.
+  Reproducible hashing is required for the replay court.
+  Re-run as:  PYTHONHASHSEED=0 python3 <script>.py
+
