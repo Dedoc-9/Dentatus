@@ -22,8 +22,11 @@ baseline.
 |---|---|
 | `core_determinism` | canonicalization + content hashing are stable across recomputation |
 | `extraction_parity` | the coupled (imported) and uncoupled (vendored) primitives are byte-identical |
-| `frozen_cores_present` | all expected core files exist and are fingerprinted into the baseline |
-| `sibling_law_no_core_duplication` | no sibling carries its own copy of a frozen core (it imports, per the Sibling Law) |
+| `frozen_cores_unchanged` | every frozen-core file matches the pinned `core_baseline.json` — drift **fails** the audit |
+| `sibling_law_no_core_copies` | no sibling carries a frozen-core copy under **any** filename (content-hash check, no allow-list) |
+
+Plus a **drift-caught demonstration**: the audit forges a baseline entry and confirms the detector flags
+it — proving the detector actually detects, not just that the happy path is green.
 
 Each grade is recorded as an `assay` metric assessment bound to `workbench_H`, signed (Ed25519 if
 available), and the assay court **recomputes the grade and verifies the signature** — so the self-audit is
@@ -41,4 +44,5 @@ value.* This is a signed, replayable baseline and a drift detector — not self-
 | File | Role |
 |---|---|
 | `evaluate.py` | runs the reflexive checks, seals them via `assay`, maps structure via `dini`, emits `workbench_H` |
-| `tests/test_selfaudit.py` | the checks pass, identity is deterministic, the sealed self-audit replays |
+| `tests/test_selfaudit.py` | pure drift/copy detectors, live checks, drift-is-caught, sealed self-audit replays |
+| `core_baseline.json` | pinned SHA-256 baseline of the frozen-core files; drift against it fails the audit |

@@ -178,6 +178,32 @@ A change is not complete until **all three** hold — anything less is not "done
 
 Do not state "done" or paste a green status you did not earn by running the contract.
 
+### Use case — reflexive self-audit & core-drift detection
+
+`selfaudit/evaluate.py` is how "the cores are frozen" stops being a promise and becomes a *checkable,
+signed fact*. It turns the workbench on its own cores: it pins a SHA-256 baseline of every frozen-core
+file in `selfaudit/core_baseline.json`, grades a battery of mechanical checks (determinism, coupled/
+uncoupled parity, cores-unchanged-vs-baseline, no-core-copied-under-another-name), seals each grade as an
+`assay` metric assessment, and the assay court replays the whole report. It also runs a *drift-caught
+demonstration* (forges a baseline entry and confirms the detector flags it), so the audit proves the
+detector detects — not just that the happy path is green.
+
+Operational scenario:
+
+1. **Establish the baseline once.** `PYTHONHASHSEED=0 python3 selfaudit/evaluate.py` with no baseline
+   present writes `core_baseline.json`. Commit it. That file is now the pinned definition of "frozen".
+2. **Detect drift on every change / in CI.** Re-running compares each core file against the pinned
+   baseline; **any** change to a frozen-core file (or a frozen core copied under a new filename in a
+   sibling) makes the audit exit non-zero. This enforces §4's Sibling Law mechanically.
+3. **Intentionally changing a core is a deliberate, documented act.** On the rare occasion a frozen core
+   *must* change, re-establish the baseline (delete `core_baseline.json`, re-run, commit) and record why —
+   exactly like a deliberate `ruleset_hash` version bump (§4). An *un-documented* baseline change in a diff
+   is a red flag a reviewer should reject.
+
+Honest bound (integrity ≠ truth, inward): this proves the cores are byte-stable vs the pinned baseline and
+that the audit is reproducible — **not** that the workbench is correct, useful, or good. A system grading
+itself is not a judge of its own value.
+
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
 wrong by definition here — fix the change, not the test.
 
