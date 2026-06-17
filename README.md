@@ -63,6 +63,57 @@ cannot harvest the key to forge its own history, and a third party can verify th
 the record was not altered after capture — not that the captured action was honest; see §3 of
 [`AGENTS.md`](AGENTS.md) on the single-host capture-path limit. Integrity is not truth.)
 
+## System architecture
+
+```
+                 [ UNTRUSTED MODEL LAYER ]
+        LLM / agent — volatile, non-deterministic, jailbreak-prone
+                            |
+      prompts . tokens . logprobs . side-effects . proposed actions
+                            v   (intercepted at the boundary)
+  +----------------------------------------------------------------+
+  |                CHRONICLE HOST-ENFORCEMENT LAYER                 |
+  +----------------------------------------------------------------+
+  |  (1) FAIL-CLOSED INVARIANTS  -> guard_server/ PEP + commit gate |
+  |  (2) FORENSIC REPLAY         -> capture seam (capture.py)       |
+  |  (3) ASYMMETRIC AUDIT        -> TPM / Ed25519 SHA-256 chaining  |
+  +----------------------------------------------------------------+
+                            |  commit ONLY if the gate allows
+                            v
+            [ IMMUTABLE, SIGNED LEDGER ]  -->  assay/ meta-audit
+             chronicle . llm_toolkit            (correct / fair / wise:
+             (record + Replay Court)             recomputed or attributed)
+```
+
+`integration/` wires these layers into one coupled stack and demonstrates *separation of powers* (the
+recorder attests what happened; it cannot manufacture authorization). `parity_proof.py` proves the
+primitives extract losslessly, so any layer lifts out as a standalone component unchanged.
+
+## Launch sequence
+
+One command verifies the whole workbench before you build on it. It runs the 7 suites **and** the parity
+proof as subprocesses under `PYTHONHASHSEED=0`, and prints a green status **only if everything actually
+passed**:
+
+```bash
+python3 integration/preflight_check.py
+```
+
+On success it *emits* the status below — this is earned output from a real run, **not** a banner you paste
+by hand to assert state (asserting "78/78 green" without running it is exactly the integrity-theater this
+project refuses):
+
+```
+[FOUNDRY VERIFIED]
+  - 7/7 suites green; primitive parity holds (parity_proof.py)
+  - Out-of-process policy clamps + tiered hardware signer present and tested
+  - Cognitive modesty acknowledged: integrity != truth
+Proceed with refactoring bounds secured.
+```
+
+If any check fails it prints `[FOUNDRY BLOCKED]` and exits non-zero. The rule (AGENTS.md §6): fix the
+change, not the test.
+
 ## The boundary that runs through everything — and one level up
 
 **Integrity is not truth.** chronicle / llm_toolkit / guard_server / integration prove a record is
