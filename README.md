@@ -18,7 +18,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The six components
+## The seven components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -28,10 +28,11 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`integration/`](integration/README.md) | the **coupled full stack** — capture + PEP + ledger, with a separation-of-powers proof, plus a coupled-vs-uncoupled parity proof | `PYTHONHASHSEED=0 python3 demo_integration.py` |
 | [`assay/`](assay/README.md) | the **meta-audit layer** — makes "correct / fair / wise" judgments first-class, recomputable (metrics) or attributable (signed opinions), tamper-evident | `PYTHONHASHSEED=0 python3 demo_assay.py` |
 | [`manifold/`](manifold/README.md) | **topology-gated commits** — state as a graph; the diamond-hard gate is *exact* connectivity/bridges, the Fiedler λ₂ spectrum is a *captured* margin (never in the hash) | `PYTHONHASHSEED=0 python3 demo_manifold.py` |
+| [`anti_cheat/`](anti_cheat/README.md) | **server-authoritative match forensics** — exact occlusion gate refuses impossible (wallbang/teleport) hits; culling defeats wallhacks; sealed, replayable ticks | `PYTHONHASHSEED=0 python3 demo_anti_cheat.py` |
 
-All six refuse to run without `PYTHONHASHSEED=0`. Test suites total **87 unit tests across 8 suites**
+All seven refuse to run without `PYTHONHASHSEED=0`. Test suites total **96 unit tests across 9 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 
@@ -265,30 +266,4 @@ These are the load-bearing design decisions a reader (or future maintainer) woul
 
 ## Contributing / editing this repo
 
-Read [`AGENTS.md`](AGENTS.md) first — the system-context & handoff contract every change must honor (determinism, privilege-PEP, integrity≠truth, stdlib core + tiered crypto, the 78-test verification contract).
-
-## Background / lineage
-
-Distilled from **Dentatus** (the "Reality Engine"). For an honest, de-inflated account of that project,
-read [`OVERVIEW.md`](OVERVIEW.md); for the design discipline behind the whole arc, see
-[`docs/LESSONS.md`](docs/LESSONS.md). The full legacy implementation is archived under
-[`docs/archive/`](docs/archive/); the legacy game client is in `Game1/` (a separately-connected folder).
-
-## Repository map
-
-| Path | What it is |
-|---|---|
-| [`chronicle/`](chronicle/README.md) | **active** — verifiable decision recorder |
-| [`llm_toolkit/`](llm_toolkit/README.md) | **active** — reproducible-by-construction LLM orchestration |
-| [`guard_server/`](guard_server/README.md) | **active** — localhost Policy Enforcement Point |
-| [`integration/`](integration/README.md) | **active** — coupled full stack + parity proof |
-| [`assay/`](assay/README.md) | **active** — meta-audit layer for correct/fair/wise |
-| [`manifold/`](manifold/README.md) | **active** — topology-gated commits (exact gate + captured spectral margin) |
-| [`OVERVIEW.md`](OVERVIEW.md) | honest technical overview of the Dentatus lineage |
-| [`docs/LESSONS.md`](docs/LESSONS.md) | design retrospective (Dentatus → chronicle) |
-| [`docs/archive/`](docs/archive/) | archived Reality Engine / Citadel implementation |
-| `Game1/` | archived game client (separately-connected folder) |
-| `LICENSE`, `DUAL_LICENSE.md` | licensing |
-
-**Primary architect:** Daniel J. Dillberg — bigdilly95@gmail.com
-**License:** dual-licensed (AGPL-3.0 open track / commercial closed track) — see `DUAL_LICENSE.md`.
+Read [`AGENTS.md`](AGENTS.md) first — the system-context & handoff contract every change must honor (determinism, privilege-PEP, integrity≠truth, stdlib core + tiered cryp

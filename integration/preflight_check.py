@@ -25,6 +25,7 @@ SUITES = [
     "integration/tests/test_integration.py",
     "assay/tests/test_assay.py",
     "manifold/tests/test_manifold.py",
+    "anti_cheat/tests/test_anti_cheat.py",
 ]
 PARITY = "integration/parity_proof.py"
 
