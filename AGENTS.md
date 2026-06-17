@@ -149,7 +149,7 @@ done
 PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLDS
 ```
 
-**Current verification state: 190 tests passing across 18 suites (+ coupled/uncoupled parity proof).**
+**Current verification state: 205 tests passing across 19 suites (+ coupled/uncoupled parity proof).**
 
 | Suite | Tests | Guards |
 |---|---|---|
@@ -322,7 +322,7 @@ each bounded:
 
 ```
 [ Traditional flow ]  Code -> manual review -> debug non-determinism -> slow deploy
-[ Workbench flow ]    Generate -> preflight (18 suites) -> replay verification -> fast deploy
+[ Workbench flow ]    Generate -> preflight (19 suites) -> replay verification -> fast deploy
 ```
 
 The role-shift: you go from anxious code supervisor to systems architect — the LLM is the engine, the
@@ -351,11 +351,12 @@ integrity is not truth (§3).
    |-- stride/         --> Sibling 11: Environment-isolated cross-boundary state transport
    |-- pact/           --> Sibling 12: Cross-attested multi-agent forensic covenant engine
    |-- quorum/         --> Sibling 13: Exact integer consensus (k-of-n) + 2D pact lattice (lateral x temporal)
-   `-- lockstep/       --> Sibling 14: Truth-rate vs frame-rate reconciliation (integer ticks + rollback)
+   |-- lockstep/       --> Sibling 14: Truth-rate vs frame-rate reconciliation (integer ticks + rollback)
+   `-- syracuse/       --> Sibling 15: Collatz/Syracuse map -- integrity != truth, hardware-invariant integer workload
 ```
 
-Cores are frozen; the fourteen siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps the
-two cores honest against a pinned baseline; `integration/preflight_check.py` runs all eighteen suites + the
+Cores are frozen; the fifteen siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps the
+two cores honest against a pinned baseline; `integration/preflight_check.py` runs all nineteen suites + the
 parity proof as the one gate.
 
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is

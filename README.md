@@ -83,7 +83,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The sixteen components
+## The seventeen components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -103,10 +103,11 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`pact/`](pact/README.md) | **multi-agent cross-attestation covenant** — pinned peer registry; binds each agent's state hash to the prior agent's; multi-chain audit isolates the exact deviating agent (no blockchain) | `PYTHONHASHSEED=0 python3 demo_pact.py` |
 | [`quorum/`](quorum/README.md) | **exact integer consensus** — k-of-n independently-keyed witnesses must agree on the same content hash; equivocation caught, dissent kept as a ghost; `lattice.py` binds it to `pact` into a 2D (lateral×temporal) attestation lattice | `PYTHONHASHSEED=0 python3 demo_quorum.py` |
 | [`lockstep/`](lockstep/README.md) | **what becomes truth at frame rates** — decouples an integer, content-addressed truth-tick stream from the render rate; 240fps frames are exact interpolated *observables*, never gated; revert-to-last-valid-hash rollback converges clients | `PYTHONHASHSEED=0 python3 demo_lockstep.py` |
+| [`syracuse/`](syracuse/README.md) | **Collatz map as integrity≠truth** — pure-integer orbits, content-addressed and replayable; verify any trajectory exactly, refuse the conjecture structurally; a hardware-invariant reference workload for `ration`/`lockstep` | `PYTHONHASHSEED=0 python3 demo_syracuse.py` |
 
-All sixteen refuse to run without `PYTHONHASHSEED=0`. Test suites total **190 unit tests across 18 suites**
+All seventeen refuse to run without `PYTHONHASHSEED=0`. Test suites total **205 unit tests across 19 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 

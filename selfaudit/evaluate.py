@@ -44,10 +44,10 @@ CORE_FILES = {
     "chronicle": ["core.py", "court.py", "signing.py", "capture.py", "store.py", "hardware_signing.py"],
     "llm_toolkit": ["agent_core.py", "agent_capture.py", "agent_guard.py"],
 }
-SIBLINGS = ["guard_server", "integration", "assay", "manifold", "anti_cheat", "glitch", "dini", "selfaudit", "quorum", "lockstep"]
+SIBLINGS = ["guard_server", "integration", "assay", "manifold", "anti_cheat", "glitch", "dini", "selfaudit", "quorum", "lockstep", "syracuse"]
 DAG = {"chronicle": [], "llm_toolkit": [], "guard_server": ["llm_toolkit"], "integration": ["llm_toolkit"],
        "assay": ["llm_toolkit"], "manifold": ["chronicle"], "anti_cheat": ["chronicle"],
-       "glitch": ["chronicle"], "dini": ["chronicle"], "selfaudit": ["chronicle"], "quorum": ["chronicle"], "lockstep": ["chronicle"]}
+       "glitch": ["chronicle"], "dini": ["chronicle"], "selfaudit": ["chronicle"], "quorum": ["chronicle"], "lockstep": ["chronicle"], "syracuse": ["chronicle"]}
 
 
 # ---------- pure, testable helpers ----------
