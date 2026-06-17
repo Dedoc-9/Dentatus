@@ -114,6 +114,60 @@ Proceed with refactoring bounds secured.
 If any check fails it prints `[FOUNDRY BLOCKED]` and exits non-zero. The rule (AGENTS.md §6): fix the
 change, not the test.
 
+## Using this in a project — when to run, and how to document for review
+
+The workbench is only useful if verification happens at the right moments and the result is written down
+in a form a second person can check. Below is the practice.
+
+### When to run it
+
+| Trigger | Run | A reviewer should see |
+|---|---|---|
+| Any change to decision logic, an invariant, a policy, or a signer | `python3 integration/preflight_check.py` | `[FOUNDRY VERIFIED]` + the old/new `ruleset_hash` (a rule change MUST be a deliberate, noted version bump) |
+| Every pull request (CI gate) | `preflight_check.py` (non-zero exit fails the build) | green preflight attached to the PR |
+| Model / policy / rubric version bump | the affected component's `demo_*` + `preflight_check.py` | new `policy_hash` / `guardrail_hash` recorded, and prior ledgers still replay |
+| Before a release or deploy | full preflight + a fresh `demo` run | signer **tier + algo** in use (Ed25519 for third-party audit; HMAC is single-trust-domain only) |
+| Re-verifying an archived ledger (drift / tamper sweep) | `PYTHONHASHSEED=0 python3 chronicle/court.py <ledger.json>` | `VERIFIED` (or the exact step it fails at) |
+| Incident / dispute review | `court` replay of the ledger in question with the public key | bit-for-bit replay verdict, named failure point if any |
+
+Rule of thumb: run it **before** you call a change done (it is the §6 verification contract in `AGENTS.md`),
+and **again** whenever someone needs to trust a past record they did not personally produce.
+
+### How to document the result for review
+
+Hand the reviewer a short, self-contained record. An auditor needs only the **public** material — never a
+private key or HMAC secret. Capture this alongside the change (PR description, audit log, or a file next to
+the ledger):
+
+```markdown
+## Verification Record — <change / decision id> — <date>
+
+- Command:            PYTHONHASHSEED=0 python3 integration/preflight_check.py
+- Preflight result:   [FOUNDRY VERIFIED]  (7/7 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
+- Replay Court:        VERIFIED — N records reproduced bit-for-bit       # or: REJECTED at seq <k> (<reason>)
+- ruleset/policy hash: <before> -> <after>   (changed? yes/no; if yes, why + version)
+- Signer:              algo=<ed25519|hmac-sha256>  tier=<1 hardware | 2 soft | 3 symmetric>
+- Public key:          <hex>     # for independent third-party re-verification (Ed25519 only)
+- Reviewed by:         <name>    Date: <date>
+- Scope acknowledged:  integrity != truth — this attests the record + enforced rules are honest and
+                       reproducible, NOT that the decision itself was correct, fair, or wise.
+```
+
+### What a reviewer should reject on
+
+- `[FOUNDRY BLOCKED]` / any non-zero preflight — *fix the change, not the test.*
+- A `ruleset_hash` / `policy_hash` that changed **without** a deliberate, documented version bump (logic
+  was edited; prior attestations are now invalid — see the `source_hash` note below).
+- `algo=hmac-sha256` where the record claims **third-party** auditability (HMAC is symmetric; the verifier
+  can forge — only valid inside a single trust domain).
+- A verdict verified against a key taken from the payload rather than a **pinned** key (`AGENTS.md §3`).
+- A new core path that imports `cryptography` (or anything non-stdlib) with no fallback (`AGENTS.md §4`).
+
+A green record proves the **record** is honest and reproducible and the declared rules were enforced. It
+does not discharge the reviewer's own judgment about whether those rules were the *right* ones — that
+decision stays human. (`assay/` can record *that* judgment too, signed and attributed, but still does not
+make it true.)
+
 ## The boundary that runs through everything — and one level up
 
 **Integrity is not truth.** chronicle / llm_toolkit / guard_server / integration prove a record is
