@@ -1,0 +1,4 @@
+# generated / transient
+*.bak
+__pycache__/
+*.pyc

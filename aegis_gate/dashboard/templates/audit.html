@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AegisGate — Verifiable Transfer Audit</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --line:#1f2a37; --ink:#e6edf3; --muted:#8aa0b3;
+    --ok:#2ea043; --okbg:#0f2417; --bad:#d1242f; --badbg:#2a1115; --accent:#3b82f6; --warn:#d29922;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;letter-spacing:.2px}
+  header .sub{color:var(--muted);font-size:12.5px}
+  .wrap{display:grid;grid-template-columns:1.45fr 1fr;gap:18px;padding:18px 24px;max-width:1280px}
+  @media(max-width:960px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .panel h2{font-size:13px;margin:0;padding:12px 16px;border-bottom:1px solid var(--line);color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+  .panel .body{padding:14px 16px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+  tr.row{cursor:pointer}
+  tr.row:hover{background:#0e1620}
+  tr.sel{background:#0e1a2b}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;font-family:var(--mono)}
+  .pill.ok{color:var(--ok);background:var(--okbg);border:1px solid #1d4429}
+  .pill.bad{color:#ff7b72;background:var(--badbg);border:1px solid #5a1b22}
+  .hash{font-family:var(--mono);color:var(--accent);font-size:12px}
+  .muted{color:var(--muted)}
+  button{font:inherit;color:var(--ink);background:#1b2532;border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer}
+  button:hover{border-color:#2d3b4d}
+  .verdict{margin-top:12px;border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:13px;border:1px solid var(--line)}
+  .verdict.ok{background:var(--okbg);border-color:#1d4429;color:#7ee2a8}
+  .verdict.bad{background:var(--badbg);border-color:#5a1b22;color:#ff9d97}
+  .verdict.bad.flash{animation:flash .5s ease-in-out 0s 6}
+  @keyframes flash{0%,100%{background:var(--badbg)}50%{background:#46161d}}
+  .kv{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px;word-break:break-all}
+  .note{font-size:12px;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:baseline}
+  .dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)}
+  code{font-family:var(--mono);background:#0e1620;padding:1px 5px;border-radius:4px;color:#c9d6e2}
+</style>
+</head>
+<body>
+<header>
+  <h1>AegisGate</h1>
+  <span class="sub">Verifiable, policy-isolated transfer &amp; KYC audit · <span class="muted">integrity&nbsp;≠&nbsp;truth: this proves records are unforged, reproducible, and rule-faithful — not that any decision was correct or legal.</span></span>
+</header>
+
+<div class="wrap">
+  <!-- Panel A -->
+  <section class="panel">
+    <h2>Panel A · Replay Court (forensic)</h2>
+    <div class="body">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <button onclick="verifyAll()">Verify whole chain</button>
+        <span class="muted" id="ledgerMeta"></span>
+      </div>
+      <table id="ledger">
+        <thead><tr><th>seq</th><th>decision</th><th>verdict</th><th>amount</th><th>src → dst</th><th>committed_hash</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="verdict" class="verdict muted">Select a transfer to replay it, or verify the whole chain.</div>
+      <div class="note">
+        <b>Tamper test.</b> Edit one digit in <code>ledger.jsonl</code> (e.g. an approved
+        <code>amount_cents</code>) and re-verify. The court re-runs the decision on the recorded inputs and
+        reports the exact fault — <code>REPLAY drift</code>, <code>CHAIN broken</code>, or
+        <code>signature mismatch</code> — and the seq it occurred at.
+      </div>
+    </div>
+  </section>
+
+  <!-- Panel B -->
+  <section class="panel">
+    <h2>Panel B · Drift Monitor (self-audit)</h2>
+    <div class="body">
+      <button onclick="checkDrift()">Re-hash frozen cores</button>
+      <div id="drift" class="verdict muted" style="margin-top:12px">Checking…</div>
+      <div class="note">
+        Re-hashes the frozen <code>chronicle</code> core files this app depends on and compares them to
+        <code>selfaudit</code>'s pinned baseline. A change to any core forks the composite hash and is
+        reported here. Scope is honest: this detects <i>core-file change</i>, not arbitrary workspace
+        correctness.
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+let SELECTED=null;
+async function getJSON(u){const r=await fetch(u);return r.json();}
+
+function fmtVerdict(el, v){
+  el.classList.remove("ok","bad","muted","flash");
+  if(v.ok){
+    el.classList.add("ok");
+    el.innerHTML="VERIFIED — "+v.n+" decision(s) reproduced bit-for-bit; chain intact, rules unchanged, untampered."
+      + (v.world_H? '<div class="kv">final world_H = '+v.world_H+'</div>':'');
+  } else {
+    el.classList.add("bad","flash");
+    el.innerHTML="VERIFICATION FAILED — "+(v.reason||"unknown")+(v.at!=null? '  (at seq '+v.at+')':'')
+      + '<div class="kv">the stored record does not match its committed hash / replayed outputs</div>';
+  }
+}
+
+async function loadLedger(){
+  const rows=await getJSON("/api/ledger");
+  const tb=document.querySelector("#ledger tbody"); tb.innerHTML="";
+  document.getElementById("ledgerMeta").textContent=rows.length? rows.length+" recorded transfers":"no ledger yet — run run_pipeline.py";
+  rows.forEach(r=>{
+    const tr=document.createElement("tr"); tr.className="row"; tr.dataset.seq=r.seq;
+    tr.innerHTML=`<td class="muted">${r.seq}</td><td>${r.decision_id}</td>
+      <td><span class="pill ${r.approved?'ok':'bad'}">${r.approved?'APPROVED':'DENIED'}</span></td>
+      <td>${r.amount}</td><td class="muted">${r.src} → ${r.dst}</td>
+      <td><span class="hash">${r.committed_hash}</span></td>`;
+    tr.onclick=()=>verifyUpto(r.seq, tr, r);
+    tb.appendChild(tr);
+  });
+}
+
+async function verifyUpto(seq, tr, r){
+  document.querySelectorAll("#ledger tr.row").forEach(x=>x.classList.remove("sel"));
+  if(tr) tr.classList.add("sel");
+  const v=await getJSON("/api/verify?seq="+seq);
+  fmtVerdict(document.getElementById("verdict"), v);
+  if(r && r.reason){
+    const el=document.getElementById("verdict");
+    el.innerHTML+='<div class="kv">recorded reason: '+r.reason+'</div>';
+  }
+}
+async function verifyAll(){
+  document.querySelectorAll("#ledger tr.row").forEach(x=>x.classList.remove("sel"));
+  fmtVerdict(document.getElementById("verdict"), await getJSON("/api/verify"));
+}
+async function checkDrift(){
+  const d=await getJSON("/api/drift"); const el=document.getElementById("drift");
+  el.classList.remove("ok","bad","muted");
+  if(d.ok){
+    el.classList.add("ok");
+    el.innerHTML='<span class="dot ok"></span>FROZEN CORES INTACT — match pinned baseline.'
+      +'<div class="kv">baseline_H = '+d.baseline_H+'<br>current_H&nbsp; = '+d.current_H+'</div>';
+  } else {
+    el.classList.add("bad");
+    el.innerHTML='<span class="dot bad"></span>CORE DRIFT vs PINNED BASELINE<div class="kv">'
+      +d.drift.join("<br>")+'<br>baseline_H = '+d.baseline_H+'<br>current_H&nbsp; = '+d.current_H+'</div>';
+  }
+}
+loadLedger(); checkDrift();
+</script>
+</body>
+</html>
