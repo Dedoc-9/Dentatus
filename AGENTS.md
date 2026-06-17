@@ -204,6 +204,47 @@ Honest bound (integrity ≠ truth, inward): this proves the cores are byte-stabl
 that the audit is reproducible — **not** that the workbench is correct, useful, or good. A system grading
 itself is not a judge of its own value.
 
+### Use case — high-velocity LLM ("vibe") coding, safely
+
+The reflexive architecture lets you run an LLM coding partner at high generation velocity while the
+*workbench*, not your attention, holds the line on the failure modes LLMs reliably introduce: silent core
+drift, float/serialization changes that break reproducibility, duplicated utilities, folder-isolation
+escapes, patched-over edge cases. The honest claim is narrow and real: **the workbench mechanically catches
+the classes of regression its checks cover, so you stop re-reading diffs for those.** It does NOT make
+arbitrary generated code correct — integrity ≠ truth: a green foundry means *no regressions + frozen cores
++ lawful structure*, not "the code is good."
+
+Four mechanisms, each with its real bound (state the bound; don't oversell):
+
+1. **Bounded-authority autonomy (`guard_server/isolated_pep.py`).** Run the PEP under a separate OS user
+   and route every disk write / command through it; the symlink-proof directory clamp confines the agent to
+   an allow-listed folder and verdicts are signed + action-bound, so the agent cannot forge an `allow`.
+   *Bound:* OS privilege separation, not magic — it only holds if the PEP truly runs as a different user AND
+   the agent has no filesystem path that bypasses it. On a single user it is bounded authority + tamper-
+   evidence, not "physical impossibility" (§2/§3). Wire it; don't assume it.
+
+2. **Core-drift detection (`selfaudit/` + `parity_proof.py`).** After the agent edits code, run the
+   preflight; a touched frozen core mismatches the pinned `core_baseline.json`, the audit fails, and the
+   assay court won't replay — the math names the drifted file instead of you reading the diff. *Bound:*
+   catches changes to the **frozen cores** and coupled/uncoupled parity plus whatever the suites assert; it
+   does NOT catch a logic bug in NEW sibling code that still passes every check.
+
+3. **Geometric navigation (`dini/`).** The agent reads `dini_distance` as a compact novelty/structure
+   sensor instead of dumping huge directory listings into its context. *Bound:* a sensor, never a gate;
+   dual-use (see dini's responsible-use note); a captured float, never in a commit hash.
+
+4. **Fail-closed generation (`chronicle` invariants).** Have the agent precommit a Chronicle validity
+   predicate FIRST; if its later code produces a state that breaches the predicate, the recorder refuses the
+   write (`InvariantViolation`), the agent gets an explicit error to self-correct, and the state rolls back
+   to the last valid hash. *Bound:* the gate enforces exactly what the predicate encodes — not unsafety you
+   never wrote down (§3).
+
+**The loop:** the LLM is the engine; the frozen cores are the chassis; `integration/preflight_check.py` is
+the gate. Run the preflight as the agent loop's definition-of-done (§6) — it is the thing that stops a
+session on a regression, and only because it actually ran (not because a banner says so, §5). Used this
+way the attention tax drops on everything the checks cover, and your review goes where a machine cannot
+certify: whether the new logic is actually *right*.
+
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
 wrong by definition here — fix the change, not the test.
 
