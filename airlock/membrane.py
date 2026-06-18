@@ -34,7 +34,12 @@ import _wb as C
 core = C.core
 canon = C.canon
 
-GATES = ("CANON", "SCHEMA", "BUDGET", "APPLY", "CONSTRAINT", "WITNESS")
+GATES = ("CANON", "SCHEMA", "BUDGET", "APPLY", "CONSTRAINT", "STRICT", "WITNESS")
+
+# Severity toggles validator DEPTH, never the kernel. "game" = cheap inline gates (frame-rate). "strict" =
+# also run the adapter's heavy validate_strict inline (offline/scientific use). Heavier checks can instead be
+# DEFERRED and run by audit() as an async "physics court" — flagging, never retro-mutating, a commit.
+SEVERITY = ("game", "strict")
 
 
 class Ledger:
@@ -63,7 +68,7 @@ def _reject(ledger, gate, reason, proposal_hash, prev, telemetry, signer):
     return {"ok": False, "gate": gate, "reason": reason, "shard": shard, "telemetry": telemetry, "world": None}
 
 
-def propose(world, proposal, adapter, ledger=None, witnesses=None, k=None, signer=None):
+def propose(world, proposal, adapter, ledger=None, witnesses=None, k=None, signer=None, severity="game"):
     """Run a single proposal through the membrane. `witnesses` is an optional list of callables
     (world, txn) -> candidate_hash that INDEPENDENTLY re-derive the candidate (reproduction-admission);
     commit requires ≥k of them to match. Returns a COMMIT or REJECT result; state mutates ONLY on commit."""
@@ -105,6 +110,20 @@ def propose(world, proposal, adapter, ledger=None, witnesses=None, k=None, signe
     if not ok:
         return _reject(ledger, "CONSTRAINT", why, phash, prev, telemetry, signer)
 
+    # 4b) STRICT — heavy admissibility (e.g. causal/conservation). Only INLINE at strict severity; at game
+    #     severity it is DEFERRED to audit() (the physics court) so the hot path stays cheap.
+    deferred = []
+    strict_fn = getattr(adapter, "validate_strict", None)
+    if callable(strict_fn):
+        if severity == "strict":
+            sok, swhy = strict_fn(world2, proposal.get("constraints", {}))
+            if not sok:
+                return _reject(ledger, "STRICT", swhy, phash, prev, telemetry, signer)
+        else:
+            deferred.append("validate_strict")
+    telemetry["severity"] = severity
+    telemetry["deferred"] = deferred
+
     # 5) HASH the candidate
     h2 = adapter.state_hash(world2)
     telemetry["post_hash_preview"] = h2[:16]
@@ -121,6 +140,30 @@ def propose(world, proposal, adapter, ledger=None, witnesses=None, k=None, signe
     shard = _shard("COMMIT", {"prev": prev, "txn": txn, "txn_hash": canon.canon_hash(txn),
                               "pre_hash": adapter.state_hash(world), "post_hash": h2,
                               "telemetry": telemetry,
-                              "provenance": proposal.get("provenance", {})}, signer)
+                              "provenance": proposal.get("provenance", {}), "severity": severity}, signer)
     ledger.commits.append(shard)
     return {"ok": True, "gate": "COMMIT", "world": world2, "shard": shard, "telemetry": telemetry}
+
+
+def audit(world_before, txn, adapter, constraints=None, commit_hash=None, signer=None):
+    """The physics court: re-derive the candidate and run the adapter's HEAVY validate_strict on it offline.
+    Emits a verdict shard {PASS | FLAG} that REFERENCES a commit but never mutates it (witness ≠ controller).
+    Used to retroactively check transitions that were committed at a lower (e.g. game) severity."""
+    strict_fn = getattr(adapter, "validate_strict", None)
+    if not callable(strict_fn):
+        verdict, reason = "PASS", "no strict validator"
+    else:
+        try:
+            world2 = adapter.apply(world_before, txn)
+        except adapter.ApplyError as e:
+            verdict, reason = "FLAG", "apply failed under audit: %s" % e
+            world2 = None
+        if world2 is not None:
+            ok, why = strict_fn(world2, constraints or {})
+            verdict, reason = ("PASS", "admissible") if ok else ("FLAG", why)
+    rec = {"event": "AUDIT", "severity": "strict", "commit_hash": commit_hash,
+           "verdict": verdict, "reason": reason}
+    rec["shard_hash"] = core.state_hash(rec)
+    if signer is not None:
+        rec["signature"] = signer.sign(core.canonical_bytes(rec)); rec["algo"] = signer.algo
+    return rec

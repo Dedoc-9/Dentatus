@@ -150,3 +150,18 @@ def residual(world2, claims):
     if "expect_tick" in claims:
         r += abs(world2.get("tick", 0) - int(claims["expect_tick"]))
     return r
+
+def validate_strict(world2, constraints):
+    """STRICT-tier (severity='strict' or audit) — a toy CAUSAL constraint standing in for the future GR
+    layer: no body may exceed a declared speed limit `c_limit` (a light-speed analog). 'causality ≠
+    convenience'. Heavy enough to keep off the game hot path; runs inline only at strict severity or via the
+    physics court. (Future: Einstein constraint residuals, causal-graph checks, invariant hashing.)"""
+    c = constraints.get("c_limit")
+    if c is None:
+        return True, "no c_limit declared"
+    c2 = c * c
+    for b in world2["bodies"]:
+        speed2 = sum(v * v for v in b["vel"])
+        if speed2 > c2:
+            return False, "body %r exceeds c_limit (causal violation)" % b["id"]
+    return True, "causal"

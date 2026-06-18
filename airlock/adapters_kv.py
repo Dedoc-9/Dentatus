@@ -107,3 +107,14 @@ def residual(world2, claims):
             if world2["kv"].get(k) != v:
                 r += 1
     return r
+
+def validate_strict(world2, constraints):
+    """STRICT-tier for config reality: forbid any key matching a declared `forbid_substr` (e.g. a 'secret'
+    or 'prod' policy). Cheap stand-in showing severity governs non-physics realities too."""
+    bad = constraints.get("forbid_substr")
+    if not bad:
+        return True, "no policy"
+    for k in world2["kv"]:
+        if bad in k:
+            return False, "key %r matches forbidden policy %r" % (k, bad)
+    return True, "policy-clean"

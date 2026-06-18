@@ -212,5 +212,53 @@ class TestConformanceVectors(unittest.TestCase):
         self.assertTrue(CF.verify_vector(v, A)[0])
 
 
+
+
+class TestSeverityLadder(unittest.TestCase):
+    """Severity toggles validator DEPTH, never the kernel. game = fast (strict deferred); strict = inline
+    causal gate; audit = offline physics court that flags a lower-severity commit."""
+    def _world(self):
+        return A.K.make_world([A.K.body(0, (0, 5, 0), (0, 0, 0), (1, 1, 1))],
+                              ((-1000, -1000, -1000), (1000, 1000, 1000)))
+    def _superluminal(self, c=5 * (1 << 32)):
+        return {"transition": {"op": "impulse", "id": 0, "dv": [99, 0, 0]},
+                "budget": {"max_cost": 5, "max_delta": 10**22}, "constraints": {"max_bodies": 4, "c_limit": c}}
+
+    def test_game_commits_and_defers_strict(self):
+        W = self._world()
+        r = M.propose(W, self._superluminal(), A, severity="game")
+        self.assertTrue(r["ok"])                                   # fast path admits it
+        self.assertIn("validate_strict", r["telemetry"]["deferred"])
+        self.assertEqual(r["shard"]["severity"], "game")          # severity is declared + hashed in the shard
+
+    def test_strict_blocks_causal_violation(self):
+        r = M.propose(self._world(), self._superluminal(), A, severity="strict")
+        self.assertFalse(r["ok"]); self.assertEqual(r["gate"], "STRICT")
+
+    def test_audit_flags_lower_severity_commit(self):
+        W = self._world(); p = self._superluminal()
+        committed = M.propose(W, p, A, severity="game")           # committed at game speed
+        v = M.audit(W, p["transition"], A, constraints=p["constraints"], commit_hash=committed["shard"]["shard_hash"])
+        self.assertEqual(v["verdict"], "FLAG")                    # physics court flags it offline...
+        self.assertEqual(v["commit_hash"], committed["shard"]["shard_hash"])  # ...referencing, not mutating
+
+    def test_severity_does_not_change_the_kernel(self):
+        # A LAWFUL transition produces the IDENTICAL committed world at game and strict — severity changes
+        # admissibility, never the deterministic kernel output.
+        lawful = {"transition": {"op": "impulse", "id": 0, "dv": [2, 0, 0]},
+                  "budget": {"max_cost": 5, "max_delta": 10**22}, "constraints": {"max_bodies": 4, "c_limit": 5 * (1 << 32)}}
+        rg = M.propose(self._world(), dict(lawful), A, severity="game")
+        rs = M.propose(self._world(), dict(lawful), A, severity="strict")
+        self.assertTrue(rg["ok"] and rs["ok"])
+        self.assertEqual(rg["shard"]["post_hash"], rs["shard"]["post_hash"])
+
+    def test_severity_applies_to_kv_reality(self):
+        cons = {"max_keys": 8, "forbid_substr": "secret"}
+        p = {"transition": {"op": "set", "key": "db_secret", "value": "x"},
+             "budget": {"max_cost": 5, "max_delta": 10**9}, "constraints": cons}
+        self.assertTrue(M.propose(KV.empty_world(), dict(p), KV, severity="game")["ok"])      # game allows
+        self.assertFalse(M.propose(KV.empty_world(), dict(p), KV, severity="strict")["ok"])   # strict policy blocks
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

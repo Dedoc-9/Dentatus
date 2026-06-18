@@ -57,3 +57,44 @@ transitions, never goal-authors.
 
 A commit proves a transition was applied **exactly and admissibly**, never that it was correct, fair, or wise.
 `integrity ≠ truth`.
+
+## Severity — a toggleable layer, so one engine serves games AND physics
+
+Severity toggles **validator DEPTH, never the kernel.** The deterministic kernel (and renderer) stay fast at
+every tier; only the admissibility depth changes, and the heavy checks default to **off the hot path**.
+
+```
+tier 0  game/real-time      cheap inline gates (canon·budget·bounds·‖Δ‖)        blocks · frame-rate
+tier 1  sim/dev             + conservation/regime as TELEMETRY or low cadence    measured, not gating
+tier 2  strict/relativistic + causal/constraint/invariant checks                 inline (offline sim) OR
+                                                                                  async physics-court audit (games)
+```
+
+Rules that keep the game-engine goal intact:
+1. **Severity gates the validator, not the kernel.** Lawful transitions produce the *identical* committed
+   world at every severity (verified): severity changes *admissibility*, never deterministic output.
+2. **Heavy validation runs off the hot path by default.** At `game` severity the strict validators are
+   **deferred**; `membrane.audit()` is the **physics court** — it re-derives a committed transition, runs the
+   heavy checks offline, and emits a `FLAG`/`PASS` verdict shard that **references** the commit, never mutates
+   it (witness ≠ controller). Inline-strict is opt-in for non-real-time scientific use.
+3. **Severity is declared and hashed into the commit** (`shard.severity`); a strict audit is a *separate*
+   verdict, not a retro-rewrite.
+4. **Fidelity ⟂ severity.** Float/GPU rendering draws what the integer kernel decides; severity is integrity
+   depth, not visuals.
+
+### Stage F (future): the Relativistic Integrity Layer — a strict-tier ADAPTER
+
+GR is **just another adapter** (general-membrane), whose `validate_strict` implements the relativistic laws —
+you pay for it only at strict severity / audit:
+
+- **`causality ≠ convenience`** — no transition may violate declared causal structure (light cones, local
+  propagation, conservation). *(Today: a toy `c_limit` speed cap stands in — `adapters.validate_strict`.)*
+- **`geometry ≠ telemetry`** — curvature, geodesic deviation, invariants are *measured*, never hidden steering
+  (the established `telemetry ≠ control`, made physical).
+- **`observer ≠ author`** — different coordinate descriptions of the same physical state should converge toward
+  **diffeomorphism-invariant** state hashing.
+
+Honest claim: **not** "a 240 fps GR engine." Rather — *a deterministic integrity architecture that can host
+general-relativistic simulations while preserving provenance, causal consistency, and human/AI interaction
+boundaries*, with severity declared and reproducible. Most engines simulate the equations; few treat the
+simulation itself as an auditable physical object. `integrity ≠ truth`.
