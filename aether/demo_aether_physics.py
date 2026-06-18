@@ -46,6 +46,14 @@ def main():
     again = E.evolve_audited(F.identity(3), gen, dt, 1_000_000, audit_every=2000)
     print("   bit-for-bit deterministic re-run:", again["final_hash"] == res["final_hash"], "\n")
 
+    print("C2) GHOST CHANNEL (Stage B — dual residual, observable-only):")
+    import fixedpoint as _F
+    print("   structural Hₜ (μ⊕Z⊕S⊕W⊕pv):", res["structural_hash"][:16], " protocol:", res["protocol_version"])
+    print("   legacy Hₜ (W-only, byte-identical to Stage A):", res["final_hash"][:16])
+    print("   ghost samples=%d  B(t)=‖S‖/(‖Z‖+ε)=%.3e  η_CLT=%d  (sensors, never gates)"
+          % (res["ghost_samples"], res["B_t"] / _F.SCALE, res["eta_clt"]["eta"]))
+
+
     print("D) GHOSTSNAP (collapse -> verified recovery):")
     drifted = E.evolve_raw(F.identity(3), gen, dt, 5000)                                  # no audit -> let it drift
     before = S.frobenius_energy(drifted)

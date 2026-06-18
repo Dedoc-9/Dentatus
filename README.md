@@ -24,7 +24,7 @@ decision was correct, fair, or wise.
 In practice this changes your role on an AI project. Treat the LLM as a high-velocity but untrusted
 *engine* and the frozen cores as a rigid *chassis*: it generates fast while the workbench — not your
 attention — tracks determinism, structural purity, privilege isolation, and resource budgets.
-`integration/preflight_check.py` runs the whole 26-suite contract and `selfaudit/` proves the cores
+`integration/preflight_check.py` runs the whole 27-suite contract and `selfaudit/` proves the cores
 have not drifted, so your review shifts from line-by-line diff-reading to the one thing a machine
 cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
 its checks cover, not arbitrary badness — integrity is not truth.)
@@ -128,7 +128,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`stasis/`](stasis/README.md) | **the boundary layer** — Iron Canon (strict canonical bytes, rejects ambiguous/float types), Divergence Ledger (gate-vs-observable: lie→FAIL, drift→WARN), Lazy Lattice (Merkle batch + on-demand proofs). Hardens the order zone against real-world chaos | `PYTHONHASHSEED=0 python3 demo_stasis.py` |
 | [`aether/`](aether/README.md) | **hardened integer manifold** — DVSM geometry in fixed-point integers (bit-exact, replayable); Stiefel auditor gates `E=‖WᵀW−I‖²_F` under a declared epsilon and deterministically self-retracts (Gram-Schmidt), logging recovery. A 1,000,000-step spinning top with no nondeterministic drift | `PYTHONHASHSEED=0 python3 demo_aether_physics.py` |
 
-All twenty-four refuse to run without `PYTHONHASHSEED=0`. Test suites total **284 unit tests across 26 suites**
+All twenty-four refuse to run without `PYTHONHASHSEED=0`. Test suites total **294 unit tests across 27 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
 manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15, tessera 12, crucible 10, fuel 12, elenchus 11, polity 8, stasis 15, aether 11) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
@@ -156,7 +156,7 @@ immutable instrument while the workbench around it keeps gaining purpose-built p
 
 The Sibling Law also scales up from *components* to whole *products*: a standalone application can import the
 frozen cores (and any siblings) **read-only** via a path shim, without being a sibling itself or entering the
-26-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
+27-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
 
 | Application | What it is | Honest bound |
 |---|---|---|
@@ -263,7 +263,7 @@ primitives extract losslessly, so any layer lifts out as a standalone component 
 
 One command verifies the whole workbench before you build on it. For the **entire repo** — workbench *and* the five
 downstream applications — `python3 verify_all.py` runs both gates (the preflight + the application conformance
-harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 26 suites **and** the parity
+harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 27 suites **and** the parity
 proof as subprocesses under `PYTHONHASHSEED=0`, and prints a green status **only if everything actually
 passed**. That same `verify_all.py` is the CI gate — [`.github/workflows/verify.yml`](.github/workflows/verify.yml)
 runs it on every push and PR (pinning the Ed25519 crypto tier the baselines were pinned under), so the
@@ -274,12 +274,12 @@ python3 integration/preflight_check.py
 ```
 
 On success it *emits* the status below — this is earned output from a real run, **not** a banner you paste
-by hand to assert state (asserting "26/26 green" without running it is exactly the integrity-theater this
+by hand to assert state (asserting "27/27 green" without running it is exactly the integrity-theater this
 project refuses):
 
 ```
 [FOUNDRY VERIFIED]
-  - 26/26 suites green; primitive parity holds (parity_proof.py)
+  - 27/27 suites green; primitive parity holds (parity_proof.py)
   - Out-of-process policy clamps + tiered hardware signer present and tested
   - Cognitive modesty acknowledged: integrity != truth
 Proceed with refactoring bounds secured.
@@ -317,7 +317,7 @@ the ledger):
 ## Verification Record — <change / decision id> — <date>
 
 - Command:            PYTHONHASHSEED=0 python3 integration/preflight_check.py
-- Preflight result:   [FOUNDRY VERIFIED]  (26/26 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
+- Preflight result:   [FOUNDRY VERIFIED]  (27/27 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
 - Replay Court:        VERIFIED — N records reproduced bit-for-bit       # or: REJECTED at seq <k> (<reason>)
 - ruleset/policy hash: <before> -> <after>   (changed? yes/no; if yes, why + version)
 - Signer:              algo=<ed25519|hmac-sha256>  tier=<1 hardware | 2 soft | 3 symmetric>
@@ -489,8 +489,4 @@ opinion) artifact, so a claim of "correct / fair / wise" is itself auditable, no
 `quorum` is the **other half of that boundary**. `integrity ⊬ truth` is one clause — a lone verified
 record is honest and can still be wrong. `quorum` supplies the complementary clause that defines the
 truth you *can* operate on: `Truth_op := the exact hash on which a k-quorum of independent integrities
-coincide`. The two only close together — integrity is necessary per-witness; operational truth is the
-emergent agreement across witnesses. It is **analytic** (the coincidence *is* the truth), not correspondent
-(it is never checked against an external world), and it is honest about its ceiling: a colluding majority
-agrees on a falsehood just as cleanly. Consensus is a stronger, fully-attributable claim than integrity —
-and still not truth.
+coincide`. The two on

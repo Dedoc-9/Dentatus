@@ -15,7 +15,8 @@ energy `E = ||WᵀW − I||²_F` must stay under a strict declared threshold, an
 
 ```
 PYTHONHASHSEED=0 python3 demo_aether_physics.py        # exact gate · the 1-ulp truth · spinning top · ghostsnap
-PYTHONHASHSEED=0 python3 tests/test_aether_stiefel.py  # 11 unit tests
+PYTHONHASHSEED=0 python3 tests/test_aether_stiefel.py  # 11 unit tests (gate · audit · retraction)
+PYTHONHASHSEED=0 python3 tests/test_aether_ghost.py    # 12 unit tests (Stage-B dual ghost channel)
 ```
 
 ## Fixed-point is deterministic, not exact (and that's the point)
@@ -46,6 +47,41 @@ The **spinning top** demo evolves a 3×3 frame **1,000,000 fixed-point steps** i
 self-retracts on every breach (~500 times), the final frame is provably on-manifold (`E ≤ epsilon`), and a
 re-run is **bit-for-bit identical**.
 
+## Stage B — the dual ghost channel (instrumentation, observable-only)
+
+`lie_step` (`Lτ`) pushes the running frame **off** the manifold by a bounded quantization; the retraction
+`Π_W` (`gram_schmidt_integer`) projects it back. Stage A *destroyed* that residual. Stage B **preserves it**
+as a dual accumulator, separate from the forward arithmetic, so later geometry/dynamics changes can be judged
+against a measured baseline instead of a guess.
+
+```
+math:  Zₜ = Lτ(Wₜ₋₁)                       # running, off-manifold forward frame   (canonical Z)
+       Wₜ = Π_W(Zₜ)                        # its on-manifold projection            (canonical W)
+       Gₜ = Zₜ − Π_W(Zₜ)                   # ghost residual (every measured step)
+       S_{t+1} = α·Sₜ + (1−α)·Gₜ           # matrix EMA, dual space
+       B(t) = ‖S‖_F / (‖Z‖_F + ε)          # backreaction-pressure observable
+       η_CLT = √N·(μ̂ − μ₀)                 # zero-mean leak (μ₀=0) vs structured drift
+code:  Z = lie_step(W,A,dt); Wp = gram_schmidt_integer(Z)   # Wp = measurement, never written back
+       G = sub(Z, Wp); S = ema_matrix(S, G, alpha_fp)       # ghost.py — fp_mul, symmetric trunc
+```
+
+**Two contracts.** *Determinism:* `S` accumulates via the **same** symmetric-truncation `fp_mul` and a
+fixed-point `α` as the forward path — never native floats — so the EMA is bit-for-bit replayable and the
+dual space inherits the sign-symmetry that lets skew structure survive. *Purity:* `S`, `B(t)`, `η_CLT` are
+**observables** — measurement runs `Π_W` every `measure_every` steps but **never writes back to `Z`**, and
+the **retraction control** still fires only on an `E > epsilon` breach. The forward trajectory and the legacy
+`final_hash` are therefore byte-identical to Stage A (proven across configs).
+
+**Structural identity (`protocol_version: aether/2`).** The ghost is first-class state, so it enters the
+structural hash: `Hₜ = HASH(μ ⊕ Z ⊕ S ⊕ W ⊕ protocol_version)` (`ghost.structural_hash`). Two runs with equal
+`W` but `S¹ ≠ S²` are now **distinct identities**. A parallel `Hₜ_legacy = HASH(W)` (`stiefel.state_hash`) is
+retained byte-identical as the regression oracle for historical goldens — so the bump is purely additive.
+
+**Honest bound.** `B(t)` and `η_CLT` measure quantization-leak *pressure* and whether it is unstructured —
+**not** that the trajectory is correct, and **never** a control input. New ghost in the aether ledger: the
+quantization-leak residual. (Cross-geometry note: `G` is defined relative to `Π_W`; ghost magnitudes are not
+directly comparable across different retractions — a Stage-D concern.)
+
 ## Ties
 
 | sibling | role |
@@ -71,6 +107,8 @@ re-run is **bit-for-bit identical**.
 |---|---|
 | `fixedpoint.py` | fixed-point integer arithmetic (`to_fp`, `fp_mul` symmetric trunc, matmul, identity) |
 | `stiefel.py` | exact gate, `frobenius_energy`, `check_orthogonality`, `gram_schmidt_integer`, `handle_retraction` |
-| `evolve.py` | `is_skew_symmetric`, `lie_bracket`, `lie_step`, `evolve_raw`, `evolve_audited` |
+| `ghost.py` | **Stage B** dual channel: `ghost_residual`, `ema_matrix`, `backreaction` B(t), `clt_eta`, `structural_hash` (Hₜ), `PROTOCOL_VERSION` |
+| `evolve.py` | `is_skew_symmetric`, `lie_bracket`, `lie_step`, `evolve_raw`, `evolve_audited` (now returns `S`, `B_t`, `eta_clt`, `structural_hash`) |
 | `demo_aether_physics.py` | exact gate (A) · 1-ulp truth (B) · 1,000,000-step spinning top (C) · ghostsnap (D) |
 | `tests/test_aether_stiefel.py` | 11 unit tests (exact gate, audit, retraction, evolution, crucible stress) |
+| `tests/test_aether_ghost.py` | 12 unit tests (ghost closure, fp EMA, observable purity, η_CLT null, structural identity) |
