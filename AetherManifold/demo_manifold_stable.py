@@ -6,6 +6,7 @@ AetherManifold/demo_manifold_stable.py — deterministic Riemannian optimization
   C. TWO-TIER       — a rational frame is EXACTLY orthonormal (no epsilon); an evolved one holds a declared tol.
   D. STABILITY      — shadowing distance of two 1-ulp-apart trajectories → a Lyapunov observable (not a gate).
   E. CONFORMANCE    — edge-case vectors bind (problem, η, steps) to exact hashes a native port must reproduce.
+  F. LYAPUNOV       — a forked, compression-bounded discrete Lyapunov certificate (per-region descent).
 
 Run:  PYTHONHASHSEED=0 python3 demo_manifold_stable.py
 """
@@ -16,6 +17,7 @@ import objective as O
 import riemann as R
 import stability as STA
 import conformance as C
+import lyapunov as L
 from _cores import SCALE
 fp = O.fp
 
@@ -51,6 +53,16 @@ def main():
         print("   %-14s ok=%s final_hash=%s defect=%d" % (name, ok, h, defect))
     tampered = dict(C.make_vector("converge"), final_hash="0" * 64)
     print("   a divergent port -> verify=%s" % (C.verify_vector(tampered),))
+    print("F) LYAPUNOV CERTIFICATE (forked + compressed, exact integer observable):")
+    cert = L.certificate(res["energies"], res["defects"])
+    print("   regular run -> monotone_descent=%s  branches=%s  max|compressed ΔV|=%d (< SCALE, cannot overflow)"
+          % (cert["monotone_descent"], {k: v["count"] for k, v in cert["branches"].items()}, cert["max_compressed_dV"]))
+    resn = R.optimize([[fp(1), fp(99, 100)], [0, fp(1, 100)], [fp(1, 100), 0]], grad, fp(1, 5), 60, energy)
+    cn = L.certificate(resn["energies"], resn["defects"], tol=2)
+    print("   near-singular -> %d branches %s; descent holds per branch: %s\n"
+          % (cn["n_branches"], {k: v["count"] for k, v in cn["branches"].items()},
+             all(b["descent_holds"] for b in cn["branches"].values())))
+
     print("\n   We prove a specific optimization trajectory was computed exactly per the rules and is")
     print("   reproducible. We do NOT prove the minimum is global, nor stability outside the bounds.")
     print("   Stability is an observable of the trace, not a derived truth. integrity != truth.")

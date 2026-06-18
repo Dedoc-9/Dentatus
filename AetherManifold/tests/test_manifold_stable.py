@@ -75,6 +75,46 @@ class Conformance(unittest.TestCase):
         self.assertEqual(C.make_vector("zero_gradient")["final_defect"], 0)
 
 
+class Lyapunov(unittest.TestCase):
+    def setUp(self):
+        import lyapunov as L
+        self.L = L
+        grad, energy, X0 = problem()
+        self.res = R.optimize(X0, grad, fp(1, 5), 60, energy)
+
+    def test_discrete_derivative(self):
+        self.assertEqual(self.L.discrete_derivative([3, 1, 0]), [-2, -1])
+
+    def test_compress_bounded_and_signed(self):
+        self.assertLess(abs(self.L.compress(10 ** 30)), SCALE)
+        self.assertEqual(self.L.compress(-10 ** 30), -self.L.compress(10 ** 30))
+        self.assertEqual(self.L.compress(5), (5 * SCALE) // (SCALE + 5))   # ~identity for small dv
+
+    def test_compress_rejects_bad_scale(self):
+        with self.assertRaises(ValueError):
+            self.L.compress(5, R=0)
+
+    def test_saturate(self):
+        self.assertEqual(self.L.saturate(100, 10), 10)
+        self.assertEqual(self.L.saturate(-100, 10), -10)
+
+    def test_certificate_monotone_single_branch(self):
+        c = self.L.certificate(self.res["energies"], self.res["defects"])
+        self.assertTrue(c["monotone_descent"]); self.assertEqual(c["n_branches"], 1)
+        self.assertLess(c["max_compressed_dV"], SCALE)        # certificate cannot overflow
+
+    def test_certificate_forks_near_singular(self):
+        grad, energy, _ = problem()
+        res = R.optimize([[fp(1), fp(99, 100)], [0, fp(1, 100)], [fp(1, 100), 0]], grad, fp(1, 5), 60, energy)
+        c = self.L.certificate(res["energies"], res["defects"], tol=2)
+        self.assertEqual(c["n_branches"], 2)                  # the fork is detected
+        self.assertTrue(all(b["descent_holds"] for b in c["branches"].values()))  # descent holds per branch
+
+    def test_composite_max(self):
+        comp, active = self.L.composite_max([1, 5, 2], [3, 4, 9])
+        self.assertEqual(comp, [3, 5, 9]); self.assertEqual(active, [1, 0, 1])
+
+
 if __name__ == "__main__":
     if os.environ.get("PYTHONHASHSEED") != "0":
         sys.stderr.write("set PYTHONHASHSEED=0\n"); raise SystemExit(2)

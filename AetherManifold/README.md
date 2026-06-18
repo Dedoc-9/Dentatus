@@ -22,8 +22,8 @@ steps reaches the **identical** minimum on any machine, and the path is a replay
 ## Run it
 
 ```
-PYTHONHASHSEED=0 python3 demo_manifold_stable.py            # converge · deterministic · two-tier · stability · conformance
-PYTHONHASHSEED=0 python3 tests/test_manifold_stable.py      # 10 unit tests
+PYTHONHASHSEED=0 python3 demo_manifold_stable.py            # converge · deterministic · two-tier · stability · conformance · lyapunov
+PYTHONHASHSEED=0 python3 tests/test_manifold_stable.py      # 17 unit tests
 ```
 
 The demo fits `X` to a target frame on `St(3,2)`: energy `2.0e-2 → 4.3e-19`, `X → [[0.6,0],[0.8,0],[0,1]]`
@@ -44,6 +44,26 @@ The demo fits `X` to a target frame on `St(3,2)`: energy `2.0e-2 → 4.3e-19`, `
   Running in fixed-point removes *nondeterministic* drift, so any instability you see is **reproducible and
   attributable** to the algorithm + a *known, fixed* quantization — not random hardware noise. (Note: this is
   determinism, **not** infinite precision.)
+
+## Hardened Lyapunov certificate (forked + compressed)
+
+Real Lyapunov analysis is richer than a single global number, and `lyapunov.py` hardens for it — all in
+exact integers, all as *observables*:
+
+- **Forking.** A switched/hybrid flow (and Riemannian descent with a retraction *is* switched) makes the
+  discrete derivative `ΔVₜ = V(Xₜ₊₁) − V(Xₜ)` fork by region `Ωᵢ`. `certificate()` partitions the steps
+  (e.g. *regular* vs *near-singular* by orthonormality defect) and reports whether descent `ΔV ≤ 0` holds in
+  **each branch separately** — a near-singular start cleanly splits into two branches, descent verified in both.
+- **Compression.** `compress(ΔV, R)` is the fixed-point `V/(1+V)` law: `|c| = |ΔV|·R // (R+|ΔV|) ∈ [0,R)`,
+  **sign-preserving**, so a huge `ΔV` saturates toward `±R` instead of overflowing the certificate. `R` is a
+  declared compression scale (a named cut, like `ε`); because the sign is exact, descent conclusions are
+  unchanged. (`saturate` is the hard-clamp variant.)
+- **Composite.** `composite_max(V₁, V₂, …)` forms `V = maxᵢ Vᵢ` (the switched-system composite) and reports
+  the active index per step.
+
+**Honest bound:** `ΔV ≤ 0` over the observed trajectory is computational *evidence* of monotone descent
+within the simulation bounds — not a proof of asymptotic or global stability outside them. Stability is
+observed, not derived.
 
 ## Conformance (the native-port oracle)
 
@@ -69,6 +89,7 @@ columns — retraction must recover), `zero_gradient` (start at the minimum), `a
 | `riemann.py` | tangent projection `P_X`, integer retraction, `optimize` (Riemannian GD), `ortho_defect` |
 | `objective.py` | sample objectives with exact integer gradients (`procrustes`) |
 | `stability.py` | shadowing-distance co-run + Lyapunov estimate (observable) |
+| `lyapunov.py` | discrete Lyapunov certificate — forked (per-region descent), sign-preserving compression, max/min composite |
 | `conformance.py` | edge-case trajectory vectors + `fixtures/*.json` export (native-port oracle) |
-| `demo_manifold_stable.py` | converge · deterministic · two-tier · stability · conformance |
-| `tests/test_manifold_stable.py` | 10 unit tests |
+| `demo_manifold_stable.py` | converge · deterministic · two-tier · stability · conformance · lyapunov |
+| `tests/test_manifold_stable.py` | 17 unit tests |
