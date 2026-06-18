@@ -34,7 +34,7 @@ manifold — each is the same canonical-bytes → hash + capture-at-boundary dis
 ### The workbench today
 
 The `chronicle` core has been extended into a **25-component workbench** (2 frozen cores + 22 siblings,
-**366 unit tests across 32 suites**, all gated by one preflight). The siblings are deliberately decoupled —
+**370 unit tests across 32 suites**, all gated by one preflight). The siblings are deliberately decoupled —
 each imports the cores read-only (the "Sibling Law", verified by a parity proof), each is a small **reference
 implementation** of the one idea in a different domain, and **each states its own honest bound in its
 README**. They group into families: an audit core; governance & isolation (`guard_server`, `pact`, `quorum`,

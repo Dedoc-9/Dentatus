@@ -127,3 +127,29 @@ pure telemetry — it never gates, steers, or enters identity (`telemetry ≠ co
 proposal pressure measures the filter's *shape*, never whether the filter is *right*. Whether the geometry of
 admissibility describes physical systems containing adaptive intelligences is an empirical question this code
 does not answer — it only makes the question measurable.
+
+## The lawful possibility space — "arbitrary" made measurable
+
+The rejection ledger sees `possible \ admissible` (the inadmissible). It is blind to `admissible \ realized`
+— transitions that were fully LAWFUL but not chosen. That second gap is the mathematician's **"arbitrary"**:
+
+```
+possible  ⊋  admissible  ⊋  realized
+   (all)      (lawful)       (chosen)
+
+"Let x be arbitrary"  ==  "any member of the admissible set; the choice is free within the structure."
+```
+
+`possibility.py` shadow-evaluates a set of candidate proposals against ONE state (no commit; the world never
+advances), returning the **admissible set** (the lawful freedom), the **inadmissible** (filtered, by gate),
+a **freedom** measure (|admissible|·1000/proposed), and the **admissible-but-unrealized** remainder — the
+lawful alternatives every bit as admissible as the one that became real.
+
+"Arbitrary" is therefore not the absence of structure but **freedom constrained by an unseen boundary**: in
+mathematics that boundary is the axioms, in physics the laws, in this engine the airlock. The realized world
+is a *projection of the possible through constraints*; "Hello, World" is a possibility crossing that boundary
+into an actual state.
+
+**Honest bound:** pure analysis — it never commits, gates, or enters identity. It measures the size/shape of
+the admissible set *under the declared structure* (airlock + adapter + constraints + severity), never that
+the structure is the right one. `integrity ≠ truth`.

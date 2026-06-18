@@ -91,6 +91,7 @@ PYTHONHASHSEED=0 python3 tests/test_airlock.py      # 23 unit tests (laws, gates
 | `contract.py` | the deterministic-adapter **contract** (`validate_adapter`) — the membrane's interface language |
 | `conformance.py` | portable membrane **conformance vectors** (`make_vector`/`verify_vector`) |
 | `admissibility.py` | the geometry of **what almost happened** — proposal pressure + gate histogram (pure telemetry) |
+| `possibility.py` | the lawful **possibility space** — admissible set, freedom measure, admissible-but-unrealized ('arbitrary') |
 | `demo_general.py` | one membrane, two realities |
 | `demo_airlock.py` | a goal decomposed → membrane → commits/rejections/telemetry |
 | `tests/test_airlock.py` | 15 unit tests |

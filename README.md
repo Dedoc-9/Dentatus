@@ -128,7 +128,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`stasis/`](stasis/README.md) | **the boundary layer** — Iron Canon (strict canonical bytes, rejects ambiguous/float types), Divergence Ledger (gate-vs-observable: lie→FAIL, drift→WARN), Lazy Lattice (Merkle batch + on-demand proofs). Hardens the order zone against real-world chaos | `PYTHONHASHSEED=0 python3 demo_stasis.py` |
 | [`aether/`](aether/README.md) | **hardened integer manifold** — DVSM geometry in fixed-point integers (bit-exact, replayable); Stiefel auditor gates `E=‖WᵀW−I‖²_F` under a declared epsilon and deterministically self-retracts (Gram-Schmidt), logging recovery. A 1,000,000-step spinning top with no nondeterministic drift | `PYTHONHASHSEED=0 python3 demo_aether_physics.py` |
 
-All twenty-five refuse to run without `PYTHONHASHSEED=0`. Test suites total **366 unit tests across 32 suites**
+All twenty-five refuse to run without `PYTHONHASHSEED=0`. Test suites total **370 unit tests across 32 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
 manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15, tessera 12, crucible 10, fuel 12, elenchus 11, polity 8, stasis 15, aether 11) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 

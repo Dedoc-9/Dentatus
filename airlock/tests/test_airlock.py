@@ -18,6 +18,7 @@ import adapters_kv as KV
 import contract
 import conformance as CF
 import admissibility as AD
+import possibility as PS
 import membrane as M
 
 K = A.K
@@ -342,6 +343,43 @@ class TestAdmissibilityGeometry(unittest.TestCase):
         g = AD.geometry(M.Ledger())
         self.assertEqual(g["proposed"], 0)
         self.assertIsNone(g["admissibility_permille"])
+
+
+
+
+class TestPossibilitySpace(unittest.TestCase):
+    """possible ⊋ admissible ⊋ realized — measure the lawful freedom (the 'arbitrary' set) at a state."""
+    def _candidates(self):
+        B = {"budget": {"max_cost": 5, "max_delta": 10**18}, "constraints": {"max_bodies": 2}}
+        return [
+            {"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}, **B},      # admissible
+            {"transition": {"op": "impulse", "id": 0, "dv": [0, 1, 0]}, **B},      # admissible
+            {"transition": {"op": "advance", "ticks": 3}, **B},                    # admissible
+            {"transition": {"op": "impulse", "id": 0, "dv": [0.5, 0, 0]}, **B},    # CANON (inadmissible)
+            {"transition": {"op": "teleport"}, **B},                               # SCHEMA (inadmissible)
+        ]
+
+    def test_admissible_classification_and_freedom(self):
+        W = world()
+        g = PS.admissible_set(W, self._candidates(), A)
+        self.assertEqual(g["candidates"], 5)
+        self.assertEqual(g["admissible"], [0, 1, 2])
+        self.assertEqual(g["inadmissible"], {3: "CANON", 4: "SCHEMA"})
+        self.assertEqual(g["freedom_permille"], 600)        # 3 lawful of 5 proposed
+
+    def test_shadow_evaluation_is_pure(self):
+        W = world(); h0 = A.state_hash(W)
+        PS.admissible_set(W, self._candidates(), A)
+        self.assertEqual(A.state_hash(W), h0)               # evaluating possibility never mutates reality
+
+    def test_unrealized_admissible_remainder(self):
+        W = world()
+        g = PS.admissible_set(W, self._candidates(), A)
+        self.assertEqual(PS.unrealized_admissible(g, chosen=0), [1, 2])   # lawful, not chosen
+        self.assertEqual(PS.unrealized_admissible(g, chosen=None), [0, 1, 2])
+
+    def test_empty(self):
+        self.assertIsNone(PS.admissible_set(world(), [], A)["freedom_permille"])
 
 
 if __name__ == "__main__":
