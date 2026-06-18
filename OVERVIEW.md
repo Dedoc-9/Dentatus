@@ -44,7 +44,7 @@ physics (`lockstep`, `aether`, `manifold`); and a boundary layer that admits the
 (`stasis`). None of them is a product; collectively they are a demonstration that one honest primitive
 composes across surprisingly different problems. Two **standalone applications** in the repo show the same
 composition one level up — `aegis_gate/` (a verifiable transfer & KYC agent; a *mock* bank, proves the audit
-trail not the wisdom) `VeriSim/` (a verifiable simulation engine; proves the *test was real*, not that the
+trail not the wisdom), `VeriSim/` (a verifiable simulation engine; proves the *test was real*, not that the
 model matches reality), and `VeriVerse/` (a verifiable procedural world/physics-engine prototype — a *scaffold*
 for a deterministic, cryptographically-replayable physics engine that competes with conventional engines on
 bit-exact determinism and verifiability rather than render speed/fidelity) — each importing the cores read-only
