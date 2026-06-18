@@ -42,6 +42,7 @@ SUITES = [
     "elenchus/tests/test_elenchus.py",
     "polity/tests/test_polity.py",
     "stasis/tests/test_stasis.py",
+    "aether/tests/test_aether_stiefel.py",
 ]
 PARITY = "integration/parity_proof.py"
 
