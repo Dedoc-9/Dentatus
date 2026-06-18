@@ -19,7 +19,7 @@ import subprocess
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 GATES = [
-    ("workbench preflight  (28 suites + parity)", "integration/preflight_check.py"),
+    ("workbench preflight  (29 suites + parity)", "integration/preflight_check.py"),
     ("application conformance (5 goldens)", "conformance_suite/run.py"),
 ]
 

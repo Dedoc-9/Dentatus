@@ -19,6 +19,8 @@ PYTHONHASHSEED=0 python3 tests/test_aether_stiefel.py  # 11 unit tests (gate · 
 PYTHONHASHSEED=0 python3 tests/test_aether_ghost.py    # 12 unit tests (Stage-B dual ghost channel)
 PYTHONHASHSEED=0 python3 demo_aether_spd.py            # Stage C: SPD cone · adaptive cadence · pure ghost
 PYTHONHASHSEED=0 python3 tests/test_aether_spd.py      # 10 unit tests (Stage-C SPD geometry)
+PYTHONHASHSEED=0 python3 demo_aether_field.py          # Stage D: generator field · Magnus-2 · meta-layer
+PYTHONHASHSEED=0 python3 tests/test_aether_field.py    # 11 unit tests (Stage-D field + meta-observability)
 ```
 
 ## Fixed-point is deterministic, not exact (and that's the point)
@@ -116,6 +118,46 @@ but **never** read by the controller (observable purity; no `S → Π_SPD → P 
 - Cross-geometry note: `G` here is relative to `Π_SPD`, so its magnitude is **not** comparable to the
   Stage-B Stiefel ghost. Attribution holds within a fixed projection, never across.
 
+## Stage D — the self-describing generator field A(W,t,θ) + meta-observability
+
+Stages A–C used a **constant** generator, so `[A,A]=0` and the Magnus/BCH bracket `Bτ` was dormant.
+Stage D promotes the generator to a structured field `A = A(W,t,θ)`, where `θ` is a **declared, hashed**
+parameter bundle. The hard causal rule: `A` (and `θ`) may read **configuration, schedule, forcing, `W`,
+`t`** — but **never** `S`, `G`, `B(t)`, or `M̂`. The forward path stays ghost-blind (enforced by the
+`A(W,t)` signature); residual/meta channels read the forward path, never the reverse.
+
+```
+field:        A(W,t) = A0 + g(W,t;θ)·B0        # g mixes a state term (k·W[r][c]) and a schedule term
+Magnus-2:     Ω = dt·(A_k+A_{k+1})/2 + (dt²/12)[A_k,A_{k+1}]   # the bracket term IS Bτ
+hierarchy:    β₁=‖[A_k,A_{k+1}]‖   β₂=‖[A_k,[A_k,A_{k+1}]]‖   β₃=‖[A_{k+1},[A_k,A_{k+1}]]‖
+meta-vector:  M̂ = (E/ε, ‖G‖/‖Z‖, B(t), β₁/‖A‖, β₂/(β₁+δ), β₃/(β₁+δ))   # all dimensionless, all observed
+```
+
+**Representation pressure (the fourth axis).** `β₂/β₁`, `β₃/β₁` are the truncation-stress of Magnus-2:
+small ⇒ second order adequate; growing ⇒ the integrator is losing validity. `regime.classify(M̂)` argmaxes
+over four axes — **geometry, quantization, dynamics, representation** — and reports the label **plus its
+margin**. The framework now monitors not just the state but *which of its own modelling assumptions is the
+dominant error source*. It is **manifold-, metric-, and integrator-independent**, which is why it is the
+part most likely to survive architectural generations.
+
+**Invariants held.** `M̂`/regime are **pure telemetry** — classified and recorded, **never** switching the
+integrator or any control (no observable gates the runtime; `E` stays the only inline gate). `M̂` is **not**
+in `Hₜ` (it is a deterministic function of the already-hashed `(θ,Z,S,W)` — zero new entropy); `θ` **is**
+in `Hₜ` (declared bundle, `protocol_version: aether-field/1`). Raw `M` is incommensurable (`E~1e16`,
+`β~1e9`) — only the non-dimensionalized `M̂` is classifiable.
+
+**Honest bounds (the Stage-D non-result, kept).**
+- The **ghost measures geometric fidelity** (staying on Stiefel), **not** dynamical accuracy. Magnus-2 moves
+  the ghost and the representation pressure in **opposite** directions — which is the *proof* that the two
+  axes are **non-redundant**, not a defect.
+- A clean Magnus-2 **accuracy** win is **not** demonstrated here: applied via the additive `(I+Ω)` map the
+  payoff is regime-dependent (`+4%`, `−23%`, `+9%` vs a fine-`dt` reference). A true higher-order win needs
+  an exact-orthogonal **Cayley/exp** application (a fixed-point matrix inverse) — a declared deferred
+  sub-stage. What is solid is the *observability*: the brackets, `M̂`, and the regime classifier are
+  deterministic and report integrator adequacy without ever acting on it. `integrity ≠ truth`.
+- `Φ` (a predictive `M̂_{t+1}=Φ(M̂_t)`) is **not** assumed — `M̂(t)` is logged for later analysis; whether
+  predictive structure exists is a question to be tested against the record, not built in.
+
 ## Ties
 
 | sibling | role |
@@ -143,9 +185,13 @@ but **never** read by the controller (observable purity; no `S → Π_SPD → P 
 | `stiefel.py` | exact gate, `frobenius_energy`, `check_orthogonality`, `gram_schmidt_integer`, `handle_retraction` |
 | `ghost.py` | **Stage B** dual channel: `ghost_residual`, `ema_matrix`, `backreaction` B(t), `clt_eta`, `structural_hash` (Hₜ), `PROTOCOL_VERSION` |
 | `spd.py` | **Stage C** SPD cone: `is_spd_exact` (Sylvester), `cholesky_int`, `project_spd` (Π_SPD), `spd_error` (E_SPD), `gershgorin_margin`, `SPD_PROTOCOL` |
-| `evolve.py` | `is_skew_symmetric`, `lie_bracket`, `lie_step`, `evolve_raw`, `evolve_audited` (Stage B); `evolve_spd_audited`, `symmetrize_add` (Stage C, E-driven adaptive cadence) |
+| `field.py` | **Stage D** generator field `A(W,t,θ)`, `magnus2_omega` (Bτ), `bracket_hierarchy` (β₁,β₂,β₃), `FIELD_PROTOCOL` |
+| `regime.py` | **Stage D** meta-layer: `meta_vector` (M̂, dimensionless), `classify` (4-axis regime), `representation_pressure` — pure telemetry |
+| `evolve.py` | `evolve_audited` (Stage B); `evolve_spd_audited` (Stage C, adaptive cadence); `evolve_field_audited` (Stage D, Magnus-2 field + meta-observability) |
 | `demo_aether_physics.py` | exact gate (A) · 1-ulp truth (B) · 1,000,000-step spinning top (C) · ghostsnap (D) |
 | `tests/test_aether_stiefel.py` | 11 unit tests (exact gate, audit, retraction, evolution, crucible stress) |
 | `tests/test_aether_ghost.py` | 12 unit tests (ghost closure, fp EMA, observable purity, η_CLT null, structural identity) |
 | `demo_aether_spd.py` | Stage C: exact gate · Π_SPD repair · adaptive cadence (calm vs strong drift) · pure ghost |
 | `tests/test_aether_spd.py` | 10 unit tests (Cholesky, Sylvester gate, retraction, adaptive cadence, purity, anchor) |
+| `demo_aether_field.py` | Stage D: field A(W,t,θ) · Magnus-2 · bracket hierarchy · regime classifier |
+| `tests/test_aether_field.py` | 11 unit tests (θ-purity, bracket hierarchy, M̂, regime, θ-in-identity, channel separation) |

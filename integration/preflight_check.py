@@ -45,6 +45,7 @@ SUITES = [
     "aether/tests/test_aether_stiefel.py",
     "aether/tests/test_aether_ghost.py",
     "aether/tests/test_aether_spd.py",
+    "aether/tests/test_aether_field.py",
 ]
 PARITY = "integration/parity_proof.py"
 

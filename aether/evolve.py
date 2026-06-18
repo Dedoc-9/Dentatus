@@ -24,6 +24,8 @@ import fixedpoint as F
 import stiefel as S
 import ghost as Gh
 import spd as SP
+import field as FD
+import regime as RG
 
 
 def is_skew_symmetric(M):
@@ -179,3 +181,75 @@ def symmetrize_add(P, D, dt_fp):
     """One forward SPD-drift step: P ← symmetrize(P + dt·D). D symmetric ⇒ stays symmetric; the cone
     constraint (positive-definiteness) is what can drift, and the retraction restores it."""
     return SP.symmetrize(F.add(P, F.scalar(dt_fp, D)))
+
+
+def evolve_field_audited(W, gfield, dt_fp, steps, epsilon=S.STIEFEL_EPSILON_INT, audit_every=1000,
+                         measure_every=None, alpha_fp=Gh.ALPHA_DEFAULT, integrator="magnus2"):
+    """Stage D — evolve a Stiefel frame under the self-describing generator field A(W,t,θ) with a
+    commutator-corrected Magnus-2 step (Bτ), an audited retraction, the PURE ghost channel, and the
+    meta-observability vector M̂ + regime classification.
+
+    integrator="magnus2": W ← (I + Ω)·W with Ω = dt·(A_k+A_{k+1})/2 + (dt²/12)[A_k,A_{k+1}]  (Bτ on).
+    integrator="euler"  : W ← (I + dt·A_k)·W                                                  (Bτ off).
+    The two share everything else, so ghost_total(magnus2) vs ghost_total(euler) is the Bτ payoff.
+
+    θ (gfield.theta()) is the DECLARED, HASHED parameter bundle and enters the structural identity.
+    A reads only (W, t, θ) — never S/G. M̂/regime are pure telemetry: classified and recorded, never
+    fed back into the forward path. Returns the final frame, retractions, ghost channel, the bracket
+    summary (max β₁, max representation pressure), the regime histogram, and Hₜ. Deterministic.
+    """
+    m = audit_every if measure_every is None else measure_every
+    cur = W
+    last_valid = W
+    retractions = []
+    Sg = Gh.zeros_like(W)
+    norm_stream = []
+    ghost_total = 0
+    beta1_max = 0
+    rep_max = 0
+    regimes = {}
+
+    for t in range(1, steps + 1):
+        A_k = gfield.A(cur, t - 1)                       # reads W,t,θ only (ghost-blind)
+        W_tent = lie_step(cur, A_k, dt_fp)               # Euler predictor for A_{k+1}
+        A_k1 = gfield.A(W_tent, t)
+        if integrator == "magnus2":
+            Om = FD.magnus2_omega(A_k, A_k1, dt_fp)
+            cur = F.add(cur, F.matmul(Om, cur))          # (I+Ω)·W — Bτ-corrected
+        else:
+            cur = lie_step(cur, A_k, dt_fp)              # plain Euler
+
+        if t % m == 0 or t == steps:                     # ---- pure measurement + meta-layer ----
+            proj = _project(cur)
+            if proj is not None:
+                G = Gh.ghost_residual(cur, proj)
+                Sg = Gh.ema_matrix(Sg, G, alpha_fp)
+                ng = Gh.frob_norm(G)
+                norm_stream.append(ng)
+                ghost_total += ng
+                _, b1, b2, b3 = FD.bracket_hierarchy(A_k, A_k1)
+                beta1_max = max(beta1_max, b1)
+                E_now = S.frobenius_energy(cur)
+                mhat = RG.meta_vector(E_now, epsilon, ng, Gh.frob_norm(cur), Gh.backreaction(Sg, cur),
+                                      b1, FD._fro(A_k), b2, b3)
+                rep_max = max(rep_max, RG.representation_pressure(mhat))
+                lbl = RG.classify(mhat)["regime"]
+                regimes[lbl] = regimes.get(lbl, 0) + 1
+
+        if t % audit_every == 0 or t == steps:           # ---- audit CONTROL (unchanged) ----
+            chk = S.check_orthogonality(cur, epsilon)
+            if not chk["ok"]:
+                res = S.handle_retraction(cur, epsilon, last_valid=last_valid)
+                cur = res["recovered"]
+                retractions.append(res["shard"])
+            last_valid = cur
+
+    B_t = Gh.backreaction(Sg, cur)
+    eta = Gh.clt_eta(norm_stream)
+    proj_end = _project(cur) or cur
+    structural = Gh.structural_hash(gfield.theta(), cur, Sg, proj_end, FD.FIELD_PROTOCOL)
+    return {"W": cur, "retractions": len(retractions), "final_hash": S.state_hash(cur),
+            "structural_hash": structural, "S": Sg, "B_t": B_t, "eta_clt": eta,
+            "ghost_total": ghost_total, "beta1_max": beta1_max, "rep_pressure_max": rep_max,
+            "regimes": regimes, "ghost_samples": len(norm_stream),
+            "integrator": integrator, "protocol_version": FD.FIELD_PROTOCOL}
