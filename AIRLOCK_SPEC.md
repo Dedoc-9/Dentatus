@@ -4,6 +4,14 @@
 > **governed creative workspace** where humans and LLMs explore freely while reality changes only through
 > auditable, reproducible, bounded operations. This file is the authoritative contract; `airlock/` implements it.
 
+## The membrane is general (reality ⊋ physics)
+
+The airlock is the **general reality-transition membrane**, not an LLM feature. The LLM is merely the first
+uncertain proposer that exercises it; agents and humans are other clients. "Reality" is whatever a
+deterministic **adapter** defines — physics, **config/repo state, runtime, deployments, proofs**. The membrane
+and both laws are invariant across realities; only the adapter changes. Four pillars keep it a platform:
+**typed transition schemas · deterministic adapters · replayable proofs · portable conformance vectors.**
+
 ## Two laws (architectural, not advisory)
 
 1. **`telemetry ≠ control`** — observables (`R_p`, aether `regime`/ghost/spectral metrics) may be *reported*;

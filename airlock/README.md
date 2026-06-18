@@ -30,6 +30,23 @@ p = { transition, claims, constraints, provenance, budget }
 `R_p` is the **proposal residual — the LLM's "ghost"**: the part of the proposal the deterministic kernel
 could not honor, measured with the same discipline as `aether`'s ghost, and (like it) **observable-only**.
 
+## The general membrane — reality is not just physics
+
+The airlock is **not an LLM feature**; it is the general **reality-transition membrane**. "Reality" is
+whatever a deterministic adapter defines — physics, **config / repo state, runtime, deployments, proofs**.
+The membrane and its two laws are unchanged across realities; only the adapter differs:
+
+```
+proposer (LLM | agent | human)  →  proposal  →  [ same membrane ]  →  deterministic reality (any adapter)
+```
+
+Two adapters ship as proof of generality: `adapters.py` (AetherPulse physics) and `adapters_kv.py` (a
+config/repo key-value world — `set`/`delete`/`bump`/`freeze`). `demo_general.py` runs **both through the
+identical `propose()`**. The four pillars that keep this a platform (not a pile of AI features):
+**typed transition schemas** (declared `ALLOWED_OPS`), **deterministic adapters** (the `contract.py`
+interface), **replayable proofs** (hash-chained commit/rejection shards), **portable conformance vectors**
+(`conformance.py` — a native port is membrane-conformant iff it reproduces the gate sequence + ledger head).
+
 ## Transitions, not goals
 
 The kernel admits only a small set of **declared, bounded** transitions — never free-form code or goals:
@@ -48,7 +65,8 @@ lives **outside** the membrane as untrusted planning that must *decompose to tra
 
 ```
 PYTHONHASHSEED=0 python3 demo_airlock.py            # a goal decomposed → commits + rejections + telemetry
-PYTHONHASHSEED=0 python3 tests/test_airlock.py      # 15 unit tests (both laws, gates, witness, determinism)
+PYTHONHASHSEED=0 python3 demo_general.py            # ONE membrane, TWO realities (physics + config/KV)
+PYTHONHASHSEED=0 python3 tests/test_airlock.py      # 23 unit tests (laws, gates, witness, contract, conformance)
 ```
 
 ## Honest bounds
@@ -68,6 +86,10 @@ PYTHONHASHSEED=0 python3 tests/test_airlock.py      # 15 unit tests (both laws, 
 |---|---|
 | `_wb.py` | read-only workbench shim (`chronicle`, `stasis`) — Sibling Law |
 | `membrane.py` | the kernel-agnostic pipeline: `propose`, `Ledger`, commit/rejection shards, the two laws |
-| `adapters.py` | the AetherPulse world adapter — typed ops (`spawn`/`impulse`/`advance`), `R_p`, validate |
+| `adapters.py` | AetherPulse **physics** adapter — `spawn`/`impulse`/`advance`, `R_p`, validate |
+| `adapters_kv.py` | a **config/repo-state** adapter — `set`/`delete`/`bump`/`freeze` (proves reality ≠ physics) |
+| `contract.py` | the deterministic-adapter **contract** (`validate_adapter`) — the membrane's interface language |
+| `conformance.py` | portable membrane **conformance vectors** (`make_vector`/`verify_vector`) |
+| `demo_general.py` | one membrane, two realities |
 | `demo_airlock.py` | a goal decomposed → membrane → commits/rejections/telemetry |
 | `tests/test_airlock.py` | 15 unit tests |

@@ -14,6 +14,9 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import adapters as A
+import adapters_kv as KV
+import contract
+import conformance as CF
 import membrane as M
 
 K = A.K
@@ -131,6 +134,82 @@ class TestGoalIsNotTransition(unittest.TestCase):
         W = world()
         r = M.propose(W, P({"op": "goal", "desc": "make the box bounce forever"}), A)
         self.assertFalse(r["ok"]); self.assertEqual(r["gate"], "SCHEMA")
+
+
+
+
+class TestAdapterContract(unittest.TestCase):
+    def test_both_adapters_satisfy_contract(self):
+        self.assertTrue(contract.validate_adapter(A))
+        self.assertTrue(contract.validate_adapter(KV))
+
+    def test_broken_adapter_rejected(self):
+        class Broken:
+            ALLOWED_OPS = ("x",)
+            ApplyError = ValueError
+            cost = staticmethod(lambda t: 1)
+            # missing apply/delta_norm/state_hash/validate/residual
+        with self.assertRaises(contract.ContractError):
+            contract.validate_adapter(Broken)
+
+
+class TestGeneralMembrane(unittest.TestCase):
+    """The SAME membrane governs a non-physics (config/repo) reality."""
+    def _kvp(self, txn, **kw):
+        base = {"transition": txn, "budget": kw.pop("budget", {"max_cost": 5, "max_delta": 10**9})}
+        base.update(kw)
+        return base
+
+    def test_kv_commit_and_frozen_reject(self):
+        W, L = KV.empty_world(), M.Ledger()
+        r = M.propose(W, self._kvp({"op": "set", "key": "replicas", "value": 3}), KV, ledger=L)
+        self.assertTrue(r["ok"]); W = r["world"]
+        r = M.propose(W, self._kvp({"op": "freeze", "key": "replicas"}), KV, ledger=L)
+        self.assertTrue(r["ok"]); W = r["world"]
+        r = M.propose(W, self._kvp({"op": "set", "key": "replicas", "value": 9}), KV, ledger=L)
+        self.assertFalse(r["ok"]); self.assertEqual(r["gate"], "APPLY")    # frozen → inadmissible
+        self.assertEqual(W["kv"]["replicas"], 3)                           # state unchanged on reject
+
+    def test_kv_intent_not_authority(self):
+        # False claims do not block a valid config change; true claims do not rescue a frozen write.
+        W, L = KV.empty_world(), M.Ledger()
+        r = M.propose(W, self._kvp({"op": "set", "key": "a", "value": 1},
+                                   claims={"expect_key_count": 99}), KV, ledger=L)
+        self.assertTrue(r["ok"]); self.assertEqual(r["telemetry"]["R_p"], 98)   # measured, not gated
+
+    def test_kv_schema_rejects_unknown_op(self):
+        r = M.propose(KV.empty_world(), self._kvp({"op": "deploy_to_prod"}), KV)
+        self.assertFalse(r["ok"]); self.assertEqual(r["gate"], "SCHEMA")
+
+
+class TestConformanceVectors(unittest.TestCase):
+    def _seq(self):
+        return [{"transition": {"op": "set", "key": "replicas", "value": 3}},
+                {"transition": {"op": "bump", "key": "replicas", "by": 2}},
+                {"transition": {"op": "freeze", "key": "replicas"}},
+                {"transition": {"op": "set", "key": "replicas", "value": 9}},
+                {"transition": {"op": "set", "key": "region", "value": "us-east"}}]
+
+    def test_make_and_verify_roundtrip(self):
+        v = CF.make_vector("kv", KV, KV.empty_world(), self._seq(),
+                           budget={"max_cost": 5, "max_delta": 10**9}, constraints={"max_keys": 4})
+        ok, detail = CF.verify_vector(v, KV)
+        self.assertTrue(ok, detail)
+        self.assertEqual(v["gates"], ["COMMIT", "COMMIT", "COMMIT", "APPLY", "COMMIT"])
+
+    def test_tampered_vector_fails(self):
+        v = CF.make_vector("kv", KV, KV.empty_world(), self._seq(),
+                           budget={"max_cost": 5, "max_delta": 10**9}, constraints={"max_keys": 4})
+        v["ledger_head"] = "0" * 64
+        ok, _ = CF.verify_vector(v, KV)
+        self.assertFalse(ok)
+
+    def test_physics_vector_roundtrips_too(self):
+        W = A.K.make_world([A.K.body(0, (0, 5, 0), (0, 0, 0), (1, 1, 1))], ((-10, -10, -10), (10, 10, 10)))
+        seq = [{"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}},
+               {"transition": {"op": "advance", "ticks": 3}}]
+        v = CF.make_vector("phys", A, W, seq, budget={"max_cost": 10, "max_delta": 10**15})
+        self.assertTrue(CF.verify_vector(v, A)[0])
 
 
 if __name__ == "__main__":
