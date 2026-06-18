@@ -96,7 +96,7 @@ None is dead; each consumes the kernel's trajectory, never feeds its decisions.
 
 ## The single next build (the only unfinished seam)
 
-**The LLM-airlock seam in `AetherPulse`** — implement Lock 2 + Lock 4 concretely: a `propose → validate →
+**[DONE — `airlock/`]** The LLM-airlock seam — Lock 2 + Lock 4 realized: a `propose → validate →
 commit` path where a typed proposal `p = (Δ, intent, constraints, provenance)` passes `fuel` (bounded,
 deterministic apply) + `elenchus`/`polity` (admissible?) + `quorum` (witness the post-delta state hash)
 **before** the kernel commits, emitting a `tessera` shard. aether `regime` reads the committed trajectory
