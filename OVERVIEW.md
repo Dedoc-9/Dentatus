@@ -34,7 +34,7 @@ manifold — each is the same canonical-bytes → hash + capture-at-boundary dis
 ### The workbench today
 
 The `chronicle` core has been extended into a **24-component workbench** (2 frozen cores + 22 siblings,
-**326 unit tests across 30 suites**, all gated by one preflight). The siblings are deliberately decoupled —
+**330 unit tests across 31 suites**, all gated by one preflight). The siblings are deliberately decoupled —
 each imports the cores read-only (the "Sibling Law", verified by a parity proof), each is a small **reference
 implementation** of the one idea in a different domain, and **each states its own honest bound in its
 README**. They group into families: an audit core; governance & isolation (`guard_server`, `pact`, `quorum`,
@@ -72,7 +72,7 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 
 | Property | Evidence |
 |---|---|
-| The whole workbench passes one gate — 30/30 suites + coupled/uncoupled parity, run as real subprocesses | `integration/preflight_check.py` → `[FOUNDRY VERIFIED]` |
+| The whole workbench passes one gate — 31/31 suites + coupled/uncoupled parity, run as real subprocesses | `integration/preflight_check.py` → `[FOUNDRY VERIFIED]` |
 | Cores have not drifted from a pinned baseline; siblings vendor no core (the Sibling Law) | `selfaudit/` → `workbench_H` |
 | Replay court — record, tamper, rule-swap, fail-closed invariant, Ed25519 third-party verify | `chronicle/demo_policy.py` |
 | Exact integer consensus + the 2D (lateral×temporal) attestation lattice | `quorum/demo_quorum.py` |

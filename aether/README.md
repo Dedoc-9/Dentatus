@@ -22,7 +22,9 @@ PYTHONHASHSEED=0 python3 tests/test_aether_spd.py      # 10 unit tests (Stage-C 
 PYTHONHASHSEED=0 python3 demo_aether_field.py          # Stage D: generator field · Magnus-2 · meta-layer
 PYTHONHASHSEED=0 python3 tests/test_aether_field.py    # 11 unit tests (Stage-D field + meta-observability)
 PYTHONHASHSEED=0 python3 demo_aether_coherence.py      # Stage E: spectral observability over SPD
-PYTHONHASHSEED=0 python3 tests/test_aether_coherence.py # 9 unit tests (Stage-E spectral layer)
+PYTHONHASHSEED=0 python3 tests/test_aether_coherence.py # 11 unit tests (Stage-E spectral layer)
+PYTHONHASHSEED=0 python3 demo_aether_predictive.py     # Stage-E hardening: incremental predictive-value gate
+PYTHONHASHSEED=0 python3 tests/test_aether_predictive.py # 4 unit tests (held-out predictive gate)
 ```
 
 ## Fixed-point is deterministic, not exact (and that's the point)
@@ -211,6 +213,27 @@ never a control primitive). The correlation hypotheses (does dynamical complexit
 dispersion?) are **logged for later analysis**, not built-in claims. `integrity ≠ truth`: a separating
 correlation proves the axis carries independent information, not that it predicts any particular failure.
 
+**Hardening — independent ≠ predictive (measured, and it failed for error, honestly).** Gate 5 proved the
+spectral axes carry *independent* information. The stricter question — do they add *forecasting* power for
+future error beyond `M̂`? — is the held-out incremental-R² gate (`predictive.py`), the empirical proxy for
+`I(spectral ; future residual | existing M̂)`, with a **negative control** (a random feature bounds the
+ΔR² any added column can buy) and a **positive control** (the gate must fire on a genuinely predictive
+column). Measured, held-out (`H=4`):
+
+```
+target              R²_base   +spectral   ΔR²        verdict
+future ghost ‖G‖    −0.009    −0.007      +0.002     descriptive   (≈ random control: NO forecasting gain)
+future E_SPD        −0.009    −0.006      +0.003     descriptive
+future mixedness    −78.4     +0.921      +79.4      predictive    (but = series PERSISTENCE, not error)
+future coherence    +0.098    +0.878      +0.78      predictive
+```
+
+So for forecasting **error**, the spectral axes are a **descriptive lens, not a predictor** (ΔR² ≈ the
+random control). They predict their *own* spectral future only by persistence — a different quantity than
+error, which the error pressures are simply blind to. The honest verdict is recorded, not spun: Stage E
+sees *what kind* of stable state you are in; it does **not** forecast when error will grow. `integrity ≠
+truth` — a separating, even self-predicting, axis is still not a predictor of failure.
+
 ## Ties
 
 | sibling | role |
@@ -240,7 +263,8 @@ correlation proves the axis carries independent information, not that it predict
 | `spd.py` | **Stage C** SPD cone: `is_spd_exact` (Sylvester), `cholesky_int`, `project_spd` (Π_SPD), `spd_error` (E_SPD), `gershgorin_margin`, `SPD_PROTOCOL` |
 | `field.py` | **Stage D** generator field `A(W,t,θ)`, `magnus2_omega` (Bτ), `bracket_hierarchy` (β₁,β₂,β₃), `FIELD_PROTOCOL` |
 | `regime.py` | **Stage D** meta-layer: `meta_vector` (M̂), `classify` (4-axis), `representation_pressure`; **Stage E** `extend_spectral`, `classify_E` (5-axis) — pure telemetry |
-| `coherence.py` | **Stage E** spectral layer over SPD: exact `purity`, `coherence`, `mixedness`; float-deferred `entropy_float`; `correlations` (the R1 gate-5 independence test) |
+| `coherence.py` | **Stage E** spectral layer over SPD: exact `purity`, `coherence`, `mixedness`; float-deferred `entropy_float`; `correlations` (gate-5 independence); `cross_coupling` (Ξ) |
+| `predictive.py` | **Stage-E hardening** held-out incremental predictive-value gate (`incremental_value`, OLS+ridge, negative+positive controls) — float offline analysis |
 | `evolve.py` | `evolve_audited` (Stage B); `evolve_spd_audited` (Stage C, adaptive cadence); `evolve_field_audited` (Stage D, Magnus-2 field + meta-observability) |
 | `demo_aether_physics.py` | exact gate (A) · 1-ulp truth (B) · 1,000,000-step spinning top (C) · ghostsnap (D) |
 | `tests/test_aether_stiefel.py` | 11 unit tests (exact gate, audit, retraction, evolution, crucible stress) |
@@ -250,4 +274,6 @@ correlation proves the axis carries independent information, not that it predict
 | `demo_aether_field.py` | Stage D: field A(W,t,θ) · Magnus-2 · bracket hierarchy · regime classifier |
 | `tests/test_aether_field.py` | 11 unit tests (θ-purity, bracket hierarchy, M̂, regime, θ-in-identity, channel separation) |
 | `demo_aether_coherence.py` | Stage E: substrate (SPD vs Stiefel) · exact purity/coherence · correlation independence gate |
-| `tests/test_aether_coherence.py` | 9 unit tests (substrate non-degeneracy, exact observables, entropy-deferred, separation, telemetry) |
+| `tests/test_aether_coherence.py` | 11 unit tests (substrate non-degeneracy, exact observables, entropy-deferred, separation, rotation-invariance, telemetry) |
+| `demo_aether_predictive.py` | Stage-E hardening: held-out incremental predictive-value table + honest verdict |
+| `tests/test_aether_predictive.py` | 4 unit tests (OLS recovers linear, negative+positive controls, error-target descriptive) |
