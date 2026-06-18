@@ -62,3 +62,34 @@ def representation_pressure(mhat):
     """The Stage-D axis: max(β₂,β₃)/(β₁+δ). Small ⇒ Magnus-2 adequate; growing ⇒ truncation stressed.
     An OBSERVABLE statement about integrator validity — never an automatic switch."""
     return max(mhat["representation2"], mhat["representation3"])
+
+
+# ----------------------------------------------------------------- Stage E: spectral axis (M̂_E)
+def extend_spectral(mhat, coherence, mixedness):
+    """Append the Stage-E spectral pressures to M̂ -> M̂_E. coherence, mixedness are exact Q32 (from
+    aether/coherence.py). Pure telemetry — still NOT in identity, still never gates."""
+    m = dict(mhat)
+    m["coherence"] = coherence
+    m["mixedness"] = mixedness
+    return m
+
+
+def classify_E(mhat_E):
+    """Six-axis regime argmax. The quantum-info analogy (verified) splits the Stage-E observables into two
+    DISTINCT axes that the first cut wrongly bundled:
+      * spectral-limited  = mixedness (1−purity) — a UNITARY/SPECTRAL INVARIANT, a function of λ(P) only
+                            (rotation-independent: 'what is the eigenvalue distribution').
+      * coherence-limited = coherence — BASIS-DEPENDENT (varies under rotation at fixed spectrum), and
+                            empirically the most dynamics(β)-coupled of the spectral observables.
+    Both passed R1 gate 5 (|corr| ≤ 0.2 vs E/B/β). Returns {regime, margin, axes}; boundaries are declared
+    coarse-graining constructs."""
+    axes = {
+        "geometry-limited":       mhat_E["geometry"],
+        "quantization-limited":   max(mhat_E["quantization"], mhat_E["residual"]),
+        "dynamics-limited":       mhat_E["dynamics"],
+        "representation-limited": max(mhat_E["representation2"], mhat_E["representation3"]),
+        "spectral-limited":       mhat_E.get("mixedness", 0),         # invariant (function of λ)
+        "coherence-limited":      mhat_E.get("coherence", 0),         # basis-dependent
+    }
+    ranked = sorted(axes.items(), key=lambda kv: kv[1], reverse=True)
+    return {"regime": ranked[0][0], "margin": ranked[0][1] - ranked[1][1], "axes": axes}

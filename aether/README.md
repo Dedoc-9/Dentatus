@@ -21,6 +21,8 @@ PYTHONHASHSEED=0 python3 demo_aether_spd.py            # Stage C: SPD cone · ad
 PYTHONHASHSEED=0 python3 tests/test_aether_spd.py      # 10 unit tests (Stage-C SPD geometry)
 PYTHONHASHSEED=0 python3 demo_aether_field.py          # Stage D: generator field · Magnus-2 · meta-layer
 PYTHONHASHSEED=0 python3 tests/test_aether_field.py    # 11 unit tests (Stage-D field + meta-observability)
+PYTHONHASHSEED=0 python3 demo_aether_coherence.py      # Stage E: spectral observability over SPD
+PYTHONHASHSEED=0 python3 tests/test_aether_coherence.py # 9 unit tests (Stage-E spectral layer)
 ```
 
 ## Fixed-point is deterministic, not exact (and that's the point)
@@ -158,6 +160,57 @@ in `Hₜ` (declared bundle, `protocol_version: aether-field/1`). Raw `M` is inco
 - `Φ` (a predictive `M̂_{t+1}=Φ(M̂_t)`) is **not** assumed — `M̂(t)` is logged for later analysis; whether
   predictive structure exists is a question to be tested against the record, not built in.
 
+## Stage E — spectral observability over the SPD cone (quantum-*style* diagnostics)
+
+A fifth pressure axis — **state-distribution** — built from a density-like descriptor of the covariance,
+NOT the frame:
+
+```
+substrate (decided by measurement):  ρ = P / tr(P)   on the SPD cone     (NOT WWᵀ — see below)
+purity     P_pur = tr(ρ²) = Σ P_ij² / (Σ P_ii)²        polynomial → EXACT fixed-point
+coherence  C     = ‖ρ − diag(ρ)‖_F = ‖offdiag P‖_F/tr P polynomial → EXACT fixed-point
+mixedness  1 − P_pur                                    exact fixed-point
+entropy    H     = −tr(ρ log ρ)                         eigen+log → FLOAT-only, DEFERRED (not wired)
+M̂_E = (E/ε, ‖G‖/‖Z‖, B(t), β₁/‖A‖, β₂/(β₁+δ), β₃/(β₁+δ), 1−P_pur, C)   # TWO new axes (see split)
+```
+
+**Why SPD and not the Stiefel frame (measured).** `ρ = WWᵀ/tr(WWᵀ)` from an orthonormal frame is
+degenerate: `WᵀW=I` pins `WWᵀ` to a projector with spectrum `{1/k}`, so **purity ≡ 1/k and entropy ≡
+log k are constants** — manifold identities, not observables (verified: 0.5000 on every frame). The SPD
+covariance carries the anisotropy the layer wants to see, so `ρ_P` is the substrate. (`regime.classify_E`
+adds a `spectral-limited` fifth axis.)
+
+**The axis was earned by measurement, not assumed (R1 gate 5).** Before claiming a new regime axis, the
+correlation of the spectral series against the existing ones was run on a coupled SPD trajectory (skew
+congruence rotates the basis → moves `C`; symmetric drift moves the spectrum → moves purity):
+
+```
+corr(C,E)=−0.045   corr(C,B)=0.000   corr(C,β)=−0.203
+corr(purity,E)=−0.058  corr(purity,B)=0.000  corr(purity,β)=+0.173     max|corr| = 0.20  ⇒ SEPARATE
+```
+
+All `|corr| ≤ 0.2`: the spectral pressure is a **genuinely new observational dimension**, not a
+re-coordinatization of `E/G/β`. It is the only family that sees the *internal distribution* of the state
+rather than constraint violation or trajectory error — it answers not "is it stable?" but "*what kind* of
+stability is it?".
+
+**Two axes, not one (corrected by the analogy, then measured).** The quantum-info structure splits the
+Stage-E observables: **purity and entropy are spectral/unitary invariants** (functions of `λ(P)` only —
+unchanged under `P → U P Uᵀ`), while **coherence is basis-dependent** (varies under rotation at fixed
+spectrum). Verified directly: rotating a fixed-spectrum covariance leaves purity invariant (to
+quantization) while coherence swings widely. So `regime.classify_E` exposes **two** distinct axes —
+`spectral-limited` = `mixedness` (the λ-invariant) and `coherence-limited` = `C` (basis-dependent, and
+empirically the most `β`-coupled). Bundling them, as the first cut did, would have conflated "what is the
+eigenvalue distribution" with "how mode-mixed is the working basis." (Response-2's cross-layer
+`Ξ = β₁/(C+ε)` is provided as `coherence.cross_coupling` — logged telemetry, a defer-and-log hypothesis.)
+
+**Invariants (hard-locked).** Purity and coherence are exact fixed-point **telemetry**, sitting beside
+`E`, `G`, `β` — they **never** gate, **never** enter `Hₜ`, **never** steer `Z`. Entropy is float-only,
+deferred to the same status as the SPD log-geodesic and the Cayley step (informative, never structural,
+never a control primitive). The correlation hypotheses (does dynamical complexity manifest as spectral
+dispersion?) are **logged for later analysis**, not built-in claims. `integrity ≠ truth`: a separating
+correlation proves the axis carries independent information, not that it predicts any particular failure.
+
 ## Ties
 
 | sibling | role |
@@ -186,7 +239,8 @@ in `Hₜ` (declared bundle, `protocol_version: aether-field/1`). Raw `M` is inco
 | `ghost.py` | **Stage B** dual channel: `ghost_residual`, `ema_matrix`, `backreaction` B(t), `clt_eta`, `structural_hash` (Hₜ), `PROTOCOL_VERSION` |
 | `spd.py` | **Stage C** SPD cone: `is_spd_exact` (Sylvester), `cholesky_int`, `project_spd` (Π_SPD), `spd_error` (E_SPD), `gershgorin_margin`, `SPD_PROTOCOL` |
 | `field.py` | **Stage D** generator field `A(W,t,θ)`, `magnus2_omega` (Bτ), `bracket_hierarchy` (β₁,β₂,β₃), `FIELD_PROTOCOL` |
-| `regime.py` | **Stage D** meta-layer: `meta_vector` (M̂, dimensionless), `classify` (4-axis regime), `representation_pressure` — pure telemetry |
+| `regime.py` | **Stage D** meta-layer: `meta_vector` (M̂), `classify` (4-axis), `representation_pressure`; **Stage E** `extend_spectral`, `classify_E` (5-axis) — pure telemetry |
+| `coherence.py` | **Stage E** spectral layer over SPD: exact `purity`, `coherence`, `mixedness`; float-deferred `entropy_float`; `correlations` (the R1 gate-5 independence test) |
 | `evolve.py` | `evolve_audited` (Stage B); `evolve_spd_audited` (Stage C, adaptive cadence); `evolve_field_audited` (Stage D, Magnus-2 field + meta-observability) |
 | `demo_aether_physics.py` | exact gate (A) · 1-ulp truth (B) · 1,000,000-step spinning top (C) · ghostsnap (D) |
 | `tests/test_aether_stiefel.py` | 11 unit tests (exact gate, audit, retraction, evolution, crucible stress) |
@@ -195,3 +249,5 @@ in `Hₜ` (declared bundle, `protocol_version: aether-field/1`). Raw `M` is inco
 | `tests/test_aether_spd.py` | 10 unit tests (Cholesky, Sylvester gate, retraction, adaptive cadence, purity, anchor) |
 | `demo_aether_field.py` | Stage D: field A(W,t,θ) · Magnus-2 · bracket hierarchy · regime classifier |
 | `tests/test_aether_field.py` | 11 unit tests (θ-purity, bracket hierarchy, M̂, regime, θ-in-identity, channel separation) |
+| `demo_aether_coherence.py` | Stage E: substrate (SPD vs Stiefel) · exact purity/coherence · correlation independence gate |
+| `tests/test_aether_coherence.py` | 9 unit tests (substrate non-degeneracy, exact observables, entropy-deferred, separation, telemetry) |
