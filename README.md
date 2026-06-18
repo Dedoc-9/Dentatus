@@ -154,15 +154,17 @@ immutable instrument while the workbench around it keeps gaining purpose-built p
 
 The Sibling Law also scales up from *components* to whole *products*: a standalone application can import the
 frozen cores (and any siblings) **read-only** via a path shim, without being a sibling itself or entering the
-26-suite count. Three are in-repo as worked examples, each with its own tests and its own honest bound:
+26-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
 
 | Application | What it is | Honest bound |
 |---|---|---|
 | [`aegis_gate/`](aegis_gate/README.md) | a verifiable, policy-isolated transfer & KYC agent — an untrusted LLM proposes wires, host-side exact gates + `ration` + `quorum` + `tessera` make every decision unforgeable, attributable, and offline-replayable (14 tests) | a **mock** integer bank with no real payment rails; proves the audit trail, not that any loan was wise |
 | [`VeriSim/`](VeriSim/README.md) | a verifiable simulation engine — runs a deterministic fixed-point scenario in `aether`/`fuel` and emits a replayable `tessera` **Shard** a stranger re-runs locally; `stasis` splits hardware drift from logic change (12 tests) | proves the **simulation was real and replayable**, never that the model matches reality or that any real-world system is safe |
 | [`VeriVerse/`](VeriVerse/README.md) | a verifiable procedural **world/physics engine** (voxel prototype) — deterministic integer terrain + content-addressed chunks/world root, Collatz feature provenance, integer falling-sand physics, signed chunk shards, and a stdlib viewer (13 tests) | proves the world is **deterministic and replayable**, *not* that it models real physics; rarity is a provable stopping time, not worth; exploits are detectable, not impossible |
+| [`AetherPulse/`](AetherPulse/README.md) | a deterministic **engine kernel** (Stage-1 reference) — 3-D fixed-point rigid-body collision + the L1/L2/L3 render seam (logic hashed, visuals are read-only observables) + cross-language conformance vectors a C++/Rust port must hash-match (15 tests) | the **reference semantics**, not the 240fps engine; all performance figures are *targets*; exploits detectable, not state immutable |
+| [`AetherManifold/`](AetherManifold/README.md) | a deterministic **Riemannian-optimization** research sandbox — fixed-point gradient descent on the Stiefel manifold (tangent projection + integer retraction), two-tier exact/approx, shadowing-Lyapunov observable, edge-case conformance vectors (10 tests) | proves a *trajectory* was computed exactly and is reproducible — not that the minimum is global or the system stable outside the bounds |
 
-All three follow the same discipline as the siblings — decoupled, content-addressed, fail-closed, and explicit
+All five follow the same discipline as the siblings — decoupled, content-addressed, fail-closed, and explicit
 about what they do *not* prove. They are *demonstrations that the primitives compose into products*, not
 deployed systems.
 

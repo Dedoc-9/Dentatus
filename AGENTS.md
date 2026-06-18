@@ -464,10 +464,14 @@ The Sibling Law scales from components to whole products: a standalone app impor
 read-only via a path shim, without being a sibling or entering the suite count. In-repo examples:
 `aegis_gate/` (a verifiable transfer & KYC agent over exact gates + `ration` + `quorum` + `tessera`; a **mock**
 bank, 14 tests), `VeriSim/` (a verifiable simulation engine over `aether`/`fuel`/`tessera`/`stasis` that emits a
-replayable Shard; proves the *test was real*, not that the model is *true*; 12 tests), and `VeriVerse/` (a
+replayable Shard; proves the *test was real*, not that the model is *true*; 12 tests), `VeriVerse/` (a
 verifiable procedural world/physics engine — deterministic integer terrain + content-addressed chunks,
 Collatz feature provenance, signed chunk shards, stdlib viewer; a *scaffold* for a deterministic-and-verifiable
-physics engine that competes on provable determinism, not render speed; 13 tests). When you build
+physics engine that competes on provable determinism, not render speed; 13 tests), `AetherPulse/` (a Stage-1
+deterministic engine kernel — 3-D fixed-point rigid bodies + the L1/L2/L3 render seam + cross-language
+conformance vectors a C++/Rust port must hash-match; 15 tests), and `AetherManifold/` (deterministic
+Riemannian optimization on the Stiefel manifold — fixed-point tangent projection + integer retraction,
+two-tier exact/approx, shadowing-Lyapunov observable; 10 tests). When you build
 one, the same rules apply — decoupled, content-addressed, fail-closed, and explicit about non-claims. **Native ports** (C++/Rust for performance, e.g. `AetherPulse/`) follow a stricter rule: the Python stays the
 *reference / source of truth*, and the native build is validated against it via **conformance vectors**
 (input → expected state hashes) — the native code reproduces the reference's hashes bit-for-bit or fails;
