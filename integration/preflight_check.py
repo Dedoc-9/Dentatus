@@ -39,6 +39,7 @@ SUITES = [
     "tessera/tests/test_tessera.py",
     "crucible/tests/test_crucible.py",
     "fuel/tests/test_fuel.py",
+    "elenchus/tests/test_elenchus.py",
 ]
 PARITY = "integration/parity_proof.py"
 
