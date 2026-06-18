@@ -113,15 +113,18 @@ def propose(world, proposal, adapter, ledger=None, witnesses=None, k=None, signe
     # 4b) STRICT — heavy admissibility (e.g. causal/conservation). Only INLINE at strict severity; at game
     #     severity it is DEFERRED to audit() (the physics court) so the hot path stays cheap.
     deferred = []
+    # severity may be a fixed tier OR a POLICY callable (world, txn) -> tier — the latter enables
+    # MULTI-FIDELITY: different regions/objects/times of the SAME world audited at different depth.
+    sev = severity(world, txn) if callable(severity) else severity
+    telemetry["severity"] = sev                      # recorded for EVERY verdict (commit or strict-reject)
     strict_fn = getattr(adapter, "validate_strict", None)
     if callable(strict_fn):
-        if severity == "strict":
+        if sev == "strict":
             sok, swhy = strict_fn(world2, proposal.get("constraints", {}))
             if not sok:
                 return _reject(ledger, "STRICT", swhy, phash, prev, telemetry, signer)
         else:
             deferred.append("validate_strict")
-    telemetry["severity"] = severity
     telemetry["deferred"] = deferred
 
     # 5) HASH the candidate
@@ -140,7 +143,7 @@ def propose(world, proposal, adapter, ledger=None, witnesses=None, k=None, signe
     shard = _shard("COMMIT", {"prev": prev, "txn": txn, "txn_hash": canon.canon_hash(txn),
                               "pre_hash": adapter.state_hash(world), "post_hash": h2,
                               "telemetry": telemetry,
-                              "provenance": proposal.get("provenance", {}), "severity": severity}, signer)
+                              "provenance": proposal.get("provenance", {}), "severity": sev}, signer)
     ledger.commits.append(shard)
     return {"ok": True, "gate": "COMMIT", "world": world2, "shard": shard, "telemetry": telemetry}
 

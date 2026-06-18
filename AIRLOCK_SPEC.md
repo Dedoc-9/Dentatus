@@ -81,6 +81,9 @@ Rules that keep the game-engine goal intact:
    verdict, not a retro-rewrite.
 4. **Fidelity ⟂ severity.** Float/GPU rendering draws what the integer kernel decides; severity is integrity
    depth, not visuals.
+5. **Severity may be a POLICY** `(world, txn) → tier`, not just a fixed tier — enabling **multi-fidelity**:
+   different regions/objects/times of the SAME world audited at different depth (near-camera strict, far-field
+   cheap). Spatial/temporal/perceptual abstraction = a richer policy, not new substrate. (`airlock/demo_fidelity.py`.)
 
 ### Stage F (future): the Relativistic Integrity Layer — a strict-tier ADAPTER
 

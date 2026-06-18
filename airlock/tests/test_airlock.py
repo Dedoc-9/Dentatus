@@ -260,5 +260,47 @@ class TestSeverityLadder(unittest.TestCase):
         self.assertFalse(M.propose(KV.empty_world(), dict(p), KV, severity="strict")["ok"])   # strict policy blocks
 
 
+
+
+class TestMultiFidelity(unittest.TestCase):
+    """Severity as a POLICY (world,txn)->tier: ONE world audited at different depth per region.
+    Proves fidelity (where you look) is independent of integrity (how hard you check)."""
+    def _world(self):
+        S = 1 << 32
+        return A.K.make_world([A.K.body(0, (0, 0, 0), (0, 0, 0), (1, 1, 1)),        # near origin → strict
+                               A.K.body(1, (500, 0, 0), (0, 0, 0), (1, 1, 1))],     # far field   → game
+                              ((-10000, -10000, -10000), (10000, 10000, 10000)))
+
+    def _policy(self):
+        S = 1 << 32; R = 20 * S
+        def pol(world, txn):
+            bid = txn.get("id")
+            b = next((x for x in world["bodies"] if x["id"] == bid), None)
+            if b is None:
+                return "game"
+            return "strict" if sum(c * c for c in b["pos"]) <= R * R else "game"
+        return pol
+
+    def _boom(self, bid):
+        S = 1 << 32
+        return {"transition": {"op": "impulse", "id": bid, "dv": [99, 0, 0]},
+                "budget": {"max_cost": 5, "max_delta": 10**22},
+                "constraints": {"max_bodies": 8, "c_limit": 5 * S}}
+
+    def test_near_strict_far_game_same_world(self):
+        W, pol = self._world(), self._policy()
+        rn = M.propose(W, self._boom(0), A, severity=pol)   # near → strict → causal block
+        rf = M.propose(W, self._boom(1), A, severity=pol)   # far  → game  → cheap admit
+        self.assertFalse(rn["ok"]); self.assertEqual(rn["gate"], "STRICT")
+        self.assertEqual(rn["telemetry"]["severity"], "strict")   # severity recorded even on reject
+        self.assertTrue(rf["ok"]); self.assertEqual(rf["telemetry"]["severity"], "game")
+
+    def test_policy_callable_resolves_per_proposal(self):
+        # a constant-callable behaves like the fixed string
+        W = self._world()
+        r = M.propose(W, self._boom(1), A, severity=lambda w, t: "game")
+        self.assertTrue(r["ok"]); self.assertEqual(r["telemetry"]["severity"], "game")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -103,3 +103,40 @@ deterministic apply) + `elenchus`/`polity` (admissible?) + `quorum` (witness the
 as **read-only telemetry** (Lock 3). Reuses every existing component; adds no research surface. The next
 meaningful uncertainty is not mathematical — it is whether a non-deterministic proposer can interact with
 the deterministic kernel while preserving the integrity model the stages spent their effort proving.
+
+
+## Hardening lock — two execution regimes, one world identity (Stage F/G governance)
+
+The vision can expand into a creative/dev platform AND a physics engine. To stop these becoming *competing
+products*, the hardening rule: **one deterministic world model, two execution regimes, the novel physics as
+the integrity SUBSTRATE — never the runtime burden.**
+
+```
+            INTEGRITY (how hard you check)  — severity dial, validator depth
+                    ▲
+   scientific-grade │  maximize truth · invariants · replay · proofs   (offline / audit / physics-grade mode)
+                    │
+   world-engine     │  maximize responsiveness · scale · iteration      (real-time / game mode)
+                    └──────────────────────────────────────────────►  FIDELITY (where you look / render)
+```
+
+**Locks:**
+- **`fidelity ⟂ integrity`** — independent axes. A game may be visually extreme, physically approximate, and
+  still deterministic + auditable; a simulation may drop visual load and raise validation. Same world model.
+  (Proven: `airlock/demo_fidelity.py` — multi-fidelity per region via a severity *policy*; near-zone strict,
+  far-field cheap, one world.)
+- **Physics = integrity substrate, not runtime burden.** The novel work (deterministic world identity,
+  constraint-aware transitions, severity audits) is the *foundation*; it never slows the hot path unless a
+  policy raises severity there.
+- **`intent ≠ authority` survives the creative layer.** Vibe-coding / scene-gen / agents live ABOVE the
+  membrane as proposers; the product experience is `intent → possibility → verified reality`, but the kernel
+  remains the only authority. The creative layer must never become the authority layer.
+- **Layer separation (the product shape):**
+  `human/LLM intent → creative workspace → airlock membrane → deterministic kernel → observability (aether)`.
+
+**Parked (future, NOT built — explicitly, to prevent drift):** the *Creative Reality Interface* (vibe-coding
+UI, scene generation), and the broader *World Fidelity Layer* (temporal abstraction — what must simulate vs
+interpolate vs reconstruct; perceptual abstraction — what the player sees vs the kernel knows vs the auditor
+verifies). These are *richer severity policies and adapters over the existing membrane*, not new substrate.
+The pioneering research question stays narrow: **can one deterministic world model support creative
+generation, real-time simulation, and scientific audit without changing the identity of the world?**
