@@ -11,7 +11,8 @@ without changing its address. The discipline: **capture nondeterminism at the bo
 away** — clocks, RNGs, GPU float drift, model calls, and external reads are recorded as inputs at write
 time and replayed at audit time, so a workflow re-runs bit-for-bit on any machine. Everything else — the
 replay court, signed verdicts, out-of-process policy enforcement, the quality meta-audit, topology gates,
-match forensics — is that one idea wearing a different hat.
+match forensics, portable proof-shards, a bounded integer VM, reasoning-trace interrogation, exact integer
+consensus, ruleset governance, and a fixed-point physics manifold — is that one idea wearing a different hat.
 
 Two principles keep it honest. *Build for extraction, not just execution:* every component is decoupled
 enough to lift out and stand alone (a parity proof guarantees it). And *integrity is not truth:* these
@@ -21,10 +22,23 @@ decision was correct, fair, or wise.
 In practice this changes your role on an AI project. Treat the LLM as a high-velocity but untrusted
 *engine* and the frozen cores as a rigid *chassis*: it generates fast while the workbench — not your
 attention — tracks determinism, structural purity, privilege isolation, and resource budgets.
-`integration/preflight_check.py` runs the whole 17-suite contract and `selfaudit/` proves the cores
+`integration/preflight_check.py` runs the whole 26-suite contract and `selfaudit/` proves the cores
 have not drifted, so your review shifts from line-by-line diff-reading to the one thing a machine
 cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
 its checks cover, not arbitrary badness — integrity is not truth.)
+
+### The families, at a glance
+
+Twenty-four components group into a few families, each a different hat on the one idea. **The audit core**
+(`chronicle`, `llm_toolkit`) records and replays. **Governance & isolation** (`guard_server`, `polity`,
+`pact`, `quorum`) decide *who may act* and *what becomes true* across parties. **The Axiom triad**
+(`tessera` → `fuel` → `elenchus`) proves *the log is real*, *the machine ran*, and *the trace followed the
+declared rules* — three layers of a single offline-replayable proof. **The Collatz pair** (`syracuse`,
+`crucible`) supplies a hardware-invariant integer workload and a deterministic adversary that forges the
+hardest seeds to break it. **Real-time & physics** (`lockstep`, `aether`, `manifold`) separate truth-rate
+from frame-rate and harden manifold geometry in fixed-point integers. **The boundary** (`stasis`) admits the
+messy real world — canonicalizing inputs, classifying drift-vs-lie, batching verification. Every one is
+decoupled enough to lift out and stand alone, and every one states its own honest bound.
 
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 
@@ -196,7 +210,7 @@ primitives extract losslessly, so any layer lifts out as a standalone component 
 
 ## Launch sequence
 
-One command verifies the whole workbench before you build on it. It runs the 7 suites **and** the parity
+One command verifies the whole workbench before you build on it. It runs the 26 suites **and** the parity
 proof as subprocesses under `PYTHONHASHSEED=0`, and prints a green status **only if everything actually
 passed**:
 
@@ -205,12 +219,12 @@ python3 integration/preflight_check.py
 ```
 
 On success it *emits* the status below — this is earned output from a real run, **not** a banner you paste
-by hand to assert state (asserting "78/78 green" without running it is exactly the integrity-theater this
+by hand to assert state (asserting "26/26 green" without running it is exactly the integrity-theater this
 project refuses):
 
 ```
 [FOUNDRY VERIFIED]
-  - 7/7 suites green; primitive parity holds (parity_proof.py)
+  - 26/26 suites green; primitive parity holds (parity_proof.py)
   - Out-of-process policy clamps + tiered hardware signer present and tested
   - Cognitive modesty acknowledged: integrity != truth
 Proceed with refactoring bounds secured.
@@ -248,7 +262,7 @@ the ledger):
 ## Verification Record — <change / decision id> — <date>
 
 - Command:            PYTHONHASHSEED=0 python3 integration/preflight_check.py
-- Preflight result:   [FOUNDRY VERIFIED]  (7/7 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
+- Preflight result:   [FOUNDRY VERIFIED]  (26/26 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
 - Replay Court:        VERIFIED — N records reproduced bit-for-bit       # or: REJECTED at seq <k> (<reason>)
 - ruleset/policy hash: <before> -> <after>   (changed? yes/no; if yes, why + version)
 - Signer:              algo=<ed25519|hmac-sha256>  tier=<1 hardware | 2 soft | 3 symmetric>

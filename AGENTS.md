@@ -6,7 +6,7 @@
 
 **To any human or model editing this repository:** this is a high-assurance,
 deterministic, content-addressed workbench ("Dentatus/Chronicle"). Code you add
-is bound by the contract below. The boundaries are enforced by 78 tests across 7
+is bound by the contract below. The boundaries are enforced by 284 tests across 26
 suites and by the Replay Court / Parity Proof — violate them and the regression
 suite fails. Equally binding is the *epistemic* rule: **never oversell what the
 code protects.**
@@ -169,7 +169,7 @@ PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLD
 
 A change is not complete until **all three** hold — anything less is not "done":
 
-1. `integration/preflight_check.py` prints `[FOUNDRY VERIFIED]` (it actually ran the 7 suites + parity).
+1. `integration/preflight_check.py` prints `[FOUNDRY VERIFIED]` (it actually ran the 26 suites + parity).
 2. A **Verification Record** is produced for review — the copy-paste template, run triggers, and reject
    criteria live in `README.md` -> *"Using this in a project"*. Hand a reviewer only **public** material
    (ledger + public key + hashes); never a private key or HMAC secret.
@@ -252,7 +252,7 @@ states the leverage *and* its bound — the point is throughput you can actually
 wrong (§3).
 
 1. **One replayable gate instead of a CI matrix (`integration/preflight_check.py` + `parity_proof.py`).**
-   The preflight *is* the definition of done: it runs all 18 suites + the coupled/uncoupled parity proof as
+   The preflight *is* the definition of done: it runs all 26 suites + the coupled/uncoupled parity proof as
    subprocesses under `PYTHONHASHSEED=0` and names the exact failing suite/file. You stop maintaining a
    sprawling pipeline and a pile of green-banner screenshots. *Bound:* it asserts what the suites assert —
    no regressions + frozen cores + lawful structure — not that uncovered new logic is correct.
@@ -368,6 +368,104 @@ parity proof as the one gate.
 
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
 wrong by definition here — fix the change, not the test.
+
+### The children — a deep dive by family, and how they compose in real use cases
+
+The twenty-two siblings are not a flat list; they fall into families that compose. Each entry states what it
+*is*, what it *proves*, and its honest bound. The use-case flows below show them working together — that
+composition is the actual product.
+
+**Audit core — record & replay.**
+- `chronicle` (Core 1): the verifiable decision recorder — content-addressing, hash-chaining, HMAC/Ed25519
+  attestation, capture seam, append-only store. Proves a record is unforged, reproducible, rule-faithful.
+- `llm_toolkit` (Core 2): the same discipline on LLM orchestration — captures prompt/tokens/logprobs/seed at
+  the model boundary so an agent run replays bit-for-bit. *Bound:* replay is exact only for captured reads.
+
+**Governance & isolation — who may act, and what becomes true.**
+- `guard_server` (S1): an out-of-process Policy Enforcement Point — server-pinned policy + key behind a
+  boundary the agent calls but cannot weaken; signed, request-bound verdicts. *Bound:* OS privilege
+  separation only holds if the PEP truly runs as a separate user.
+- `pact` (S12): multi-agent cross-attestation — each agent binds its new state hash to the prior agent's, so
+  a later injection is attributable to the exact agent/link. *Bound:* non-repudiation under pinned keys; no
+  broadcast/consensus.
+- `quorum` (S13): exact integer consensus — k-of-n independently-keyed witnesses must agree on the same
+  hash; dissent kept as a ghost; `lattice.py` binds it to `pact` into the 2D (lateral×temporal) lattice.
+  *Bound:* a colluding ≥k majority certifies a falsehood; independence is a trust input.
+- `polity` (S20): deterministic governance — governors vote (via `quorum`) to ratify a new ruleset version,
+  minting a content-addressed constitution lineage so frozen rulesets evolve without breaking custody.
+  *Bound:* proves the vote, never the wisdom.
+
+**The Axiom triad — three layers of one offline-replayable proof.**
+- `tessera` (S16): a portable proof-shard `{seed, rule, path_hash}` a stranger replays offline to confirm a
+  deterministic computation's exact process history; signed authorship, immutable lineage, exact divergence
+  locator. *Bound:* proves the declared computation's path, not a proxy for unrelated work; not secrecy crypto.
+- `fuel` (S18): a bounded-execution integer VM — halting is exact integer fuel (no float gas), fail-closed on
+  out-of-fuel / div-zero; every run mints a `tessera`. *Bound:* a small VM, not a production smart-contract VM.
+- `elenchus` (S19): a reasoning-trace interrogator — replays a claimed derivation against a pinned exact
+  rule-set and names the exact FABRICATED / GAP / UNKNOWN step; verdict is itself a `tessera`. *Bound:* checks
+  the emitted trace vs declared rules — not the model's mind, not whether the conclusion is true.
+
+**The Collatz pair — a hardware-invariant workload and its adversary.**
+- `syracuse` (S15): the Collatz/Syracuse map as `integrity ≠ truth` made runnable — pure-integer orbits,
+  content-addressed, verify any trajectory exactly, refuse the conjecture structurally. *Bound:* not crypto;
+  a reference workload, not a proof for all integers.
+- `crucible` (S17): the reverse-Collatz adversary — grows the pre-image tree upward to forge deterministic
+  hard seeds (stopping time = reverse depth) and fires them at `ration`/`tessera`/`fuel`. *Bound:* maps the
+  difficulty landscape; does not find the globally hardest seed, does not solve Collatz.
+
+**Real-time & physics — truth-rate vs frame-rate, and hardened geometry.**
+- `lockstep` (S14): decouples an integer, content-addressed truth-tick stream from the render rate; 240fps
+  frames are exact interpolated *observables*, never gated; revert-to-last-valid-hash rollback converges
+  clients. *Bound:* the reconciliation core, not a GPU renderer.
+- `manifold` (S4): topology-gated commits — exact connectivity/bridges as the gate, Fiedler λ₂ as a captured
+  observable. *Bound:* gates topology, not semantic correctness.
+- `aether` (S22): the hardened integer manifold — DVSM geometry in fixed-point integers (bit-exact,
+  replayable); the Stiefel auditor gates `E = ‖WᵀW − I‖²_F` under a *declared* epsilon and deterministically
+  self-retracts (integer Gram-Schmidt), logging recovery. *Bound:* fixed-point is deterministic, not exact;
+  orthonormality holds only within the declared epsilon.
+
+**The boundary, sensors, and domain siblings.**
+- `stasis` (S21): the Iron Canon (strict canonical bytes, rejects ambiguous/float types), the Divergence
+  Ledger (gate-vs-observable: lie→FAIL, drift→WARN), the Lazy Merkle Lattice (batch + on-demand proofs).
+- `ration` (S10) integer step budgets · `stride` (S11) environment-fingerprinted transport · `assay` (S3)
+  recomputable quality judgments · `glitch` (S6) deterministic state-space fuzzer · `dini` (S7) hyperbolic
+  novelty sensor (dual-use) · `anti_cheat` (S5) server-authoritative match forensics · `wobble` (S9)
+  verifiable synthetic-gene design · `selfaudit` (S8) the workbench evaluating itself · `integration` (S2)
+  the coupled full stack + parity proof.
+
+#### Use case — a verifiable autonomous transaction (finance / operations)
+
+A regulated agent approves a wire. `stasis` canonicalizes the request into integer-clean bytes; `guard_server`
+confirms the agent holds authority it cannot self-grant; the decision is gated by exact integer logic and
+recorded in `chronicle`; `ration` bounds the agent's logical steps so a prompt-injection loop is refused
+fail-closed; `quorum` requires k independent witnesses to agree on the resulting state hash, and `tessera`
+makes the whole trail replayable offline by a regulator holding only the public keys. *What it gives:* an
+unforgeable, attributable, offline-verifiable transaction trail. *What it does not:* prove the loan was wise.
+
+#### Use case — catching a silent model regression across a fleet
+
+An upstream vendor quietly ships a weight update. Each node runs the same task; `stasis` classifies any
+divergence — gated-field drift is a `LOGIC_ERROR` (FAIL, goes to `elenchus`), observable-only drift is benign
+(WARN). `quorum` tallies the nodes; honest outvoted nodes register dissent and `ghost.py`'s `S_t` pressure
+rises as an early drift radar — *before* a production failure. *Bound:* a rising ghost flags disagreement,
+not which side is correct.
+
+#### Use case — a self-correcting physics / simulation run
+
+`crucible` forges near-degenerate manifold seeds; `aether` evolves them in fixed-point integers; the Stiefel
+auditor trips when `E` exceeds the declared epsilon and self-retracts, logging each recovery as a shard;
+`fuel` bounds the work so a runaway never hangs; `tessera` makes the entire 1,000,000-step trajectory
+replayable bit-for-bit. *What it gives:* a deterministic, attestable simulation with no nondeterministic
+drift. *What it does not:* claim the simulation models real physics.
+
+#### Use case — evolving the rules without breaking the chain of custody
+
+A rule in `elenchus` or a threshold in `fuel` turns out wrong. Instead of an unaudited code edit, `polity`
+runs a `quorum` vote among pinned governors; a ratified amendment mints a new constitution version bound to
+the prior by content hash. Downstream, `elenchus`/`fuel` enforce against the newly-active ruleset hash. The
+whole evolution is itself replayable. *Bound:* proves the vote and the lineage, never that the new rule is
+better.
+
 
 ---
 
