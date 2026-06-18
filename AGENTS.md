@@ -463,8 +463,11 @@ drift. *What it does not:* claim the simulation models real physics.
 The Sibling Law scales from components to whole products: a standalone app imports the frozen cores + siblings
 read-only via a path shim, without being a sibling or entering the suite count. In-repo examples:
 `aegis_gate/` (a verifiable transfer & KYC agent over exact gates + `ration` + `quorum` + `tessera`; a **mock**
-bank, 14 tests) and `VeriSim/` (a verifiable simulation engine over `aether`/`fuel`/`tessera`/`stasis` that
-emits a replayable Shard; proves the *test was real*, not that the model is *true*; 12 tests). When you build
+bank, 14 tests), `VeriSim/` (a verifiable simulation engine over `aether`/`fuel`/`tessera`/`stasis` that emits a
+replayable Shard; proves the *test was real*, not that the model is *true*; 12 tests), and `VeriVerse/` (a
+verifiable procedural world/physics engine — deterministic integer terrain + content-addressed chunks,
+Collatz feature provenance, signed chunk shards, stdlib viewer; a *scaffold* for a deterministic-and-verifiable
+physics engine that competes on provable determinism, not render speed; 13 tests). When you build
 one, the same rules apply — decoupled, content-addressed, fail-closed, and explicit about non-claims.
 
 #### Use case — evolving the rules without breaking the chain of custody

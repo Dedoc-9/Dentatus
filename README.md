@@ -154,16 +154,48 @@ immutable instrument while the workbench around it keeps gaining purpose-built p
 
 The Sibling Law also scales up from *components* to whole *products*: a standalone application can import the
 frozen cores (and any siblings) **read-only** via a path shim, without being a sibling itself or entering the
-26-suite count. Two are in-repo as worked examples, each with its own tests and its own honest bound:
+26-suite count. Three are in-repo as worked examples, each with its own tests and its own honest bound:
 
 | Application | What it is | Honest bound |
 |---|---|---|
 | [`aegis_gate/`](aegis_gate/README.md) | a verifiable, policy-isolated transfer & KYC agent — an untrusted LLM proposes wires, host-side exact gates + `ration` + `quorum` + `tessera` make every decision unforgeable, attributable, and offline-replayable (14 tests) | a **mock** integer bank with no real payment rails; proves the audit trail, not that any loan was wise |
 | [`VeriSim/`](VeriSim/README.md) | a verifiable simulation engine — runs a deterministic fixed-point scenario in `aether`/`fuel` and emits a replayable `tessera` **Shard** a stranger re-runs locally; `stasis` splits hardware drift from logic change (12 tests) | proves the **simulation was real and replayable**, never that the model matches reality or that any real-world system is safe |
+| [`VeriVerse/`](VeriVerse/README.md) | a verifiable procedural **world/physics engine** (voxel prototype) — deterministic integer terrain + content-addressed chunks/world root, Collatz feature provenance, integer falling-sand physics, signed chunk shards, and a stdlib viewer (13 tests) | proves the world is **deterministic and replayable**, *not* that it models real physics; rarity is a provable stopping time, not worth; exploits are detectable, not impossible |
 
-Both follow the same discipline as the siblings — decoupled, content-addressed, fail-closed, and explicit
+All three follow the same discipline as the siblings — decoupled, content-addressed, fail-closed, and explicit
 about what they do *not* prove. They are *demonstrations that the primitives compose into products*, not
 deployed systems.
+
+### `VeriVerse` as a competitor *scaffold* for physics engines
+
+`VeriVerse` is not trying to out-render Unreal, Unity, Havok, or PhysX. It scaffolds a **different class** of
+engine that competes on an axis the incumbents structurally do not offer: **provable determinism**. The
+honest competitive advantages:
+
+- **Bit-for-bit cross-platform determinism.** Float + GPU pipelines produce *hardware-dependent* results
+  (the reason lockstep RTS/rollback netcode is famously hard). `VeriVerse` is deterministic *by
+  construction* — integer fixed-point, no float in any hash — so the same seed yields the identical world on
+  any CPU/OS/arch.
+- **Cryptographic verifiability.** Every world, chunk, and simulation step is content-addressed and
+  offline-replayable by a third party. No mainstream engine can hand you a shard that *proves* a frame ran
+  exactly as claimed.
+- **Reproducible bugs.** "Works on my machine" is impossible: a defect reproduces identically everywhere from
+  the seed, so a bug report *is* a perfect repro.
+- **Trustless multiplayer authority.** With `quorum`, a cheat surfaces as a hash mismatch rather than relying
+  on server trust (honest bound: cheating is *detectable/rejectable*, not "impossible"; the Sybil bound
+  applies).
+- **Provable content provenance.** Procedurally generated assets carry verifiable lineage (seed → content
+  hash → stopping-time rarity), enabling trustless asset audit/marketplaces.
+- **Auditable high-stakes simulation.** A regulator or scientist replays the run locally — no access to the
+  producer's proprietary hardware required (the `VeriSim` angle, made interactive).
+- **Tiny, dependency-light core.** Stdlib-first; the verifiable engine is a few hundred lines, portable
+  anywhere Python runs (and designed to port to a WASM `fuel` VM).
+
+The honest tradeoffs (why it is a *scaffold*, not a drop-in replacement): no GPU acceleration, so it is
+slower and lower-fidelity than float/GPU solvers; it is the verifiable *engine* a renderer consumes, **not** a
+renderer; hashing adds verification overhead; and the prototype is voxel/heightmap + a toy cellular-automaton
+physics, not AAA rigid-body/fluid/cloth. In short: **proof, not speed** — which is the winning trade only
+where determinism and auditability matter more than frame budget.
 
 ## Three structural guarantees an LLM or agent framework can't give you alone
 

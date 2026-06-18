@@ -44,8 +44,11 @@ physics (`lockstep`, `aether`, `manifold`); and a boundary layer that admits the
 (`stasis`). None of them is a product; collectively they are a demonstration that one honest primitive
 composes across surprisingly different problems. Two **standalone applications** in the repo show the same
 composition one level up — `aegis_gate/` (a verifiable transfer & KYC agent; a *mock* bank, proves the audit
-trail not the wisdom) and `VeriSim/` (a verifiable simulation engine; proves the *test was real*, not that the
-model matches reality) — each importing the cores read-only via the Sibling Law, neither a deployed system.
+trail not the wisdom) `VeriSim/` (a verifiable simulation engine; proves the *test was real*, not that the
+model matches reality), and `VeriVerse/` (a verifiable procedural world/physics-engine prototype — a *scaffold*
+for a deterministic, cryptographically-replayable physics engine that competes with conventional engines on
+bit-exact determinism and verifiability rather than render speed/fidelity) — each importing the cores read-only
+via the Sibling Law, none a deployed system.
 
 The single epistemic thread running through all of it: **`integrity ≠ truth`.** A hash certifies that a
 record is unforged, reproducible, and rule-faithful — never that the underlying decision was correct, fair,
@@ -66,7 +69,7 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 | Exact integer consensus + the 2D (lateral×temporal) attestation lattice | `quorum/demo_quorum.py` |
 | A bounded integer VM whose run mints an offline-replayable proof shard | `fuel/demo_fuel.py`, `tessera/demo_tessera.py` |
 | A 1,000,000-step fixed-point manifold with deterministic self-retraction, no nondeterministic drift | `aether/demo_aether_physics.py` |
-| Standalone *applications* compose the stack into products (Sibling Law, read-only imports, own tests) | `aegis_gate/` (verifiable transfer agent, 14 tests), `VeriSim/` (verifiable simulation, 12 tests) |
+| Standalone *applications* compose the stack into products (Sibling Law, read-only imports, own tests) | `aegis_gate/` (verifiable transfer agent, 14 tests), `VeriSim/` (verifiable simulation, 12 tests), `VeriVerse/` (verifiable voxel world+physics, 13 tests) |
 | *(legacy, in `docs/archive/`)* differential fuzzing 20k cases 0 violations; hardware-invariant replay; replay immunity; chaos-order invariance | `forge/oracle_fuzz.py`, `forge/duel_determinism_proof.py`, `forge/nonce_proof.py`, `forge/chaos_harness.py` |
 
 ## The part that's actually worth showing: engineering judgment
