@@ -1,0 +1,46 @@
+{
+  "schema": "aetherpulse-conformance/1",
+  "name": "gravity_bounce",
+  "scale_bits": 32,
+  "init_hash": "4ec1d6280c48f612e5e8e62b8349af3e405bc5f702fda6d3caaf6faa2ca08951",
+  "ticks": 200,
+  "final_hash": "1523410a98ec176b24f40b9014eb77218d0f3281f1a39e4ba6638d83af76cf35",
+  "merkle_root": "ac13b3ee318b5846d6303014f73da51c325ea0ab0b76ab90e68a19dcd295f6e0",
+  "world0": {
+    "bodies": [
+      {
+        "id": 7,
+        "pos": [
+          0,
+          38654705664,
+          0
+        ],
+        "vel": [
+          0,
+          0,
+          0
+        ],
+        "half": [
+          4294967296,
+          4294967296,
+          4294967296
+        ],
+        "e_num": 8,
+        "e_den": 10
+      }
+    ],
+    "min": [
+      -42949672960,
+      0,
+      -42949672960
+    ],
+    "max": [
+      42949672960,
+      42949672960,
+      42949672960
+    ],
+    "g": 42949672960,
+    "dt": 68719477,
+    "tick": 0
+  }
+}

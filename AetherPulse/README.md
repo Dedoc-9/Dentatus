@@ -44,6 +44,17 @@ Standalone product (Sibling Law): imports `aether` (fixed-point), `tessera`/`chr
 proofs), `stasis` (Iron Canon + Merkle) read-only. It is the engine-grade sibling to `VeriVerse` (verifiable
 voxel worlds) and `aether` (fixed-point manifold geometry).
 
+## The C++/Rust port discipline
+
+The performance engine will be C++ (or Rust) — Python is too slow for 240fps, but it is the **reference /
+source of truth**. The rule: **the native engine never defines semantics; it must reproduce the Python
+reference's conformance hashes.** Workflow: write the logic in `kernel.py` → `export_vectors.py` emits JSON
+fixtures → the native engine runs them → it is verified iff `final_hash` and `merkle_root` match. The
+conformance suite is the **anti-UB guard**: a compiler optimization or pointer-aliasing bug that changes the
+result fails the test. The native port lives in its own folder (e.g. `engine_cpp/`), **does not import the
+Python workbench** (zero binary bloat), and depends on it only for the semantic definition (the fixtures).
+See [`STAGE1_SPEC.md`](STAGE1_SPEC.md) §5b for the exact hashing format it must match.
+
 ## Files
 
 | File | Role |
@@ -52,5 +63,7 @@ voxel worlds) and `aether` (fixed-point manifold geometry).
 | `kernel.py` | the deterministic 3-D fixed-point rigid-body kernel + state hashing |
 | `conformance.py` | conformance vectors (`make_vector` / `verify_vector`) — the native-port oracle |
 | `demo_aetherpulse.py` | two cubes · determinism · gravity · conformance · stress |
-| `tests/test_aetherpulse.py` | 11 unit tests |
+| `export_vectors.py` | emits language-agnostic conformance fixtures (`fixtures/*.json`) for a C++/Rust harness |
+| `fixtures/*.json` | conformance vectors: input world + expected `final_hash` / `merkle_root` |
+| `tests/test_aetherpulse.py` | 12 unit tests |
 | `STAGE1_SPEC.md` | the Stage-1 architecture spec + honest roadmap (proven vs. target) |

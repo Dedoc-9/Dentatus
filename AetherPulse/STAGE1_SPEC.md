@@ -78,6 +78,37 @@ sound idea and the right place to put the hashing cost. It is **not built or ben
 "verify 240 frames/sec" is a hypothesis for Stage 2, not a result. Stage 1 makes it *possible* by defining
 exactly what bytes get hashed.
 
+## 5b. Cross-language conformance — the exact hashing format (for the C++/Rust port)
+
+A native port must reproduce the reference's hashes *byte-for-byte*, so the serialization is part of the
+spec, not an implementation detail. `export_vectors.py` emits the fixtures (`fixtures/*.json`); the native
+harness loads `world0`, runs its kernel, and compares `final_hash` + `merkle_root`.
+
+**State hash** — `state_hash(world) = SHA256(canonical_bytes(obj))`, hex, where:
+
+- `obj = {"tick": int, "bodies": [{"half":[3], "id":int, "pos":[3], "vel":[3]} sorted by id], "bounds":[min[3], max[3]]}`
+- `canonical_bytes` = `json.dumps(canon(obj), sort_keys=True, separators=(",", ":")).encode("utf-8")` —
+  i.e. **compact JSON, no whitespace, object keys sorted lexicographically, arrays in order**, integers in
+  base-10 with no `+`/leading zeros, `true`/`false` for bools. **No floats may appear** (the Iron Canon
+  rejects them); every coordinate is a fixed-point integer at `scale_bits = 32`.
+- A native port must emit the identical UTF-8 byte string before hashing. (Sorting keys and using the exact
+  separators is the part that bites — pin it.)
+
+**Merkle root** — over the per-tick `state_hash` hex strings:
+
+- pair adjacent leaves; a node is `SHA256(("%s|%s" % (left, right)).encode())` hex (a literal `|` between the
+  two lowercase hex strings); on an odd level, **duplicate the last** node; repeat to a single root.
+
+**Vector JSON schema** (`fixtures/<name>.json`):
+
+```
+{ schema:"aetherpulse-conformance/1", name, scale_bits:32, ticks,
+  init_hash, final_hash, merkle_root, world0 }   # world0 is the full initial world (all integers)
+```
+
+The conformance suite for the native engine is: for each fixture, load `world0`, run `ticks` steps, and
+assert `final_hash` and `merkle_root` match. Red names the first diverging tick.
+
 ## 6. Honest bounds (the standing contract)
 
 - Determinism + verification make exploits **detectable and rejectable** and runs **replayable** — they do

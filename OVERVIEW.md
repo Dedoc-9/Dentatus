@@ -57,6 +57,12 @@ falsehood); a reasoning trace that follows the rules is not a true conclusion; a
 exactly constrained in integer space, not "perfect" in real space. The system is built *around* that limit
 rather than pretending to break it.
 
+**Native ports (C++/Rust).** Performance-critical pieces (e.g. the `AetherPulse` engine) may be ported to
+C++/Rust, but the **Python reference defines the semantics**: a native build is validated strictly against
+the Python reference via *conformance vectors* (input world → expected state hashes). The native code never
+defines truth; it must reproduce the reference's hashes bit-for-bit, which makes the conformance suite an
+anti-UB / anti-drift guard. The native artifact lives in its own folder and does **not** import the workbench.
+
 ## What is genuinely solid (and reproducible)
 
 Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:

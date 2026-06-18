@@ -468,7 +468,10 @@ replayable Shard; proves the *test was real*, not that the model is *true*; 12 t
 verifiable procedural world/physics engine — deterministic integer terrain + content-addressed chunks,
 Collatz feature provenance, signed chunk shards, stdlib viewer; a *scaffold* for a deterministic-and-verifiable
 physics engine that competes on provable determinism, not render speed; 13 tests). When you build
-one, the same rules apply — decoupled, content-addressed, fail-closed, and explicit about non-claims.
+one, the same rules apply — decoupled, content-addressed, fail-closed, and explicit about non-claims. **Native ports** (C++/Rust for performance, e.g. `AetherPulse/`) follow a stricter rule: the Python stays the
+*reference / source of truth*, and the native build is validated against it via **conformance vectors**
+(input → expected state hashes) — the native code reproduces the reference's hashes bit-for-bit or fails;
+it never defines semantics, lives in its own folder, and does not import the workbench.
 
 #### Use case — evolving the rules without breaking the chain of custody
 

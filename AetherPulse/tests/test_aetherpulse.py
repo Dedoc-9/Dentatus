@@ -66,6 +66,11 @@ class Conformance(unittest.TestCase):
         vec = dict(vec, init_hash="0" * 64)
         self.assertFalse(C.verify_vector(vec)[0])
 
+    def test_exported_fixtures_conform(self):
+        import export_vectors as X
+        for name, ok, detail, _ in X.export():
+            self.assertTrue(ok, "%s: %s" % (name, detail))
+
     def test_stress_deterministic(self):
         bodies = [K.body(i, [(i % 10) - 5, 5, 0], [(i % 3) - 1, 0, 0], [1, 1, 1]) for i in range(50)]
         mk = lambda: K.make_world(bodies, bounds=((-20, 0, -20), (20, 20, 20)), gravity=10)
