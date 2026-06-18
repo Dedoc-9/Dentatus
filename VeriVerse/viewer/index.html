@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VeriVerse — Don't just render the world. Prove it exists.</title>
+<style>
+  :root{--bg:#0b0f14;--panel:#121821;--line:#1f2a37;--ink:#e6edf3;--muted:#8aa0b3;--ok:#2ea043;--bad:#d1242f;--accent:#3b82f6;--mono:ui-monospace,Menlo,Consolas,monospace}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,sans-serif}
+  header{padding:16px 22px;border-bottom:1px solid var(--line)} header h1{font-size:16px;margin:0}
+  header .sub{color:var(--muted);font-size:12.5px}
+  .wrap{display:grid;grid-template-columns:1fr 340px;gap:18px;padding:18px 22px;max-width:1200px}
+  @media(max-width:880px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  canvas{image-rendering:pixelated;width:100%;height:auto;background:#06090d;border:1px solid var(--line);border-radius:8px;cursor:crosshair}
+  .bar{height:10px;border-radius:6px;background:#1b2532;overflow:hidden;margin:8px 0}
+  .bar > div{height:100%;background:linear-gradient(90deg,#1d4429,var(--ok));width:0%}
+  .mono{font-family:var(--mono);font-size:12px;color:var(--muted);word-break:break-all}
+  button{font:inherit;color:var(--ink);background:#1b2532;border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer}
+  input{font:inherit;color:var(--ink);background:#0e1620;border:1px solid var(--line);border-radius:7px;padding:5px 8px;width:110px}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;font-family:var(--mono)}
+  .pill.ok{color:var(--ok);background:#0f2417;border:1px solid #1d4429}
+  .pill.bad{color:#ff7b72;background:#2a1115;border:1px solid #5a1b22}
+  .pill.leg{color:#f0c000;background:#2a2410;border:1px solid #5a4f1b}
+  h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:0 0 8px}
+</style></head>
+<body>
+<header><h1>VeriVerse</h1><span class="sub">Don't just render the world. Prove it exists. · same seed → identical world + identical hashes on any machine (we prove the world is replayable, not that it models real physics).</span></header>
+<div class="wrap">
+  <section class="panel">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      seed <input id="seed" value="98247"> <button onclick="load()">Generate</button>
+      <span class="mono" id="root"></span>
+    </div>
+    <canvas id="cv" width="480" height="480"></canvas>
+    <div style="margin-top:6px" class="mono">click a chunk to mint + verify its shard live</div>
+  </section>
+  <aside class="panel">
+    <h2>Integrity</h2>
+    <div class="bar"><div id="ibar"></div></div>
+    <div class="mono" id="istat">—</div>
+    <h2 style="margin-top:16px">Chunk inspector</h2>
+    <div id="inspect" class="mono">select a chunk…</div>
+  </aside>
+</div>
+<script>
+let DATA=null, N=3, CHUNK=16, CELL=10;
+async function load(){
+  const seed=document.getElementById("seed").value|0;
+  DATA=await (await fetch("/api/world?seed="+seed+"&n="+N)).json();
+  document.getElementById("root").textContent="world_root "+DATA.world_root.slice(0,16);
+  draw();
+  document.getElementById("ibar").style.width="0%";
+  document.getElementById("istat").textContent=DATA.chunks.length+" chunks · 0 verified";
+  VERIFIED=0;
+}
+const COL={1:"#5a5f66",2:"#6b4a2b",3:"#3f8a3a",4:"#2563a8"}; // stone/dirt/grass/water
+function shade(hex,h){const sea=DATA.sea_level; const k=Math.max(.5,Math.min(1.4,0.6+(h-sea)/30)); 
+  const n=parseInt(hex.slice(1),16); let r=(n>>16)*k,g=((n>>8)&255)*k,b=(n&255)*k;
+  return "rgb("+Math.min(255,r|0)+","+Math.min(255,g|0)+","+Math.min(255,b|0)+")";}
+function draw(){
+  const cv=document.getElementById("cv"),x=cv.getContext("2d");
+  const px=N*CHUNK; cv.width=px*CELL; cv.height=px*CELL; x.clearRect(0,0,cv.width,cv.height);
+  for(const c of DATA.chunks){const [cx,cz]=c.coord;
+    for(let lz=0;lz<c.size;lz++)for(let lx=0;lx<c.size;lx++){
+      const h=c.heights[lz][lx], b=c.surface[lz][lx];
+      x.fillStyle=shade(COL[b]||"#222",h);
+      x.fillRect((cx*CHUNK+lx)*CELL,(cz*CHUNK+lz)*CELL,CELL,CELL);
+    }
+    // chunk border
+    x.strokeStyle="rgba(255,255,255,.08)"; x.strokeRect(cx*CHUNK*CELL,cz*CHUNK*CELL,CHUNK*CELL,CHUNK*CELL);
+  }
+}
+let VERIFIED=0;
+document.getElementById("cv").addEventListener("click",async e=>{
+  if(!DATA)return; const r=e.target.getBoundingClientRect();
+  const px=(e.clientX-r.left)/r.width*N*CHUNK, pz=(e.clientY-r.top)/r.height*N*CHUNK;
+  const cx=Math.floor(px/CHUNK), cz=Math.floor(pz/CHUNK);
+  const seed=document.getElementById("seed").value|0;
+  const v=await (await fetch(`/api/verify?seed=${seed}&cx=${cx}&cz=${cz}`)).json();
+  if(v.ok) VERIFIED++;
+  document.getElementById("ibar").style.width=Math.min(100,VERIFIED/DATA.chunks.length*100)+"%";
+  document.getElementById("istat").textContent=DATA.chunks.length+" chunks · "+VERIFIED+" verified";
+  const f=v.feature, kind=f.kind, pill = v.ok?'<span class="pill ok">VERIFIED</span>':'<span class="pill bad">FAIL</span>';
+  const legpill = kind==="legendary"?'<span class="pill leg">LEGENDARY</span>':('<span class="pill">'+kind+'</span>');
+  document.getElementById("inspect").innerHTML =
+    `chunk (${cx},${cz}) ${pill}<br>chunk_hash ${v.chunk_hash.slice(0,24)}…<br>`+
+    `feature ${legpill} seed_n=${f.seed_n} stopping_time=${f.stopping_time}<br>`+
+    `<span style="color:var(--muted)">re-verify: syracuse.gates(${f.seed_n}).stopping_time == ${f.stopping_time}</span>`;
+});
+load();
+</script>
+</body></html>
