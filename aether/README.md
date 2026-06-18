@@ -17,6 +17,8 @@ energy `E = ||WᵀW − I||²_F` must stay under a strict declared threshold, an
 PYTHONHASHSEED=0 python3 demo_aether_physics.py        # exact gate · the 1-ulp truth · spinning top · ghostsnap
 PYTHONHASHSEED=0 python3 tests/test_aether_stiefel.py  # 11 unit tests (gate · audit · retraction)
 PYTHONHASHSEED=0 python3 tests/test_aether_ghost.py    # 12 unit tests (Stage-B dual ghost channel)
+PYTHONHASHSEED=0 python3 demo_aether_spd.py            # Stage C: SPD cone · adaptive cadence · pure ghost
+PYTHONHASHSEED=0 python3 tests/test_aether_spd.py      # 10 unit tests (Stage-C SPD geometry)
 ```
 
 ## Fixed-point is deterministic, not exact (and that's the point)
@@ -82,6 +84,38 @@ retained byte-identical as the regression oracle for historical goldens — so t
 quantization-leak residual. (Cross-geometry note: `G` is defined relative to `Π_W`; ghost magnitudes are not
 directly comparable across different retractions — a Stage-D concern.)
 
+## Stage C — the SPD covariance cone (log-Cholesky) with an E-driven adaptive cadence
+
+Stage B instrumented the Stiefel frame; Stage C adds a **second geometry** — the symmetric
+positive-definite cone `P ≻ 0` (the Sector-D covariance manifold) — and an **adaptive** projection policy.
+The retraction `Π_W` becomes `Π_SPD`.
+
+```
+parametrization:  P = L·Lᵀ,  L lower-triangular, diag(L) > 0          # Cholesky / log-Cholesky
+exact gate:       is_spd_exact(P) ⟺ every leading principal minor > 0  # Sylvester, integer, no epsilon
+retraction:       Π_SPD(P) = recompose(cholesky_repair(symmetrize(P))) # clamp non-positive pivots ≥ floor
+gate signal:      gershgorin_margin(P) = minᵢ(Pᵢᵢ − Σⱼ≠ᵢ|Pᵢⱼ|) ≤ λ_min  # cheap O(n²), no sqrt
+```
+
+**E-driven adaptive retraction (the latency idea, purity-preserving).** Each step computes the **cheap
+Gershgorin lower bound** on `λ_min` — the *gate* observable. The **expensive** Cholesky retraction `Π_SPD`
+fires only when that margin drops below a declared `margin_tol` **or is predicted to cross it within
+`horizon` steps** (linear extrapolation of its decrease). Projection effort therefore *tracks geometric
+drift*: near-zero retractions when the state sits deep in the cone (demo C: 0 vs a uniform policy's 62),
+many when drift genuinely threatens the boundary (demo D: holds the cone where no-retraction breaks it).
+The cadence is driven **only** by the gate margin — the ghost `S`/`B(t)`/`η_CLT` are measured every step
+but **never** read by the controller (observable purity; no `S → Π_SPD → P → S` feedback loop).
+
+**Honest bounds.**
+- `Π_SPD` is idempotent only **up to fixed-point quantization** (a few ulps) — deterministic, not exact.
+- The cadence guarantees the **committed** state is on-cone; the forward `Z` may leave the cone by a
+  *bounded* amount between steps (captured by the ghost `G = Z − Π_SPD(Z)`), then is repaired.
+- This is the log-Cholesky **parametrization** with an exact positivity gate and a Cholesky retraction —
+  **not** a full geodesic integrator (the flat log-diagonal metric coordinate needs a fixed-point `ln`,
+  deferred). The log-Cholesky metric ≠ the affine-invariant metric; geodesics differ (a declared cut).
+- Cross-geometry note: `G` here is relative to `Π_SPD`, so its magnitude is **not** comparable to the
+  Stage-B Stiefel ghost. Attribution holds within a fixed projection, never across.
+
 ## Ties
 
 | sibling | role |
@@ -108,7 +142,10 @@ directly comparable across different retractions — a Stage-D concern.)
 | `fixedpoint.py` | fixed-point integer arithmetic (`to_fp`, `fp_mul` symmetric trunc, matmul, identity) |
 | `stiefel.py` | exact gate, `frobenius_energy`, `check_orthogonality`, `gram_schmidt_integer`, `handle_retraction` |
 | `ghost.py` | **Stage B** dual channel: `ghost_residual`, `ema_matrix`, `backreaction` B(t), `clt_eta`, `structural_hash` (Hₜ), `PROTOCOL_VERSION` |
-| `evolve.py` | `is_skew_symmetric`, `lie_bracket`, `lie_step`, `evolve_raw`, `evolve_audited` (now returns `S`, `B_t`, `eta_clt`, `structural_hash`) |
+| `spd.py` | **Stage C** SPD cone: `is_spd_exact` (Sylvester), `cholesky_int`, `project_spd` (Π_SPD), `spd_error` (E_SPD), `gershgorin_margin`, `SPD_PROTOCOL` |
+| `evolve.py` | `is_skew_symmetric`, `lie_bracket`, `lie_step`, `evolve_raw`, `evolve_audited` (Stage B); `evolve_spd_audited`, `symmetrize_add` (Stage C, E-driven adaptive cadence) |
 | `demo_aether_physics.py` | exact gate (A) · 1-ulp truth (B) · 1,000,000-step spinning top (C) · ghostsnap (D) |
 | `tests/test_aether_stiefel.py` | 11 unit tests (exact gate, audit, retraction, evolution, crucible stress) |
 | `tests/test_aether_ghost.py` | 12 unit tests (ghost closure, fp EMA, observable purity, η_CLT null, structural identity) |
+| `demo_aether_spd.py` | Stage C: exact gate · Π_SPD repair · adaptive cadence (calm vs strong drift) · pure ghost |
+| `tests/test_aether_spd.py` | 10 unit tests (Cholesky, Sylvester gate, retraction, adaptive cadence, purity, anchor) |
