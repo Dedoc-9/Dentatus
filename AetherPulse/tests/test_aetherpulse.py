@@ -77,6 +77,35 @@ class Conformance(unittest.TestCase):
         self.assertEqual(K.run(mk(), 30)[1][-1], K.run(mk(), 30)[1][-1])
 
 
+class SeamL1L2L3(unittest.TestCase):
+    def _w(self):
+        return K.make_world([K.body(1, [0, 5, 0], [1, 0, 0], [1, 1, 1]),
+                             K.body(2, [3, 5, 0], [-1, 0, 0], [1, 1, 1])],
+                            bounds=((-10, 0, -10), (10, 10, 10)), gravity=10, dt_ms=16)
+
+    def test_no_write_back(self):
+        import snapshot as S
+        w = self._w(); h = K.state_hash(w)
+        snap = S.l1_snapshot(w)
+        snap["bodies"][0]["pos"][0] = 10 ** 18                # render layer mutates its read-only copy
+        K.step(w)
+        self.assertEqual(K.state_hash(w), h)                  # L1 unaffected by the render layer
+
+    def test_l2_drift_is_benign(self):
+        import snapshot as S
+        snap = S.l1_snapshot(self._w())
+        a, b = S.render_observe(snap, 11), S.render_observe(snap, 77)
+        self.assertTrue(S.l1_agrees(a, b))                    # gate (L1) matches
+        self.assertNotEqual(a["particles"], b["particles"])   # observables (L2) may differ
+
+    def test_l1_injection_detected(self):
+        import snapshot as S
+        w = self._w(); expected = K.state_hash(w)
+        w["bodies"][0]["pos"][1] += SCALE * 5                 # "memory injection" teleport
+        ok, _ = S.detect_l1_injection(w, expected)
+        self.assertFalse(ok)
+
+
 if __name__ == "__main__":
     if os.environ.get("PYTHONHASHSEED") != "0":
         sys.stderr.write("set PYTHONHASHSEED=0\n"); raise SystemExit(2)

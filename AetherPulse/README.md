@@ -62,8 +62,9 @@ See [`STAGE1_SPEC.md`](STAGE1_SPEC.md) §5b for the exact hashing format it must
 | `_cores.py` | Sibling-Law shim — imports `aether`/`tessera`/`stasis` read-only |
 | `kernel.py` | the deterministic 3-D fixed-point rigid-body kernel + state hashing |
 | `conformance.py` | conformance vectors (`make_vector` / `verify_vector`) — the native-port oracle |
+| `snapshot.py` | the L1/L2/L3 seam — read-only L1 snapshot, no-write-back, L1-injection detection (render bridge reference) |
 | `demo_aetherpulse.py` | two cubes · determinism · gravity · conformance · stress |
 | `export_vectors.py` | emits language-agnostic conformance fixtures (`fixtures/*.json`) for a C++/Rust harness |
 | `fixtures/*.json` | conformance vectors: input world + expected `final_hash` / `merkle_root` |
-| `tests/test_aetherpulse.py` | 12 unit tests |
+| `tests/test_aetherpulse.py` | 15 unit tests |
 | `STAGE1_SPEC.md` | the Stage-1 architecture spec + honest roadmap (proven vs. target) |

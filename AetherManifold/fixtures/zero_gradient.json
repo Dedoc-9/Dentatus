@@ -1,0 +1,10 @@
+{
+  "schema": "aethermanifold-conformance/1",
+  "problem": "zero_gradient",
+  "steps": 40,
+  "eta_num": 1,
+  "eta_den": 5,
+  "final_hash": "9aa4e19034b7374b5ae1526005e5d68e1f41e0a6bb7371d8e90bd333058e0304",
+  "merkle_root": "ae473bb55d6ba73f18cbf138a8aa9f2f9699bd1d433493d2838d42cb9da452ba",
+  "final_defect": 0
+}
