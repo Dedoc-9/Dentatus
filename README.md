@@ -1,5 +1,7 @@
 # Dentatus/Chronicle — a verifiable-computation workbench
 
+[![verify](https://github.com/Dedoc-9/Dentatus/actions/workflows/verify.yml/badge.svg)](https://github.com/Dedoc-9/Dentatus/actions/workflows/verify.yml)
+
 A set of small, deterministic, content-addressed components that make consequential automated decisions
 **auditable and reproducible by construction** — and then audit the *audits themselves*. The cores are
 standard-library only; `cryptography` is an optional add-on for asymmetric (Ed25519) attestation, never a
@@ -263,7 +265,9 @@ One command verifies the whole workbench before you build on it. For the **entir
 downstream applications — `python3 verify_all.py` runs both gates (the preflight + the application conformance
 harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 26 suites **and** the parity
 proof as subprocesses under `PYTHONHASHSEED=0`, and prints a green status **only if everything actually
-passed**:
+passed**. That same `verify_all.py` is the CI gate — [`.github/workflows/verify.yml`](.github/workflows/verify.yml)
+runs it on every push and PR (pinning the Ed25519 crypto tier the baselines were pinned under), so the
+green/red is enforced on merge, not just available locally:
 
 ```bash
 python3 integration/preflight_check.py

@@ -1,0 +1,49 @@
+name: verify
+
+# The single repo-level gate: runs verify_all.py (workbench preflight + application
+# conformance) on every push to main and every PR. Green here == the workbench and the
+# five downstream applications reproduce their pinned state bit-for-bit. Red names the
+# layer that drifted. This enforces the green/red on merge, not just locally.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Cancel a stale run if a new commit lands on the same ref.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Determinism contract: the cores refuse to run without this. Every hash in the
+      # repo was pinned under PYTHONHASHSEED=0; CI must match or every golden drifts.
+      PYTHONHASHSEED: "0"
+      # The supervisor-token passphrase is a CI-local throwaway (no real key in CI).
+      # Real signing secrets are NEVER committed and NEVER set here.
+      CHRONICLE_SIGNER_PASSPHRASE: "ci_verify"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Pin the crypto tier (Ed25519)
+        # NOT optional for conformance: the aegis_gate golden was pinned under the
+        # Ed25519 tier. On bare stdlib the supervisor token falls back to HMAC and the
+        # golden drifts (verified: Ed25519 10b8188... vs HMAC dfa2b00...), throwing a
+        # FALSE red. cryptography is the only third-party dep, and only for this tier.
+        run: python -m pip install --upgrade pip cryptography
+
+      - name: Verify everything (workbench preflight + application conformance)
+        # One command, one verdict, one exit code. Exits 0 only if BOTH gates pass.
+        run: python3 verify_all.py

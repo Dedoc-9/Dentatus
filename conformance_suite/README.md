@@ -37,6 +37,19 @@ same way a `ruleset_hash` version bump is a noted, intentional act. Drift you di
 this exists to surface. (`integrity ≠ truth`: a stable baseline proves the applications still reproduce their
 pinned outputs, not that those outputs are *right*.)
 
+## The baseline is pinned to an environment, not just to code
+
+A conformance hash captures *every* deterministic input the run touched — including which signing tier was
+available. The `aegis_gate` golden was pinned with **`cryptography` installed**, so its supervisor token is
+**Ed25519**. On bare stdlib the token falls back to **HMAC**, the committed-hash chain changes, and the golden
+drifts — verified, not assumed: Ed25519 → `10b8188…`, HMAC → `dfa2b00…`. That is a *false* red (the logic is
+unchanged; only the environment differs).
+
+The honest fix is to pin the environment alongside the code: the CI gate (`.github/workflows/verify.yml`)
+installs `cryptography` so it reproduces the tier the baseline was pinned under. If you ever re-pin on bare
+stdlib **on purpose**, that is a deliberate `--update` and a noted tier change — same discipline as a
+`ruleset_hash` bump. Determinism is reproducible *given the same declared environment*, never in a vacuum.
+
 ## Files
 
 | File | Role |
