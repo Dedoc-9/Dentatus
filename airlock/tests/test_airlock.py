@@ -17,6 +17,7 @@ import adapters as A
 import adapters_kv as KV
 import contract
 import conformance as CF
+import admissibility as AD
 import membrane as M
 
 K = A.K
@@ -300,6 +301,47 @@ class TestMultiFidelity(unittest.TestCase):
         W = self._world()
         r = M.propose(W, self._boom(1), A, severity=lambda w, t: "game")
         self.assertTrue(r["ok"]); self.assertEqual(r["telemetry"]["severity"], "game")
+
+
+
+
+class TestAdmissibilityGeometry(unittest.TestCase):
+    """The membrane records what ALMOST happened; admissibility.geometry makes it a first-class observable."""
+    def _session(self):
+        W = world(); L = M.Ledger()
+        props = [{"op": "impulse", "id": 0, "dv": [1, 0, 0]},                         # COMMIT
+                 {"op": "impulse", "id": 0, "dv": [0.5, 0, 0]},                       # CANON
+                 {"op": "teleport"},                                                  # SCHEMA
+                 {"op": "advance", "ticks": 2},                                       # COMMIT
+                 {"op": "impulse", "id": 99, "dv": [1, 0, 0]}]                        # APPLY
+        for t in props:
+            M.propose(W, {"transition": t, "budget": {"max_cost": 5, "max_delta": 10**18},
+                          "constraints": {"max_bodies": 4}}, A, ledger=L)
+        return L
+
+    def test_counts_and_pressure(self):
+        g = AD.geometry(self._session())
+        self.assertEqual((g["realized"], g["unrealized"], g["proposed"]), (2, 3, 5))
+        self.assertEqual(g["admissibility_permille"] + g["proposal_pressure_permille"], 1000)
+        self.assertEqual(sum(g["gate_histogram"].values()), 3)        # the shape of the filter
+        self.assertIn(g["dominant_gate"], g["gate_histogram"])
+
+    def test_pure_does_not_mutate_ledger(self):
+        L = self._session()
+        nc, nr = len(L.commits), len(L.rejections)
+        AD.geometry(L); AD.geometry(L)
+        self.assertEqual((len(L.commits), len(L.rejections)), (nc, nr))   # observation never mutates
+
+    def test_merge_aggregates(self):
+        g = AD.geometry(self._session())
+        m = AD.merge(g, g)
+        self.assertEqual(m["realized"], 2 * g["realized"])
+        self.assertEqual(m["unrealized"], 2 * g["unrealized"])
+
+    def test_empty_ledger(self):
+        g = AD.geometry(M.Ledger())
+        self.assertEqual(g["proposed"], 0)
+        self.assertIsNone(g["admissibility_permille"])
 
 
 if __name__ == "__main__":

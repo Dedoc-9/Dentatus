@@ -101,3 +101,29 @@ Honest claim: **not** "a 240 fps GR engine." Rather — *a deterministic integri
 general-relativistic simulations while preserving provenance, causal consistency, and human/AI interaction
 boundaries*, with severity declared and reproducible. Most engines simulate the equations; few treat the
 simulation itself as an auditable physical object. `integrity ≠ truth`.
+
+## Transition space — measuring what almost happened
+
+Most systems record only what happened. This membrane records what *almost* happened — every unrealized
+transition leaves a trace (rejection shards, proposal residuals `R_p`, shadow candidates). `admissibility.py`
+makes those traces a **first-class observable**: the *geometry of admissibility* a session moved through.
+
+```
+States  ⊂  Transitions  ⊂  Admissibility manifold
+Reality = a trajectory through a continuously filtered space of candidate transitions.
+```
+
+- **Proposal pressure** = unrealized / proposed (per-mille) — how strongly the admissibility structure shaped
+  realized history. In ordinary physics it is assumed ≈ 0 (nature instantiates lawful evolution directly). In
+  an agent-rich world (humans, LLMs, planners) actors continuously propose trajectories only partially
+  realized, so it is **not** zero — and it becomes measurable.
+- **Shape of the filter** = the gate histogram (CANON/SCHEMA/BUDGET/APPLY/CONSTRAINT/STRICT/WITNESS) — *where*
+  reality rejected candidates.
+- It sits alongside the kernel/aether observables (energy, momentum, curvature, entropy, ghost) as the
+  membrane's own pressure axis.
+
+**Honest bound:** this is a *modeling lens and an observability surface*, **not** a claim about nature. It is
+pure telemetry — it never gates, steers, or enters identity (`telemetry ≠ control`). `integrity ≠ truth`:
+proposal pressure measures the filter's *shape*, never whether the filter is *right*. Whether the geometry of
+admissibility describes physical systems containing adaptive intelligences is an empirical question this code
+does not answer — it only makes the question measurable.
