@@ -83,7 +83,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The twenty-one components
+## The twenty-two components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -108,10 +108,11 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`crucible/`](crucible/README.md) | **reverse-Collatz adversary** — grows the pre-image tree upward to forge deterministic hard seeds (stopping time = reverse depth) and fires them at `ration`/`tessera`; controlled chaos, no RNG; content-addressed difficulty manifest | `PYTHONHASHSEED=0 python3 demo_crucible.py` |
 | [`fuel/`](fuel/README.md) | **the Absolute Integer Standard** — deterministic bounded-execution VM; halting is exact integer *fuel* (no float gas), fail-closed on out-of-fuel/div0; every run mints a replayable `tessera` shard | `PYTHONHASHSEED=0 python3 demo_fuel.py` |
 | [`elenchus/`](elenchus/README.md) | **reasoning-trace interrogator** — replays a claimed derivation against a pinned exact rule-set; names the exact FABRICATED / GAP / UNKNOWN step; verdict is itself a `tessera`. Checks footprints vs declared rules — not the model's mind, not truth | `PYTHONHASHSEED=0 python3 demo_elenchus.py` |
+| [`polity/`](polity/README.md) | **deterministic governance** — governors vote (via `quorum`) to ratify a new ruleset version; mints a content-addressed constitution lineage so frozen rulesets can evolve without breaking custody. Proves the vote, never the wisdom | `PYTHONHASHSEED=0 python3 demo_polity.py` |
 
-All twenty-one refuse to run without `PYTHONHASHSEED=0`. Test suites total **250 unit tests across 23 suites**
+All twenty-two refuse to run without `PYTHONHASHSEED=0`. Test suites total **258 unit tests across 24 suites**
 (chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15, tessera 12, crucible 10, fuel 12, elenchus 11) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15, tessera 12, crucible 10, fuel 12, elenchus 11, polity 8) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 
