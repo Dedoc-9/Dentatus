@@ -42,7 +42,10 @@ README**. They group into families: an audit core; governance & isolation (`guar
 hardware-invariant integer workload and its adversary (`syracuse`, `crucible`); real-time and fixed-point
 physics (`lockstep`, `aether`, `manifold`); and a boundary layer that admits the messy real world
 (`stasis`). None of them is a product; collectively they are a demonstration that one honest primitive
-composes across surprisingly different problems.
+composes across surprisingly different problems. Two **standalone applications** in the repo show the same
+composition one level up — `aegis_gate/` (a verifiable transfer & KYC agent; a *mock* bank, proves the audit
+trail not the wisdom) and `VeriSim/` (a verifiable simulation engine; proves the *test was real*, not that the
+model matches reality) — each importing the cores read-only via the Sibling Law, neither a deployed system.
 
 The single epistemic thread running through all of it: **`integrity ≠ truth`.** A hash certifies that a
 record is unforged, reproducible, and rule-faithful — never that the underlying decision was correct, fair,
@@ -63,6 +66,7 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 | Exact integer consensus + the 2D (lateral×temporal) attestation lattice | `quorum/demo_quorum.py` |
 | A bounded integer VM whose run mints an offline-replayable proof shard | `fuel/demo_fuel.py`, `tessera/demo_tessera.py` |
 | A 1,000,000-step fixed-point manifold with deterministic self-retraction, no nondeterministic drift | `aether/demo_aether_physics.py` |
+| Standalone *applications* compose the stack into products (Sibling Law, read-only imports, own tests) | `aegis_gate/` (verifiable transfer agent, 14 tests), `VeriSim/` (verifiable simulation, 12 tests) |
 | *(legacy, in `docs/archive/`)* differential fuzzing 20k cases 0 violations; hardware-invariant replay; replay immunity; chaos-order invariance | `forge/oracle_fuzz.py`, `forge/duel_determinism_proof.py`, `forge/nonce_proof.py`, `forge/chaos_harness.py` |
 
 ## The part that's actually worth showing: engineering judgment
@@ -84,40 +88,4 @@ The methodology is more interesting than any feature, and the history shows it u
 
 ## Honest scope — what it is NOT
 
-- **Not a game engine or renderer.** A game was prototyped as a cheap test that concluded the system is a
-  verification backend, not a game. (`lockstep`/`aether` are reconciliation and fixed-point cores, not GPU
-  renderers.)
-- **Not decentralized / not Web3.** Authority rests on server-held secrets and *pinned* keys. `quorum` is a
-  k-of-n tally, **not** asynchronous Byzantine consensus, and witness independence is a *trust input*, not a
-  proven property — a colluding majority certifies a falsehood just as cleanly.
-- **Not a cryptographic-security product.** `tessera`/`syracuse` give *reproducibility*, not secrecy — no
-  preimage resistance; anyone can recompute a path. The value is detecting forged *process history*, not
-  hiding results.
-- **Not high-throughput, not production-hardened, not proven at scale.** Single-writer Python; several O(N³)
-  steps; no load testing, no external security audit. Each sibling is a reference implementation with stated
-  bounds, not a deployed system.
-
-## How to evaluate it in ten minutes
-
-```
-# current workbench, from the repo root:
-PYTHONHASHSEED=0 python3 integration/preflight_check.py     # 26/26 suites + parity -> [FOUNDRY VERIFIED]
-PYTHONHASHSEED=0 python3 chronicle/demo_policy.py           # record / tamper / rule-swap / fail-closed / Ed25519
-PYTHONHASHSEED=0 python3 tessera/demo_tessera.py            # mint a shard; a stranger replays it offline
-PYTHONHASHSEED=0 python3 aether/demo_aether_physics.py      # 1,000,000-step fixed-point manifold, no drift
-
-# legacy implementation (now archived):
-cd docs/archive
-PYTHONHASHSEED=0 python3 forge/oracle_fuzz.py               # 0 violations over 20k fuzzed cases
-PYTHONHASHSEED=0 python3 walkthrough_genesis.py             # end-to-end self-verifying lifecycle
-```
-
-Then read `docs/archive/constitution/ANNEX_I_AXIOMATIC_METABOLISM.md` for the project's own honest verdict on
-what it did and did not achieve.
-
-## One-line summary
-
-A deterministic, content-addressed, cryptographically-auditable workbench — 24 small, decoupled, individually
-honest components built around a single primitive and a single discipline (*measure / prove / stay honest*,
-and *integrity ≠ truth*). A demonstration of high-assurance engineering and epistemic restraint, not a
-product, not a platform, and not a game.
+- **Not a game engine or renderer.** A game was protot

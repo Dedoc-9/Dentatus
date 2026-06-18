@@ -150,6 +150,21 @@ is added as a **new sibling component** that *imports* the frozen primitives rea
 This is "build for extraction, not just execution" stated as a growth rule: the tool stays a closed,
 immutable instrument while the workbench around it keeps gaining purpose-built parts.
 
+## Applications built on the workbench
+
+The Sibling Law also scales up from *components* to whole *products*: a standalone application can import the
+frozen cores (and any siblings) **read-only** via a path shim, without being a sibling itself or entering the
+26-suite count. Two are in-repo as worked examples, each with its own tests and its own honest bound:
+
+| Application | What it is | Honest bound |
+|---|---|---|
+| [`aegis_gate/`](aegis_gate/README.md) | a verifiable, policy-isolated transfer & KYC agent — an untrusted LLM proposes wires, host-side exact gates + `ration` + `quorum` + `tessera` make every decision unforgeable, attributable, and offline-replayable (14 tests) | a **mock** integer bank with no real payment rails; proves the audit trail, not that any loan was wise |
+| [`VeriSim/`](VeriSim/README.md) | a verifiable simulation engine — runs a deterministic fixed-point scenario in `aether`/`fuel` and emits a replayable `tessera` **Shard** a stranger re-runs locally; `stasis` splits hardware drift from logic change (12 tests) | proves the **simulation was real and replayable**, never that the model matches reality or that any real-world system is safe |
+
+Both follow the same discipline as the siblings — decoupled, content-addressed, fail-closed, and explicit
+about what they do *not* prove. They are *demonstrations that the primitives compose into products*, not
+deployed systems.
+
 ## Three structural guarantees an LLM or agent framework can't give you alone
 
 A model and a standard agent framework, by themselves, can't provide these — not because they're badly

@@ -458,6 +458,15 @@ auditor trips when `E` exceeds the declared epsilon and self-retracts, logging e
 replayable bit-for-bit. *What it gives:* a deterministic, attestable simulation with no nondeterministic
 drift. *What it does not:* claim the simulation models real physics.
 
+#### Applications on the workbench (downstream products, not siblings)
+
+The Sibling Law scales from components to whole products: a standalone app imports the frozen cores + siblings
+read-only via a path shim, without being a sibling or entering the suite count. In-repo examples:
+`aegis_gate/` (a verifiable transfer & KYC agent over exact gates + `ration` + `quorum` + `tessera`; a **mock**
+bank, 14 tests) and `VeriSim/` (a verifiable simulation engine over `aether`/`fuel`/`tessera`/`stasis` that
+emits a replayable Shard; proves the *test was real*, not that the model is *true*; 12 tests). When you build
+one, the same rules apply — decoupled, content-addressed, fail-closed, and explicit about non-claims.
+
 #### Use case — evolving the rules without breaking the chain of custody
 
 A rule in `elenchus` or a threshold in `fuel` turns out wrong. Instead of an unaudited code edit, `polity`
