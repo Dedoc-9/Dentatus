@@ -149,7 +149,7 @@ done
 PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLDS
 ```
 
-**Current verification state: 258 tests passing across 24 suites (+ coupled/uncoupled parity proof).**
+**Current verification state: 273 tests passing across 25 suites (+ coupled/uncoupled parity proof).**
 
 | Suite | Tests | Guards |
 |---|---|---|
@@ -322,7 +322,7 @@ each bounded:
 
 ```
 [ Traditional flow ]  Code -> manual review -> debug non-determinism -> slow deploy
-[ Workbench flow ]    Generate -> preflight (24 suites) -> replay verification -> fast deploy
+[ Workbench flow ]    Generate -> preflight (25 suites) -> replay verification -> fast deploy
 ```
 
 The role-shift: you go from anxious code supervisor to systems architect — the LLM is the engine, the
@@ -357,11 +357,12 @@ integrity is not truth (§3).
    |-- crucible/       --> Sibling 17: Reverse-Collatz adversary -- deterministic hard-seed generator (the crucible)
    |-- fuel/           --> Sibling 18: Absolute Integer Standard -- bounded-execution VM, exact integer fuel, emits tessera
    |-- elenchus/       --> Sibling 19: Reasoning-trace interrogator -- replays a derivation vs pinned rules (footprints, not the mind)
-   `-- polity/         --> Sibling 20: Deterministic governance -- quorum-ratified, content-addressed ruleset constitution lineage
+   |-- polity/         --> Sibling 20: Deterministic governance -- quorum-ratified, content-addressed ruleset constitution lineage
+   `-- stasis/         --> Sibling 21: Boundary layer -- Iron Canon + Divergence Ledger (gate/observable) + Lazy Merkle Lattice
 ```
 
-Cores are frozen; the twenty siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps the
-two cores honest against a pinned baseline; `integration/preflight_check.py` runs all twenty-four suites + the
+Cores are frozen; the twenty-one siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps the
+two cores honest against a pinned baseline; `integration/preflight_check.py` runs all twenty-five suites + the
 parity proof as the one gate.
 
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
