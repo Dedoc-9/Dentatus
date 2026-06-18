@@ -1,0 +1,80 @@
+{
+  "AetherManifold": {
+    "details": {
+      "aggressive_eta": {
+        "final_hash": "88610a9a055ec58532f178a48ad9fde4c7fee6ed9339ef6b6357034f0e2448be",
+        "merkle_root": "984253383790567ced543dc8e8e92cf8a3ff0d7023a430102e65b933027d394c"
+      },
+      "converge": {
+        "final_hash": "2d0008d3f4d7dc33e62ee186931ff88a5ae0bcae72116223c4f072e867be1374",
+        "merkle_root": "ff6816d19d971efda285ea4925454329c5360f4d54463d8f937252aa5f612720"
+      },
+      "near_singular": {
+        "final_hash": "9dced3968f2a5439b97cb53cdba03eccb23d7a6ac6886818ffeb93853daa7244",
+        "merkle_root": "077d0d8967e7c71dfda53c0e8d52ea7d76f2fcd61e1e1aeb310f68599203f6a2"
+      },
+      "zero_gradient": {
+        "final_hash": "9aa4e19034b7374b5ae1526005e5d68e1f41e0a6bb7371d8e90bd333058e0304",
+        "merkle_root": "ae473bb55d6ba73f18cbf138a8aa9f2f9699bd1d433493d2838d42cb9da452ba"
+      }
+    },
+    "golden": "95a0875716cb428356d6aa56dbe3be75f06e59fd27711eecf63941b0fdae4aa6"
+  },
+  "AetherPulse": {
+    "details": {
+      "gravity_bounce": {
+        "final_hash": "1523410a98ec176b24f40b9014eb77218d0f3281f1a39e4ba6638d83af76cf35",
+        "merkle_root": "ac13b3ee318b5846d6303014f73da51c325ea0ab0b76ab90e68a19dcd295f6e0"
+      },
+      "nbody12": {
+        "final_hash": "72dc9c409dfdb508c10753d733d1207d58dd96247554113d271c1b8a9b2678d6",
+        "merkle_root": "68bf453d8046c8045349766b58cdcf34c8dbd4f05777e832e6d21432889952f8"
+      },
+      "two_cubes": {
+        "final_hash": "8f87a46a46bfed150a6aed1088fd0c8c3be15643a24416f1097cb9cfda4e2fa2",
+        "merkle_root": "10eb1bd72e2340a24057e38ae241837fe0cdf64c8d9dfb3f9f55a0b8ec4046d0"
+      }
+    },
+    "golden": "5ea602eb1e43feae96429e1f56e6918f754c6bc8f9037b8c8098f292d44db1a1"
+  },
+  "VeriSim": {
+    "details": {
+      "merkle_root": "7bffd20ae09400671eb26bd7ff8d73cc89bf6954798547e8e03c94ab07c4626f",
+      "path_hash": "4b53ab0cb4c957c1445ac521df6b77787e37df1c070cc64337525630d3f73775",
+      "scenario": "brake_1d",
+      "steps": 375
+    },
+    "golden": "c5bff368b907f865fa7b697d11f75bcbe6418315c781f02af097a6fe726ddf83"
+  },
+  "VeriVerse": {
+    "details": {
+      "chunk00": "ad199d2006aab36238d9a483869de5f38f5d9c36e73d252f98b30824733fe8b2",
+      "world_root": "6068587a6415ab2e999b6e9dce518ea43cdadc5c841fd157272378b4651f730c"
+    },
+    "golden": "3216e01df7fbaa37945f6f87b4c8a0564b9b0ccdd3655a1ac31f7baa156ab6ad"
+  },
+  "aegis_gate": {
+    "details": {
+      "n_decisions": 4,
+      "verdicts": [
+        [
+          "legit_supplier",
+          "APPROVED"
+        ],
+        [
+          "legit_landlord",
+          "APPROVED"
+        ],
+        [
+          "over_ceiling",
+          "DENIED"
+        ],
+        [
+          "injection_drain",
+          "DENIED"
+        ]
+      ]
+    },
+    "golden": "10b81884bfc6272da5483846a50b5b4c93917580dda14266c74f127f6efd72c0"
+  }
+}
