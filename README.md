@@ -259,7 +259,9 @@ primitives extract losslessly, so any layer lifts out as a standalone component 
 
 ## Launch sequence
 
-One command verifies the whole workbench before you build on it. It runs the 26 suites **and** the parity
+One command verifies the whole workbench before you build on it. For the **entire repo** — workbench *and* the five
+downstream applications — `python3 verify_all.py` runs both gates (the preflight + the application conformance
+harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 26 suites **and** the parity
 proof as subprocesses under `PYTHONHASHSEED=0`, and prints a green status **only if everything actually
 passed**:
 
