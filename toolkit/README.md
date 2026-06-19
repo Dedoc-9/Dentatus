@@ -7,6 +7,10 @@ everything.
 > signal is a better allocator than simpler policies under constrained budgets** — and it has a
 > built-in way to prove itself wrong.
 
+**Status:** an *experimental allocation-assurance toolkit* — ready for research, auditing, and staging
+under explicit assumptions; **not** a trusted real-world decision-infrastructure component. See
+[Readiness](#readiness--use-and-non-use) and [Honest scope](#honest-scope--what-this-is-and-is-not).
+
 ```python
 from toolkit import attention
 
@@ -337,6 +341,7 @@ test_quality     != test_count     a suite that cannot notice a broken allocator
 confidence       != memory         a certificate is trustworthy only if it reproduces
 determinism      != correctness    a result that reproduces bit-for-bit is reproducible, not right
 attestation      != correctness    a staged record certifies what was checked, never that it is right
+test-passing     != good allocation a policy tuned to pass certify()/robustness() has learned the test, not the task
 ```
 
 It inherits the same move from the wider project (`prediction != causation`, `proposal != authority`,
@@ -482,6 +487,27 @@ Scope: this stages an *allocation decision* and certifies the **integrity** of t
 **correctness** of the decision (`integrity != truth`). High-stakes actuation needs a domain-validated
 model behind the buffer; the toolkit supplies the buffer, the audit trail, and the consent gate — not
 the model.
+
+## Readiness — use and non-use
+
+**Ready for** — research; demonstrations; policy-comparison experiments; prioritization studies;
+allocation audits; governance exercises; evaluating ranking heuristics; teaching resource-allocation
+concepts; testing whether a signal is useful under scarcity. Anywhere *integrity evidence* — a
+reproducible, bounded, falsifiable record of how a policy behaves — is itself the value.
+
+**Not ready for (and not intended)** — using it as evidence that a real-world allocation is *good*:
+hospital triage, research grants, disaster response, infrastructure investment, defense planning. Not
+because the software is unsafe, but because the hard question — *is the hidden objective `M` the right
+objective?* — is treated as an **input**, by design. The toolkit can tell you "Policy A captured more
+of `M` than Policy B"; it cannot tell you "`M` represents what should be cared about." That gap is
+where most real-world failures live, and the toolkit does not close it — it makes it explicit.
+
+**The standing risk: Goodhart pressure on the evaluator.** The biggest long-term risk is not bugs or
+performance — it is users learning to *pass* `certify()` / `robustness()` / `evaluate()` rather than to
+allocate well. The same tools that fight this already exist (mutation testing, the unknown-unknown
+benchmark, replay, certificate diffs, leakage checks); as the project grows, a disproportionate share
+of effort should go to keeping the **evaluator itself challenged**. A benchmark that can no longer fail
+any policy has become decoration — `test-passing != good allocation`.
 
 ## Honest scope — what this is and is not
 
