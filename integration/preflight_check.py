@@ -50,6 +50,7 @@ SUITES = [
     "aether/tests/test_aether_predictive.py",
     "airlock/tests/test_airlock.py",
     "salience/tests/test_salience.py",
+    "consequence/tests/test_consequence.py",
 ]
 PARITY = "integration/parity_proof.py"
 
