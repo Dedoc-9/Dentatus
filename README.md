@@ -39,8 +39,26 @@ declared rules* — three layers of a single offline-replayable proof. **The Col
 `crucible`) supplies a hardware-invariant integer workload and a deterministic adversary that forges the
 hardest seeds to break it. **Real-time & physics** (`lockstep`, `aether`, `manifold`) separate truth-rate
 from frame-rate and harden manifold geometry in fixed-point integers. **The boundary** (`stasis`) admits the
-messy real world — canonicalizing inputs, classifying drift-vs-lie, batching verification. Every one is
+messy real world — canonicalizing inputs, classifying drift-vs-lie, batching verification. **The
+possibility-aware runtime** (`airlock`, `salience`) lets an untrusted proposer integrate with reality through
+a membrane, then allocates compute by the geometry of unrealized lawful futures. Every one is
 decoupled enough to lift out and stand alone, and every one states its own honest bound.
+
+### The possibility-aware runtime — proposing reality through a membrane
+
+The newest layer turns the workbench into a deterministic **reality engine an LLM (or agent, or human)
+integrates with as an untrusted proposer**. `airlock/` is the general **reality-transition membrane**: a
+proposer never mutates state directly — it emits a *bounded candidate transition* that passes
+`canon → fuel → shadow-apply → validate → witness` before the deterministic kernel commits it, under two
+architectural laws — **`telemetry ≠ control`** and **`intent ≠ authority`**. Because every *unrealized*
+transition leaves a trace, the runtime measures **what almost happened**: proposal pressure (`admissibility`),
+the lawful-but-unchosen set (`possibility`), and the *geometry* of that unrealized field (`horizon`).
+`salience/` then allocates a compute budget by **possibility density** — the doorway over the quiet valley —
+under the law **possibility informs attention, never truth** (`possibility → allocation`, never
+`possibility → physics`). The committed history stays singular and deterministic; only the runtime's
+*awareness* of nearby lawful futures changes. *(Honest bound: a reference runtime, not a shipping 240fps
+engine; it measures the admissible field under the declared structure, never that the structure is right.
+`integrity ≠ truth`.)*
 
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 
@@ -126,11 +144,12 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`elenchus/`](elenchus/README.md) | **reasoning-trace interrogator** — replays a claimed derivation against a pinned exact rule-set; names the exact FABRICATED / GAP / UNKNOWN step; verdict is itself a `tessera`. Checks footprints vs declared rules — not the model's mind, not truth | `PYTHONHASHSEED=0 python3 demo_elenchus.py` |
 | [`polity/`](polity/README.md) | **deterministic governance** — governors vote (via `quorum`) to ratify a new ruleset version; mints a content-addressed constitution lineage so frozen rulesets can evolve without breaking custody. Proves the vote, never the wisdom | `PYTHONHASHSEED=0 python3 demo_polity.py` |
 | [`stasis/`](stasis/README.md) | **the boundary layer** — Iron Canon (strict canonical bytes, rejects ambiguous/float types), Divergence Ledger (gate-vs-observable: lie→FAIL, drift→WARN), Lazy Lattice (Merkle batch + on-demand proofs). Hardens the order zone against real-world chaos | `PYTHONHASHSEED=0 python3 demo_stasis.py` |
-| [`aether/`](aether/README.md) | **hardened integer manifold** — DVSM geometry in fixed-point integers (bit-exact, replayable); Stiefel auditor gates `E=‖WᵀW−I‖²_F` under a declared epsilon and deterministically self-retracts (Gram-Schmidt), logging recovery. A 1,000,000-step spinning top with no nondeterministic drift | `PYTHONHASHSEED=0 python3 demo_aether_physics.py` |
+| [`aether/`](aether/README.md) | **hardened integer manifold** — fixed-point Stiefel auditor gates `E=‖WᵀW−I‖²_F` and self-retracts (1,000,000-step spinning top, no drift). Stages B–E add the dual **ghost** channel, the **SPD** covariance cone, a self-describing **generator field** (Magnus/BCH), and the **spectral + predictive** observability stack — the engine's instrument panel (telemetry, never gating) | `PYTHONHASHSEED=0 python3 demo_aether_physics.py` |
+| [`airlock/`](airlock/README.md) | **the reality-transition membrane** — a proposer (LLM/agent/human) emits bounded transitions through `canon → fuel → shadow → validate → witness → commit`; laws `telemetry≠control` + `intent≠authority`; records **what almost happened** (proposal pressure, the admissible set, the geometry of the unrealized field) | `PYTHONHASHSEED=0 python3 demo_airlock.py` |
+| [`salience/`](salience/README.md) | **a possibility-aware allocation field** — distributes a compute budget by **possibility density** (the doorway over the valley), not distance/LOD; exact-integer apportionment; law `possibility→allocation`, never `possibility→physics` | `PYTHONHASHSEED=0 python3 demo_salience.py` |
 
 All twenty-six refuse to run without `PYTHONHASHSEED=0`. Test suites total **380 unit tests across 33 suites**
-(chronicle 19 + hardware 5, llm_toolkit 18, guard_server 10 + isolated_pep 11, integration 5, assay 10,
-manifold 9, anti_cheat 9, glitch 8, dini 9, selfaudit 11, wobble 15, ration 8, stride 6, pact 7, quorum 17, lockstep 13, syracuse 15, tessera 12, crucible 10, fuel 12, elenchus 11, polity 8, stasis 15, aether 11) — `integration/preflight_check.py` runs them all and prints `[FOUNDRY VERIFIED]` only if green.
+(the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
 

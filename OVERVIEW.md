@@ -60,6 +60,18 @@ falsehood); a reasoning trace that follows the rules is not a true conclusion; a
 exactly constrained in integer space, not "perfect" in real space. The system is built *around* that limit
 rather than pretending to break it.
 
+**The possibility-aware runtime (`airlock`, `salience`).** The most recent layer turns the workbench into a
+deterministic reality engine an LLM/agent/human integrates with *as an untrusted proposer*. `airlock/` is a
+general reality-transition membrane: a proposer never mutates state — it emits a bounded candidate transition
+that passes `canon → fuel → shadow-apply → validate → witness` before the deterministic kernel commits it,
+under two laws (`telemetry ≠ control`, `intent ≠ authority`). Because every *unrealized* transition leaves a
+trace, the runtime measures what almost happened — proposal pressure, the lawful-but-unchosen "admissible"
+set, and the geometry of that unrealized field — and `salience/` allocates compute by *possibility density*
+(the doorway over the quiet valley) under one more law: `possibility → allocation`, never `possibility →
+physics`. Honest scope: this is a *reference runtime and a measurement framework*, not a shipping 240fps
+engine and not a claim about physical nature — it measures the admissible field under the declared structure,
+never that the structure is correct (`integrity ≠ truth`).
+
 **Native ports (C++/Rust).** Performance-critical pieces (e.g. the `AetherPulse` engine) may be ported to
 C++/Rust, but the **Python reference defines the semantics**: a native build is validated strictly against
 the Python reference via *conformance vectors* (input world → expected state hashes). The native code never

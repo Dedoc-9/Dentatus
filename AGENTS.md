@@ -291,7 +291,7 @@ wrong (§3).
 
 ### The velocity equation — why this accelerates an LLM project
 
-The point of the 14-component workbench is to move the bottleneck from human code-review to automated
+The point of the 26-component workbench is to move the bottleneck from human code-review to automated
 verification: you offload tracking of determinism, structural purity, privilege isolation, and resource
 budgets to the math, and spend your attention only on what a machine cannot judge. Four concrete speedups,
 each bounded:
@@ -359,11 +359,13 @@ integrity is not truth (§3).
    |-- elenchus/       --> Sibling 19: Reasoning-trace interrogator -- replays a derivation vs pinned rules (footprints, not the mind)
    |-- polity/         --> Sibling 20: Deterministic governance -- quorum-ratified, content-addressed ruleset constitution lineage
    |-- stasis/         --> Sibling 21: Boundary layer -- Iron Canon + Divergence Ledger (gate/observable) + Lazy Merkle Lattice
-   `-- aether/         --> Sibling 22: Hardened integer manifold -- fixed-point DVSM + Stiefel auditor + deterministic retraction
+   |-- aether/         --> Sibling 22: Hardened integer manifold -- Stiefel/SPD/field + ghost/spectral/predictive instrument panel
+   |-- airlock/        --> Sibling 23: Reality-transition membrane -- propose->canon->fuel->shadow->validate->witness->commit (telemetry!=control, intent!=authority)
+   `-- salience/       --> Sibling 24: Possibility-aware allocation field -- compute follows possibility density (possibility->allocation, never possibility->physics)
 ```
 
-Cores are frozen; the twenty-two siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps the
-two cores honest against a pinned baseline; `integration/preflight_check.py` runs all twenty-six suites + the
+Cores are frozen; the twenty-four siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps
+the two cores honest against a pinned baseline; `integration/preflight_check.py` runs all 33 suites + the
 parity proof as the one gate.
 
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
@@ -371,7 +373,7 @@ wrong by definition here — fix the change, not the test.
 
 ### The children — a deep dive by family, and how they compose in real use cases
 
-The twenty-two siblings are not a flat list; they fall into families that compose. Each entry states what it
+The twenty-four siblings are not a flat list; they fall into families that compose. Each entry states what it
 *is*, what it *proves*, and its honest bound. The use-case flows below show them working together — that
 composition is the actual product.
 
