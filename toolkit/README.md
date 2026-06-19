@@ -81,15 +81,16 @@ picked well because the model says so."
 ## Commands
 
 ```
-python3 -m toolkit              # the full proof (forty asserted properties)
+python3 -m toolkit              # the full proof (forty-four asserted properties)
 python3 -m toolkit tournament  # compare() + robustness() tables
 python3 -m toolkit certify     # certificate for future_surface
 python3 -m toolkit evaluate    # full allocator report (onboard any policy)
+python3 -m toolkit manifest    # portable Allocation Manifest (JSON evidence boundary)
 ```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Forty asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Forty-four asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -277,6 +278,25 @@ A policy that reads a forbidden channel comes back `NOT CERTIFIED, forbidden_acc
 is a **judge, not an optimizer**: it reports where a system should be trusted; it never modifies the
 policy or proposes a "better" one — that would turn an attention engine into a truth engine.
 
+**[17] Allocation Manifest.** The portable freezing artifact: a policy ships with a self-describing
+evidence boundary, so the downstream question becomes *"does this manifest match my environment?"*
+rather than *"do I trust it?"*
+
+```
+Allocation Manifest: future_surface v1.0   [CERTIFIED]
+  does:     rank observed items under a fixed budget
+  does not: discover truth; read hidden state; predict causality
+  signals:  consequence, uncertainty, possibility
+  tested:   regimes=[clean, noisy, adversarial, stale]  mutations_detected=4/5
+  forbidden:M, future_state, hidden, private  (clean=True)
+  replay:   PASS
+  scope:    certified under the tested regimes; never a claim of correctness
+```
+
+The `signals` are *detected*, not declared by the author (each observable is perturbed to see if the
+score responds). `manifest.matches(world)` is the executable form of the question — it accepts a
+fitting world and rejects one missing a declared signal (`signals_present=False missing=['possibility']`).
+
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
@@ -293,6 +313,7 @@ toolkit/
     monitor.py      Monitor.observe(world) -> CERTIFIED/DEGRADED/QUARANTINED (runtime drift)
     mutate.py       mutate() -> can the suite notice a degraded allocator? (+ replay/leakage in certify.py)
     evaluate.py     evaluate(policy) -> one-page Allocator Report (onboard a stranger's policy)
+    manifest.py     manifest(policy) -> portable Allocation Manifest + matches(world)
 ```
 
 ## Dev note — the `!=` family

@@ -10,6 +10,7 @@ from .benchmarks import run
 from .tournament import compare, robustness
 from .certify import certify
 from .evaluate import evaluate
+from .manifest import manifest
 from . import policies
 
 
@@ -27,8 +28,10 @@ def main(argv):
         print(certify(policies.future_surface).report())
     elif cmd == "evaluate":
         print(evaluate(policies.future_surface).report())
+    elif cmd == "manifest":
+        print(manifest(policies.future_surface).to_json())
     else:
-        print("usage: python -m toolkit [proof|tournament|certify|evaluate]")
+        print("usage: python -m toolkit [proof|tournament|certify|evaluate|manifest]")
 
 
 if __name__ == "__main__":

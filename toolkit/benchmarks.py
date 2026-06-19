@@ -297,6 +297,7 @@ def run(budget=1000):
     from .monitor import Monitor
     from .mutate import mutate
     from .evaluate import evaluate
+    from .manifest import manifest
     comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
                     policies.magnitude, policies.random_priority], worlds=200)
     print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
@@ -449,7 +450,24 @@ def run(budget=1000):
     assert rep.to_dict()["forbidden_access"] == "PASS", "future_surface must pass forbidden-access in the report"
     assert rep_cheat.to_dict()["forbidden_access"] == "FAIL", "onboarding must FAIL a policy that reads a forbidden channel"
 
-    print("\n[OK] all forty properties hold. The toolkit allocates by supplied signal; it does not")
+    man = manifest(policies.future_surface, worlds=80)
+    md = man.to_dict()
+    fit = man.matches(make_world(seed=2))
+    blind_world = [{k: v for k, v in o.items() if k != "possibility"} for o in make_world(seed=2)]
+    misfit = man.matches(blind_world)
+    print("\n[17] Allocation Manifest -- a portable, self-describing evidence boundary:")
+    print("\n".join("      " + ln for ln in man.report().splitlines()))
+    print("      matches(make_world)            -> signals_present=%s drift=%s"
+          % (fit["signals_present"], fit["drift_status"]))
+    print("      matches(world without possibility) -> signals_present=%s missing=%s"
+          % (misfit["signals_present"], misfit["missing"]))
+
+    assert md["status"] == "CERTIFIED", "future_surface manifest must be CERTIFIED"
+    assert set(md["signals"]) == {"consequence", "uncertainty", "possibility"}, "manifest must declare the signals future_surface actually reads"
+    assert md["contract"]["does_not"] and md["forbidden_channels"], "manifest must declare what it does NOT do and its forbidden channels"
+    assert fit["signals_present"] is True and misfit["signals_present"] is False, "matches() must accept a fitting world and reject one missing a declared signal"
+
+    print("\n[OK] all forty-four properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 
