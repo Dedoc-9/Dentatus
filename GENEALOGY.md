@@ -159,12 +159,49 @@ about itself is not evidence — it must be gated by *independent* corroboration
 held-out gate). The LATE boundary is why `fallback.py`'s reliability signal exists.
 
 **Open adversaries (not yet built — logged so they are not forgotten):** the *perception* gate (visible-tiny-
-critical vs visible-huge-irrelevant — needs a saliency model and a real renderer); the *cross-domain
-conservation* test (one shared field vs four specialized allocators across render/network/CPU/AI at equal total
-budget — the test that most directly attacks the underlying transfer thesis); and the *unknown-unknown* test
+critical vs visible-huge-irrelevant — needs a saliency model and a real renderer); *(the cross-domain conservation
+test is now BUILT — see its own section, Outcome C);* and the *unknown-unknown* test
 (a hidden coupling → ghost fires → discovery proposes → attention rises → does allocation reach a thing the
 model does not yet understand? — the one that would connect the whole genealogy end to end). The pattern holds:
 the next high-value result is the next *boundary*, not the next win.
+
+## Cross-domain conservation — the thesis test (`conservation.py`)
+
+The deepest question the architecture could face: is there a **conserved advantage** from one shared field, or
+are we just building good domain-specific heuristics? *Does one coordinating attention field outperform five
+specialists at fixed total budget?* The benchmark is built to return **Outcome B/C** (the field losing or being
+only a coordinator) honestly, not just Outcome A. The measured result is **Outcome C**:
+
+```
+(a) WITHIN-DOMAIN     field=97%  specialist=99% of oracle   →  NO within-domain magic. A specialist that
+                                                                estimates its own objective wins in its own domain.
+(b) CROSS-DOMAIN      uniform demand      equal=100% field=100%  →  tie (negative control)
+    SPLIT             concentrated+good   equal= 35% field=100%  →  the field WINS the budget SPLIT
+                      concentrated+DRIFT  equal= 35% field= 15%  →  a wrong estimate LOSES to the equal-split floor
+```
+
+So the conserved advantage is **not** per-domain allocation — it is **cross-domain coordination**: specialists
+are blind to each other and cannot move the *total* budget to the domain where future-relevance concentrates
+this tick; one shared field can. Equal-split is the cross-domain **safe floor** (the analogue of the distance
+floor), and the win is **falsifiable** — a drifted/inverted cross-domain estimate loses to it. This fits the
+root principle exactly: *the field decides **where** disagreement deserves resources; it does not decide **how**
+each subsystem acts.* The field is a **coordination layer, not a universal allocator** — which is the strongest
+*honest* version of the transfer hypothesis, and arguably more defensible than "it beats every specialist."
+
+**The capstone triad** (the three tests that interrogate the thesis itself, not a single consumer):
+1. **Cross-domain conservation** — *built* (`conservation.py`): Outcome C above.
+2. **Semantic drift** — *partially built*: the `concentrated+DRIFT` case is a drift instance (correlations invert
+   → the field's estimate is wrong → it loses to the floor). The deeper form — a *learned/cached* field that
+   silently keeps using world-A correlations in world B — remains open; the discipline's answer is that the field
+   must be **recomputed from current state**, not learned-and-frozen (`attention ≠ understanding`).
+3. **Unknown-unknowns** — *partially built* (`consequence/discovery.py` Blind Discovery + `coupling_discovery`):
+   the ghost redirects attention to an undeclared coupling; the end-to-end *renderer* version (ghost → discovery
+   → attention → rasterization reaching a thing the model does not yet understand) remains open.
+
+The pattern, restated one last time: the highest-value result was never "the field wins." It was finding, for
+each layer, the **exact condition where its usefulness ends** — and `conservation.py` ends the central one:
+the field's usefulness is *coordination across domains that share a latent future-relevance*; it ends at
+orthogonal domains (specialists win) and at a drifted estimate (the floor wins).
 
 ## Failure mode — the distance floor (graceful degradation)
 
@@ -270,6 +307,7 @@ ghost-triggered distance fallback BEATS both fixed policies across a regime shif
 a STALE field loses to fresh distance past a staleness boundary (~3 ticks at coherence 12) — the field needs freshness  (Adversary: late)
 RAW consequence overspends on improbable futures (high consequence ⟂ low probability) and loses to distance; ×probability repairs it  (Adversary: wrong)
 SELF-generated consequence is gameable — raw funds manipulators; ×independent_evidence repairs it  (Adversary: incomplete)
+one shared field does NOT beat domain specialists within-domain (97% vs 99%); its conserved advantage is CROSS-DOMAIN coordination — the budget SPLIT — which wins under concentrated demand and loses to equal-split under estimate drift  (Cross-Domain Conservation: Outcome C)
 ```
 
 The last one is a deliberate **non-superiority** finding kept on the record: the value of possibility-attention

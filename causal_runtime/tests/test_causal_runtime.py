@@ -23,6 +23,7 @@ import lod as LOD
 import allocation as ALLOC
 import fallback as FB
 import adversary as ADV
+import conservation as CON
 
 S = F.SCALE
 
@@ -451,6 +452,29 @@ class TestAdversarialBoundaries(unittest.TestCase):
         label, _ = ADV.verdict()
         self.assertEqual(label, "field-has-measured-boundaries-late-wrong-gameable")
         self.assertEqual(ADV.verdict(), ADV.verdict())
+
+
+class TestCrossDomainConservation(unittest.TestCase):
+    def test_no_within_domain_magic(self):
+        w = CON.within_domain()
+        self.assertLessEqual(w["field_pct"], w["specialist_pct"] + 3)   # field does NOT beat domain specialists
+
+    def test_uniform_demand_is_a_tie(self):
+        r = CON.cross_domain("uniform", "good")
+        self.assertEqual(r["field_pct"], r["equal_pct"])                # exactly even -> equal-split is optimal
+
+    def test_field_wins_the_split_under_concentration(self):
+        r = CON.cross_domain("concentrated", "good")
+        self.assertGreater(r["field_pct"], r["equal_pct"])             # the conserved cross-domain advantage
+
+    def test_falsifiable_drifted_estimate_loses_to_floor(self):
+        r = CON.cross_domain("concentrated", "inverted")
+        self.assertLess(r["field_pct"], r["equal_pct"])               # bad estimate loses to the equal-split floor
+
+    def test_verdict_outcome_C_and_determinism(self):
+        label, _ = CON.verdict()
+        self.assertEqual(label, "field-is-a-coordination-layer-not-a-universal-allocator")
+        self.assertEqual(CON.run(), CON.run())
 
 
 if __name__ == "__main__":

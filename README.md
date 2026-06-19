@@ -130,6 +130,8 @@ falsification → committed reality             FORBIDDEN
 
 The ghost, then, is not a causal oracle but a **self-skepticism engine** — and that is the more general, more defensible architecture: *a system that maintains a continuously falsifiable model of where its own abstractions fail, and spends compute accordingly.* The engineering history — which assumption broke at each layer and which failure case forced the next — is recorded in [`GENEALOGY.md`](GENEALOGY.md), including the newest, still-a-hypothesis frontier: whether the same field can drive **rasterization** (`render_priority = future_surface × perceptual_sensitivity`, the bound `consequence ≠ visibility`).
 
+**The capstone triad — and where the field's usefulness ends.** The strongest tests don't try to prove the field; they attack the thesis directly and ask *where it stops being valid*. Three do this: **cross-domain conservation** (is one shared field more than a bag of heuristics, or do specialists win?), **semantic drift** (does attention survive a world whose correlations invert — `attention ≠ understanding`?), and **unknown-unknowns** (does the ghost actually redirect resources toward something the model doesn't yet represent?). The first is built (`causal_runtime/conservation.py`) and returns the honest, genealogy-fitting answer — **Outcome C, a *coordination layer*, not a universal allocator**: the shared field does **not** beat a domain specialist within its own domain (97% vs 99% of oracle), but it *does* win the **cross-domain budget split** under concentrated demand (100% vs equal-split's 35%), because specialists are blind to each other and cannot move the total budget to the domain where future-relevance concentrates. And it is falsifiable — a *drifted* cross-domain estimate **loses** to the equal-split safe floor (15% vs 35%). So the field's usefulness has a measured boundary: it coordinates *where* disagreement deserves resources across domains that share a latent future-relevance; it ends at orthogonal domains (specialists win) and at a drifted estimate (the floor wins). The adversarial boundaries (`causal_runtime/adversary.py`) sharpen the rest — the field also fails when it is **late** (stale beyond its coherence time), **wrong** (raw consequence overspends on improbable futures → `possibility ≠ likelihood`), or **gameable** (self-generated consequence funds manipulators → `proposal ≠ authority`). The honest claim is therefore narrow and durable: *the field allocates attention, and it is a better cross-domain coordinator than equal-split exactly while it is fresh, probability-weighted, independently-evidenced, and pointed at domains that share a future.*
+
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 
 Deploying Sibling 13 (`quorum/`) alongside `pact/` composes a **2D attestation lattice** for an untrusted
@@ -221,7 +223,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 | [`intervention/`](intervention/README.md) | **controlled causal query protocol** — an airlock-authorized `do()` experiment on a discarded *shadow* world separates true coupling (CONFIRMED) / confounder (REJECTED) / feedback (CYCLE); law `causal_information→experiment` ALLOWED (shadow-only), never `→truth`; committed history untouched | `PYTHONHASHSEED=0 python3 demo_intervention.py` |
 
-All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **505 unit tests across 36 suites**
+All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **510 unit tests across 36 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
@@ -551,28 +553,4 @@ receiver verify its **environment fingerprint exactly matches the sender's** (e.
 
 ## Use case — a self-auditing causal runtime (spend compute where the future branches; discover what the model misses)
 
-A galactic-scale simulation, an open-world game, a robotics stack, or a large scientific model cannot simulate,
-render, verify, and replicate everything equally — and the usual proxy (*importance ≈ distance × visibility*)
-is structurally blind to a tiny object that controls a huge future. The runtime layer changes the primitive to
-*importance ≈ future dependency surface* and then audits its own model of that surface, all while the committed
-history stays a single deterministic hash trajectory.
-
-**1. Spend computation where the future can branch.** `consequence/` weights every entity by
-`Δ · dependency_mass` rather than magnitude (the butterfly), and `causal_runtime/` apportions streaming, AI
-tick-rate, fidelity, network, and validation depth from one shared `AttentionField`. The Causal Reconstruction
-Test shows this **deletes ~87% of compute while preserving the full future** on structured worlds — and states
-its bound honestly (an undeclared coupling collapses reconstruction to 0.414). The kernel never reads the
-field, so this is provably *allocation*, never *physics*: the committed AetherPulse hash trajectory is
-byte-identical with the attention layer attached or removed.
-
-**2. Notice what the model does not yet know.** When the world moves an entity the dependency graph rated
-zero, the **ghost** `G⁺ = max(0, observed − predicted)` fires — a pure attention spike with no structural
-cause ("something matters here; I don't yet know what"). The Blind Discovery Benchmark shows distance and
-consequence both *miss* a hidden, low-visibility switch that controls a downstream cascade, while the ghost
-catches it. A switch in an ancient ruin that nothing visibly touches stays cheap until ignorance there becomes
-expensive.
-
-**3. Propose, then test — never edit reality to learn.** A *persistent* ghost becomes a **proposed** coupling
-(integer-counted evidence across distinct contexts), held behind four locks so even an accepted proposal
-updates a *model* while the world hash never moves. `intervention/` then resolves what observation cannot: an
-airlock-authorize
+A galactic-scale simulation, an open-world game, a robotics stack, or a large s
