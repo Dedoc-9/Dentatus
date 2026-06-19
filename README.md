@@ -132,7 +132,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The twenty-seven components
+## The twenty-eight components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -162,9 +162,10 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`aether/`](aether/README.md) | **hardened integer manifold** — fixed-point Stiefel auditor gates `E=‖WᵀW−I‖²_F` and self-retracts (1,000,000-step spinning top, no drift). Stages B–E add the dual **ghost** channel, the **SPD** covariance cone, a self-describing **generator field** (Magnus/BCH), and the **spectral + predictive** observability stack — the engine's instrument panel (telemetry, never gating) | `PYTHONHASHSEED=0 python3 demo_aether_physics.py` |
 | [`airlock/`](airlock/README.md) | **the reality-transition membrane** — a proposer (LLM/agent/human) emits bounded transitions through `canon → fuel → shadow → validate → witness → commit`; laws `telemetry≠control` + `intent≠authority`; records **what almost happened** (proposal pressure, the admissible set, the geometry of the unrealized field) | `PYTHONHASHSEED=0 python3 demo_airlock.py` |
 | [`salience/`](salience/README.md) | **a possibility-aware allocation field** — distributes a compute budget by **possibility density** (the doorway over the valley), not distance/LOD; exact-integer apportionment; law `possibility→allocation`, never `possibility→physics` | `PYTHONHASHSEED=0 python3 demo_salience.py` |
-| [`consequence/`](consequence/README.md) | **the State-Graph Taint Map** — the shared *what-matters-next?* field: dependency graph → consequence (`consequence ≠ magnitude`, the butterfly); one field, many consumers (compute · validation depth · network · AI) | `PYTHONHASHSEED=0 python3 demo_consequence.py` |
+| [`consequence/`](consequence/README.md) | **the State-Graph Taint Map** — the shared *what-matters-next?* field: dependency graph → consequence (`consequence ≠ magnitude`, the butterfly); one field, many consumers (compute · validation depth · network · AI); the Causal Reconstruction Test (delete most compute, keep the future — bounded by graph completeness) | `PYTHONHASHSEED=0 python3 demo_consequence.py` |
+| [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 
-All twenty-seven refuse to run without `PYTHONHASHSEED=0`. Test suites total **422 unit tests across 34 suites**
+All twenty-eight refuse to run without `PYTHONHASHSEED=0`. Test suites total **437 unit tests across 35 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
@@ -298,7 +299,7 @@ primitives extract losslessly, so any layer lifts out as a standalone component 
 
 One command verifies the whole workbench before you build on it. For the **entire repo** — workbench *and* the five
 downstream applications — `python3 verify_all.py` runs both gates (the preflight + the application conformance
-harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 34 suites **and** the parity
+harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 35 suites **and** the parity
 proof as subprocesses under `PYTHONHASHSEED=0`, and prints a green status **only if everything actually
 passed**. That same `verify_all.py` is the CI gate — [`.github/workflows/verify.yml`](.github/workflows/verify.yml)
 runs it on every push and PR (pinning the Ed25519 crypto tier the baselines were pinned under), so the
@@ -309,12 +310,12 @@ python3 integration/preflight_check.py
 ```
 
 On success it *emits* the status below — this is earned output from a real run, **not** a banner you paste
-by hand to assert state (asserting "34/34 green" without running it is exactly the integrity-theater this
+by hand to assert state (asserting "35/35 green" without running it is exactly the integrity-theater this
 project refuses):
 
 ```
 [FOUNDRY VERIFIED]
-  - 34/34 suites green; primitive parity holds (parity_proof.py)
+  - 35/35 suites green; primitive parity holds (parity_proof.py)
   - Out-of-process policy clamps + tiered hardware signer present and tested
   - Cognitive modesty acknowledged: integrity != truth
 Proceed with refactoring bounds secured.
@@ -352,7 +353,7 @@ the ledger):
 ## Verification Record — <change / decision id> — <date>
 
 - Command:            PYTHONHASHSEED=0 python3 integration/preflight_check.py
-- Preflight result:   [FOUNDRY VERIFIED]  (34/34 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
+- Preflight result:   [FOUNDRY VERIFIED]  (35/35 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
 - Replay Court:        VERIFIED — N records reproduced bit-for-bit       # or: REJECTED at seq <k> (<reason>)
 - ruleset/policy hash: <before> -> <after>   (changed? yes/no; if yes, why + version)
 - Signer:              algo=<ed25519|hmac-sha256>  tier=<1 hardware | 2 soft | 3 symmetric>

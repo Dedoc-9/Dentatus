@@ -6,7 +6,7 @@
 
 **To any human or model editing this repository:** this is a high-assurance,
 deterministic, content-addressed workbench ("Dentatus/Chronicle"). Code you add
-is bound by the contract below. The boundaries are enforced by 422 tests across 34
+is bound by the contract below. The boundaries are enforced by 437 tests across 35
 suites and by the Replay Court / Parity Proof — violate them and the regression
 suite fails. Equally binding is the *epistemic* rule: **never oversell what the
 code protects.**
@@ -149,7 +149,7 @@ done
 PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLDS
 ```
 
-**Current verification state: 422 tests passing across 34 suites (+ coupled/uncoupled parity proof).**
+**Current verification state: 437 tests passing across 35 suites (+ coupled/uncoupled parity proof).**
 
 | Suite | Tests | Guards |
 |---|---|---|
@@ -169,7 +169,7 @@ PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLD
 
 A change is not complete until **all three** hold — anything less is not "done":
 
-1. `integration/preflight_check.py` prints `[FOUNDRY VERIFIED]` (it actually ran the 34 suites + parity).
+1. `integration/preflight_check.py` prints `[FOUNDRY VERIFIED]` (it actually ran the 35 suites + parity).
 2. A **Verification Record** is produced for review — the copy-paste template, run triggers, and reject
    criteria live in `README.md` -> *"Using this in a project"*. Hand a reviewer only **public** material
    (ledger + public key + hashes); never a private key or HMAC secret.
@@ -252,7 +252,7 @@ states the leverage *and* its bound — the point is throughput you can actually
 wrong (§3).
 
 1. **One replayable gate instead of a CI matrix (`integration/preflight_check.py` + `parity_proof.py`).**
-   The preflight *is* the definition of done: it runs all 34 suites + the coupled/uncoupled parity proof as
+   The preflight *is* the definition of done: it runs all 35 suites + the coupled/uncoupled parity proof as
    subprocesses under `PYTHONHASHSEED=0` and names the exact failing suite/file. You stop maintaining a
    sprawling pipeline and a pile of green-banner screenshots. *Bound:* it asserts what the suites assert —
    no regressions + frozen cores + lawful structure — not that uncovered new logic is correct.
@@ -291,7 +291,7 @@ wrong (§3).
 
 ### The velocity equation — why this accelerates an LLM project
 
-The point of the 27-component workbench is to move the bottleneck from human code-review to automated
+The point of the 28-component workbench is to move the bottleneck from human code-review to automated
 verification: you offload tracking of determinism, structural purity, privilege isolation, and resource
 budgets to the math, and spend your attention only on what a machine cannot judge. Four concrete speedups,
 each bounded:
@@ -322,7 +322,7 @@ each bounded:
 
 ```
 [ Traditional flow ]  Code -> manual review -> debug non-determinism -> slow deploy
-[ Workbench flow ]    Generate -> preflight (34 suites) -> replay verification -> fast deploy
+[ Workbench flow ]    Generate -> preflight (35 suites) -> replay verification -> fast deploy
 ```
 
 The role-shift: you go from anxious code supervisor to systems architect — the LLM is the engine, the
@@ -362,11 +362,12 @@ integrity is not truth (§3).
    |-- aether/         --> Sibling 22: Hardened integer manifold -- Stiefel/SPD/field + ghost/spectral/predictive instrument panel
    |-- airlock/        --> Sibling 23: Reality-transition membrane -- propose->canon->fuel->shadow->validate->witness->commit (telemetry!=control, intent!=authority)
    |-- salience/       --> Sibling 24: Possibility-aware allocation field -- compute follows possibility density (possibility->allocation, never possibility->physics)
-   `-- consequence/    --> Sibling 25: State-Graph Taint Map -- shared what-matters-next field (consequence != magnitude; never consequence->truth)
+   |-- consequence/    --> Sibling 25: State-Graph Taint Map -- shared what-matters-next field (consequence != magnitude; never consequence->truth)
+   `-- causal_runtime/ --> Sibling 26: Causal allocation of computation -- consequence x uncertainty x possibility -> AttentionField (causal_information->attention, never ->mutation; proven hash-identical vs AetherPulse)
 ```
 
-Cores are frozen; the twenty-five siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps
-the two cores honest against a pinned baseline; `integration/preflight_check.py` runs all 34 suites + the
+Cores are frozen; the twenty-six siblings import them read-only (the Sibling Law, S4). `selfaudit/` keeps
+the two cores honest against a pinned baseline; `integration/preflight_check.py` runs all 35 suites + the
 parity proof as the one gate.
 
 If your change breaks Replay Court, Parity Proof, or privilege separation, it is
