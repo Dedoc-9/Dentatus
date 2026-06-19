@@ -344,5 +344,25 @@ The system may decide where to look.
 It may never decide what reality is.
 ```
 
+## Honest scope — what this is and is not
+
+Two clarifications that keep the claims falsifiable:
+
+1. **Integrity ⊥ utility is the only irreducible split.** The lenses are not all mutually orthogonal
+   (drift and coherence are both temporal; leakage and the anti-oracle suite are both information-access).
+   The one separation the code actually *proves* is two-way: **integrity** (invariance on forbidden axes)
+   versus **utility** (regime performance). The regression gate is the proof — a policy that scores
+   higher in every regime is still rejected if it reads a forbidden channel. A high enough score never
+   buys back lost integrity; that is why the two cannot collapse into one number.
+
+2. **Every result is conditional on the world generator.** `make_min_world` exists *so that* `min_gate`
+   wins; `make_adversarial_world` is built *so that* `future_surface` loses. These are constructed
+   stress tests, not facts about attention in general. The honest reading is: *a framework for
+   stress-testing allocation policies under explicitly constructed observability constraints* — never a
+   general epistemic engine. `manifest.matches(world)` is the in-code form of this caveat: a certificate
+   is valid only where the environment supplies the coordinates it was tested on. The undecidable part —
+   whether the chosen `M` is the *right* notion of importance — is a parameter, not a result.
+
+
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`
 primitives are identical to the ones in `causal_runtime/allocation.py`.
