@@ -74,6 +74,47 @@ spike with **no structural cause**: *"something matters here; I don't yet know w
 structural surface plus rectified surprise, `A = C × P × U + G⁺`, under the unchanged law (`A → attention`,
 never `A → mutation`). The rectification is the honest asymmetry: the model may not talk itself out of looking.
 
+## Coupling discovery — a persistent ghost becomes a *proposed* edge (`coupling_discovery.py`)
+
+The runtime now has the missing asymmetry: `declared structure → consequence → attention` and `unknown
+structure → ghost → attention`. The remaining question — *when does a repeated ghost mean the declared graph is
+incomplete?* — is the **persistence layer**, and it is the place a self-modifying system usually falls into the
+**epistemic trap**: a learning loop that edits its own model drifts toward whatever reduces its surprise,
+inventing structure or suppressing inconvenient observations until the discovery mechanism corrupts the model
+it was meant to improve. Four structural locks close it:
+
+```
+ghost → PROPOSED coupling   ALLOWED        ghost → ACTUAL coupling   FORBIDDEN
+```
+
+1. **Propose, never commit** — `CouplingRegistry` holds *no handle to any graph*; no method can write an edge.
+2. **Evidence, not authority** — a `CouplingCandidate` accumulates *integer* `frequency` + `ghost_total` across
+   *distinct contexts*; never a `confidence += ghost` float that silently becomes a control path.
+3. **External review gate** — promotion to a real edge is the airlock pattern (`intent ≠ authority`); this
+   module emits the review queue, not the verdict.
+4. **Reality untouched** — even an *accepted* proposal updates a *model*; `demo_coupling_discovery.py` proves
+   the committed AetherPulse world hash is byte-identical before and after the model learns the edge
+   (`graph improvement ≠ world modification`). A ghost is evidence of model failure, not a new fact.
+
+### The Ghost Persistence Benchmark (`ghost_persistence.py`)
+
+A hidden coupling `A → C` (A drives C; the declared graph does not say so) plus uncorrelated noise:
+
+```
+scenario     ghost on C   proposes A→C
+single       fires once   no    ← one-off / noise is not promoted (negative control)
+repeatable   fires 20×    YES   ← the reproducing coupling rises above frequency × distinct-context threshold
+declared     never        no    ← consequence already predicts C; nothing re-proposed (negative control)
+```
+
+Verdict `persistence-proposes-reproducing-coupling-rejects-noise`. The two negative controls are what stop the
+system from *learning noise* or re-proposing the known. The benchmark also encodes a real distinction — an
+*exogenous root* changing (an input) is not model failure, so its ghost is suppressed. **Honest bound:**
+persistence rejects one-off noise but cannot, by observation alone, separate two *consistently* co-occurring
+sources — that requires intervention (itself a transition through the airlock). The system becomes causally
+aware *about its own ignorance* without the discovery mechanism being able to rewrite either reality or the
+model.
+
 ## The Blind Discovery Benchmark — finding what nothing declared (`discovery.py`)
 
 A hidden node `H`: **consequence 0** (no declared dependency), **low visibility**, but an unusual transition at
@@ -129,8 +170,10 @@ PYTHONHASHSEED=0 python3 demo_causal_runtime.py      # allocation field + freshn
 PYTHONHASHSEED=0 python3 demo_aether_attention.py    # AetherPulse + the cardinal hash-invariant
 PYTHONHASHSEED=0 python3 demo_dini_novelty.py        # dini as a novelty producer + ghost, invariant re-proven
 PYTHONHASHSEED=0 python3 discovery.py                # the Blind Discovery Benchmark
+PYTHONHASHSEED=0 python3 ghost_persistence.py        # the Ghost Persistence Benchmark
+PYTHONHASHSEED=0 python3 demo_coupling_discovery.py  # epistemic trap closed (world hash invariant)
 PYTHONHASHSEED=0 python3 freshness.py                # the Causal Freshness Benchmark
-PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 26 unit tests
+PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 35 unit tests
 ```
 
 ## Honest bound
@@ -149,8 +192,11 @@ claim about physical nature or a shipping 240fps engine. `integrity ≠ truth`; 
 | `novelty.py` | the **epistemic seam** — producer-agnostic `NoveltySignal` aggregation, `ghost_field`, final `A = C×P×U + G⁺` |
 | `freshness.py` | the **Causal Freshness Benchmark** — consequence×uncertainty vs distance/visibility |
 | `discovery.py` | the **Blind Discovery Benchmark** — ghost finds the undeclared, low-visibility anomaly |
+| `coupling_discovery.py` | **persistent ghost → proposed edge** — `CouplingRegistry` (propose-never-commit; no graph handle); the four locks against the epistemic trap |
+| `ghost_persistence.py` | the **Ghost Persistence Benchmark** — single (reject) / repeatable (propose A→C) / declared (no re-propose) |
+| `demo_coupling_discovery.py` | closes the trap on AetherPulse: an accepted proposal leaves the committed world hash unchanged |
 | `demo_causal_runtime.py` | allocation field + freshness verdict |
 | `demo_aether_attention.py` | wires the field onto **AetherPulse** + proves the committed-hash invariant |
 | `demo_dini_novelty.py` | **dini** as a novelty producer (Q16 canon boundary) + ghost; invariant re-proven |
 | `_wb.py` | path shim so demos/tests wire real sources (AetherPulse, consequence, dini) without the core importing across siblings |
-| `tests/test_causal_runtime.py` | 26 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery) |
+| `tests/test_causal_runtime.py` | 35 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |

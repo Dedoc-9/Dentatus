@@ -6,7 +6,7 @@
 
 **To any human or model editing this repository:** this is a high-assurance,
 deterministic, content-addressed workbench ("Dentatus/Chronicle"). Code you add
-is bound by the contract below. The boundaries are enforced by 448 tests across 35
+is bound by the contract below. The boundaries are enforced by 457 tests across 35
 suites and by the Replay Court / Parity Proof — violate them and the regression
 suite fails. Equally binding is the *epistemic* rule: **never oversell what the
 code protects.**
@@ -149,7 +149,7 @@ done
 PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLDS
 ```
 
-**Current verification state: 448 tests passing across 35 suites (+ coupled/uncoupled parity proof).**
+**Current verification state: 457 tests passing across 35 suites (+ coupled/uncoupled parity proof).**
 
 | Suite | Tests | Guards |
 |---|---|---|
@@ -487,33 +487,4 @@ drift. *What it does not:* claim the simulation models real physics.
 
 The Sibling Law scales from components to whole products: a standalone app imports the frozen cores + siblings
 read-only via a path shim, without being a sibling or entering the suite count. In-repo examples:
-`aegis_gate/` (a verifiable transfer & KYC agent over exact gates + `ration` + `quorum` + `tessera`; a **mock**
-bank, 14 tests), `VeriSim/` (a verifiable simulation engine over `aether`/`fuel`/`tessera`/`stasis` that emits a
-replayable Shard; proves the *test was real*, not that the model is *true*; 12 tests), `VeriVerse/` (a
-verifiable procedural world/physics engine — deterministic integer terrain + content-addressed chunks,
-Collatz feature provenance, signed chunk shards, stdlib viewer; a *scaffold* for a deterministic-and-verifiable
-physics engine that competes on provable determinism, not render speed; 13 tests), `AetherPulse/` (a Stage-1
-deterministic engine kernel — 3-D fixed-point rigid bodies + the L1/L2/L3 render seam + cross-language
-conformance vectors a C++/Rust port must hash-match; 15 tests), and `AetherManifold/` (deterministic
-Riemannian optimization on the Stiefel manifold — fixed-point tangent projection + integer retraction,
-two-tier exact/approx, shadowing-Lyapunov observable; 10 tests). When you build
-one, the same rules apply — decoupled, content-addressed, fail-closed, and explicit about non-claims. **Native ports** (C++/Rust for performance, e.g. `AetherPulse/`) follow a stricter rule: the Python stays the
-*reference / source of truth*, and the native build is validated against it via **conformance vectors**
-(input → expected state hashes) — the native code reproduces the reference's hashes bit-for-bit or fails;
-it never defines semantics, lives in its own folder, and does not import the workbench.
-
-#### Use case — evolving the rules without breaking the chain of custody
-
-A rule in `elenchus` or a threshold in `fuel` turns out wrong. Instead of an unaudited code edit, `polity`
-runs a `quorum` vote among pinned governors; a ratified amendment mints a new constitution version bound to
-the prior by content hash. Downstream, `elenchus`/`fuel` enforce against the newly-active ruleset hash. The
-whole evolution is itself replayable. *Bound:* proves the vote and the lineage, never that the new rule is
-better.
-
-
----
-
-## 7. Acknowledgement (machine-parseable)
-
-```
-ACK: deterministic-capture=enforced  privilege-pep=required  integrity!
+`aegis_gate/` (a verifiable transf

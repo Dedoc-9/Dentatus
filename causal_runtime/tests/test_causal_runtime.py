@@ -14,6 +14,8 @@ import runtime as R
 import freshness as FR
 import novelty as NV
 import discovery as DV
+import coupling_discovery as CDsc
+import ghost_persistence as GPb
 
 S = F.SCALE
 
@@ -171,6 +173,66 @@ class TestDiniProducerInvariant(unittest.TestCase):
 
     def test_deterministic(self):
         self.assertEqual(self.D.run(ticks=14), self.D.run(ticks=14))
+
+
+class TestCouplingDiscovery(unittest.TestCase):
+    def _reg(self):
+        r = CDsc.CouplingRegistry()
+        for f in range(6):
+            r.observe({"A"} if f else {"A", "N"}, {"C": 100}, {"C": set()}, context="c%d" % f, now=f)
+        return r
+
+    def test_propose_never_commit_no_mutation_handle(self):
+        # THE central lock: the registry is structurally incapable of editing a graph
+        for m in ("apply", "commit", "add_edge", "mutate", "promote"):
+            self.assertNotIn(m, dir(CDsc.CouplingRegistry))
+
+    def test_persistence_promotes_reproducing(self):
+        self.assertIn(("A", "C"), [(c.source, c.target) for c in self._reg().proposals(3, 2)])
+
+    def test_single_anomaly_rejected(self):
+        r = CDsc.CouplingRegistry()
+        r.observe({"N"}, {"C": 100}, {"C": set()}, context="c0", now=0)   # one-off
+        self.assertEqual(r.proposals(min_frequency=3, min_contexts=2), [])
+
+    def test_declared_parent_not_a_candidate(self):
+        r = CDsc.CouplingRegistry()
+        for f in range(6):
+            r.observe({"A"}, {"C": 100}, {"C": {"A"}}, context="c%d" % f, now=f)   # A already declared parent of C
+        self.assertEqual(r.candidates(), [])
+
+    def test_candidate_hash_deterministic(self):
+        self.assertEqual(self._reg().candidate("A", "C").h, self._reg().candidate("A", "C").h)
+
+    def test_evidence_is_integer_not_confidence(self):
+        c = self._reg().candidate("A", "C")
+        self.assertIsInstance(c.frequency, int); self.assertIsInstance(c.ghost_total, int)
+
+
+class TestGhostPersistenceBenchmark(unittest.TestCase):
+    def test_three_scenarios(self):
+        by = {r["kind"]: r for r in GPb.run()}
+        self.assertFalse(by["single"]["finds_AC"])             # noise / one-off not promoted
+        self.assertTrue(by["repeatable"]["finds_AC"])          # reproducing coupling proposed
+        self.assertEqual(by["declared"]["ghost_on_C"], 0)      # known coupling -> no ghost
+        self.assertFalse(by["declared"]["finds_AC"])           # -> nothing re-proposed
+
+    def test_verdict_and_determinism(self):
+        v, _ = GPb.verdict()
+        self.assertEqual(v, "persistence-proposes-reproducing-coupling-rejects-noise")
+        self.assertEqual(GPb.run(), GPb.run())
+
+
+class TestEpistemicTrapClosed(unittest.TestCase):
+    def setUp(self):
+        import demo_coupling_discovery as D
+        self.D = D
+
+    def test_world_hash_unchanged_by_model_learning(self):
+        r = self.D.run()
+        self.assertTrue(r["model_changed"])                    # the model DID learn a new edge
+        self.assertTrue(r["world_hash_unchanged"])             # ...and reality was untouched
+        self.assertFalse(r["registry_can_mutate_graph"])       # discovery cannot reach a graph
 
 
 if __name__ == "__main__":

@@ -194,7 +194,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`consequence/`](consequence/README.md) | **the State-Graph Taint Map** — the shared *what-matters-next?* field: dependency graph → consequence (`consequence ≠ magnitude`, the butterfly); one field, many consumers (compute · validation depth · network · AI); the Causal Reconstruction Test (delete most compute, keep the future — bounded by graph completeness) | `PYTHONHASHSEED=0 python3 demo_consequence.py` |
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 
-All twenty-eight refuse to run without `PYTHONHASHSEED=0`. Test suites total **448 unit tests across 35 suites**
+All twenty-eight refuse to run without `PYTHONHASHSEED=0`. Test suites total **457 unit tests across 35 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
@@ -515,36 +515,4 @@ across machines — it does **not** prevent an OS OOM-kill if the ceiling is set
 
 **Verifiable cross-machine migration (`stride/`).** Moving a deterministic computation to cloud/edge via raw
 snapshots leaks environment drift — a different library or arch forks the replayed path. `stride` makes the
-receiver verify its **environment fingerprint exactly matches the sender's** (e.g. `selfaudit`'s
-`workbench_H`) before accepting any state; a single byte of drift raises `EnvironmentMismatch` and the
-inbound path refuses to start. Network telemetry is captured, so a post-migration audit replays from the
-record without reopening a socket. *Bound:* proves *structural* environment identity and exact recorded
-inputs — **not** transport security (wrap TLS externally) and **not** that the remote hardware is honest.
-
-**Multi-agent accountability without a blockchain (`pact/`).** When independent agents or companies exchange
-state, a malicious party can inject corruption that's impossible to attribute. `pact` has each agent verify
-its peer against a **pinned registry** and sign a cross-attestation binding its new state hash to the
-prior agent's — so a later injection or rule breach is isolatable to the **exact agent and link**, even when
-that agent holds a legitimate key. *Bound:* non-repudiation **under the pinned-key assumption** and forensic
-attribution; it does **not** force a peer to be honest, and there is no broadcast or consensus — a breach is
-self-evident to anyone who verifies with the pinned keys, not "to the whole network." Not a blockchain.
-
-**Multi-witness agreement — operational truth from many integrities (`quorum/`).** A single verified ledger
-is honest but possibly *wrong*; nothing in it can catch an honest-but-mistaken or singly-compromised node,
-because integrity-alone has no second opinion. `quorum` defines operational truth as the exact state hash
-on which a **k-of-n quorum of independently-keyed, integrity-holding witnesses coincide** — exact integer
-consensus on 256-bit hashes (no epsilon, so no arbitrary tolerance; the only declared cut is the threshold
-`k`). Equivocation (a witness double-signing one round) is caught and named; the dissenting minority is
-kept as a recorded *ghost*, never allowed to flip a certificate. `lattice.py` composes it with `pact` into
-a 2D attestation lattice: each round must reach quorum (lateral) **and** the certified rounds must form an
-unbroken covenant (temporal), with the two faults reported on separate axes. *Bound:* a quorum tally, not
-asynchronous BFT (no leader, no liveness under partition); witness independence is a trust input, not
-proven (no Sybil defense); a colluding ≥k majority certifies a falsehood — consensus is not truth either.
-
-## The boundary that runs through everything — and one level up
-
-**Integrity is not truth.** chronicle / llm_toolkit / guard_server / integration prove a record is
-*unforged, exactly reproducible, and rule-faithful*, and that an authorization was *genuinely granted
-under a pinned policy*. They do **not** claim the underlying decision was correct, fair, or wise.
-
-`assay` then applies the same discipline to the *judgme
+receiver verify its **environment fingerprint exactly matches the sender's** (e.g. `se

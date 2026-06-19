@@ -1,7 +1,7 @@
 # Dentatus/Chronicle — an honest technical overview
 
 > **Repo layout note.** The active project is the **Chronicle workbench**: two frozen cores
-> ([`chronicle/`](chronicle/README.md), [`llm_toolkit/`](llm_toolkit/README.md)) plus 25 decoupled
+> ([`chronicle/`](chronicle/README.md), [`llm_toolkit/`](llm_toolkit/README.md)) plus 26 decoupled
 > *sibling* components, gated by one command (`integration/preflight_check.py`). The full legacy Reality
 > Engine / Citadel implementation described in the second half of this document now lives under
 > [`docs/archive/`](docs/archive/) — run its proofs from there (`cd docs/archive` first). The
@@ -34,7 +34,7 @@ manifold — each is the same canonical-bytes → hash + capture-at-boundary dis
 ### The workbench today
 
 The `chronicle` core has been extended into a **28-component workbench** (2 frozen cores + 26 siblings,
-**448 unit tests across 35 suites**, all gated by one preflight). The siblings are deliberately decoupled —
+**457 unit tests across 35 suites**, all gated by one preflight). The siblings are deliberately decoupled —
 each imports the cores read-only (the "Sibling Law", verified by a parity proof), each is a small **reference
 implementation** of the one idea in a different domain, and **each states its own honest bound in its
 README**. They group into families: an audit core; governance & isolation (`guard_server`, `pact`, `quorum`,
@@ -100,18 +100,4 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 | Property | Evidence |
 |---|---|
 | The whole workbench passes one gate — 35/35 suites + coupled/uncoupled parity, run as real subprocesses | `integration/preflight_check.py` → `[FOUNDRY VERIFIED]` |
-| Cores have not drifted from a pinned baseline; siblings vendor no core (the Sibling Law) | `selfaudit/` → `workbench_H` |
-| Replay court — record, tamper, rule-swap, fail-closed invariant, Ed25519 third-party verify | `chronicle/demo_policy.py` |
-| Exact integer consensus + the 2D (lateral×temporal) attestation lattice | `quorum/demo_quorum.py` |
-| A bounded integer VM whose run mints an offline-replayable proof shard | `fuel/demo_fuel.py`, `tessera/demo_tessera.py` |
-| A 1,000,000-step fixed-point manifold with deterministic self-retraction, no nondeterministic drift | `aether/demo_aether_physics.py` |
-| Consequence-aware allocation that leaves reality untouched — committed hash byte-identical with/without the observer, while the ghost discovers an undeclared, low-visibility anomaly distance & consequence both miss | `causal_runtime/demo_aether_attention.py`, `causal_runtime/discovery.py`, `consequence/reconstruct.py` |
-| Standalone *applications* compose the stack into products (Sibling Law, read-only imports, own tests) | `aegis_gate/` (verifiable transfer agent, 14 tests), `VeriSim/` (verifiable simulation, 12 tests), `VeriVerse/` (verifiable voxel world+physics, 13 tests), `AetherPulse/` (deterministic engine kernel + conformance vectors, 15 tests), `AetherManifold/` (deterministic Riemannian optimization, 10 tests) |
-| *(legacy, in `docs/archive/`)* differential fuzzing 20k cases 0 violations; hardware-invariant replay; replay immunity; chaos-order invariance | `forge/oracle_fuzz.py`, `forge/duel_determinism_proof.py`, `forge/nonce_proof.py`, `forge/chaos_harness.py` |
-
-## The part that's actually worth showing: engineering judgment
-
-The methodology is more interesting than any feature, and the history shows it under load:
-
-- **Measure before optimizing.** A frame-time profiler was built before any optimization; it showed ~7×
-  headroom, so a tempting "v
+| Cores have not drifted from a pinned baseline; siblings vendor no core (t
