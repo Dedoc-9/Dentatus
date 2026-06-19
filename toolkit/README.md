@@ -336,6 +336,7 @@ allowed input    != allowed information   a permitted channel can still encode a
 test_quality     != test_count     a suite that cannot notice a broken allocator is one test
 confidence       != memory         a certificate is trustworthy only if it reproduces
 determinism      != correctness    a result that reproduces bit-for-bit is reproducible, not right
+attestation      != correctness    a staged record certifies what was checked, never that it is right
 ```
 
 It inherits the same move from the wider project (`prediction != causation`, `proposal != authority`,
@@ -458,11 +459,22 @@ real-hardware throughput.
 ## Staged actions — the one-click boundary
 
 `stage(world, scorer)` turns an allocation into a *proposal a human authorizes*, not an action a
-system takes. It checks the environment against the policy's manifest (`matches`) and either **STAGES**
-a refusable record or **REFUSES** with a reason (a declared signal is missing, or the environment has
+system takes. It checks the environment against the policy's manifest (`matches`) and either **STAGES** an
+*attested* record or **REFUSES** with a reason (a declared signal is missing, or the environment has
 drifted outside the certified envelope). The staged record cites only observable provenance (never the
 graded objective `M`) and carries a **SHA-256 content digest**, so the one click signs off on a
-content-addressed, auditable record. Two laws govern it: `telemetry != control` (a proposal is
+content-addressed, auditable record.
+
+Crucially, every record carries its own attestation boundary *as data* (inside the digest), so
+"verified" can never drift to "correct":
+
+```
+attests:              manifest compatibility, declared signals present, certification status,
+                      provenance integrity (observable-only), content identity (sha256)
+NOT attested:         correctness of the allocation, of the objective M, of the environment model,
+                      or of downstream consequences            (integrity != truth)
+```
+ Two laws govern it: `telemetry != control` (a proposal is
 information, not an instruction) and `intent != authority` (the click, not the proposal, is the
 authority — `authorize()` refuses to commit a REFUSED proposal).
 

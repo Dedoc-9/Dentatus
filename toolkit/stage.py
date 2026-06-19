@@ -9,7 +9,7 @@ wider project govern it:
     intent    != authority   the policy's proposal is never authority; the authorization is
 
 `stage(world, scorer)` checks the environment against the policy's manifest (`manifest.matches`) and
-either STAGES a verified, refusable record or REFUSES with a reason (a declared signal is missing, or
+either STAGES an *attested*, refusable record or REFUSES with a reason (a declared signal is missing, or
 the environment has drifted outside the certified envelope). The staged record cites ONLY observable
 provenance (never the graded objective M) and carries a SHA-256 content digest, so the one click signs
 off on a perfectly auditable, content-addressed record -- not a vibe.
@@ -32,6 +32,21 @@ import json
 from .attention import attention
 from .policies import future_surface
 from .manifest import manifest as build_manifest
+
+# The attestation boundary, carried as DATA on every record so "verified" cannot drift to "correct".
+ATTESTS = (
+    "manifest compatibility (matches)",
+    "declared signals present",
+    "certification status of the policy",
+    "provenance integrity (observable signals only)",
+    "content identity (sha256 of the record)",
+)
+DOES_NOT_ATTEST = (
+    "correctness of the allocation",
+    "correctness of the objective M",
+    "correctness of the environment model",
+    "correctness of downstream consequences",
+)
 
 
 def _digest(record):
@@ -64,7 +79,9 @@ class StagedAction:
                "  env fit:   signals_present=%s  drift=%s%s"
                % (r["env_fit"]["signals_present"], r["env_fit"]["drift_status"],
                   "" if not r["env_fit"]["missing"] else "  missing=%s" % r["env_fit"]["missing"]),
-               "  decision:  %s (%s)" % (self.status, self.reason)]
+               "  decision:  %s (%s)" % (self.status, self.reason),
+               "  attests:   " + "; ".join(r["attestation"]["checks"]),
+               "  NOT attested (integrity != truth): " + "; ".join(r["attestation"]["never_certifies"])]
         if self.staged:
             p = r["proposal"]
             out += ["  proposal:  fund %d/%d candidates, spend %d/%d"
@@ -72,7 +89,8 @@ class StagedAction:
                     "  top item:  %s" % p["top_funded"],
                     "  bounds:    %s" % r["bounds"]["scope"],
                     "  digest:    %s" % self.digest[:16] + "  (sha256 of the record)",
-                    "  >> AWAITING ONE AUTHORIZATION (intent != authority); call authorize() to commit."]
+                    "  >> AWAITING ONE AUTHORIZATION (intent != authority); call authorize() to commit.",
+                    "     (this authorizes a content-addressed record, not a guarantee of correctness)"]
         else:
             out += ["  digest:    %s" % self.digest[:16],
                     "  >> NOT STAGED -- the environment is outside this policy's certified evidence."]
@@ -91,7 +109,8 @@ def stage(world, scorer=future_surface, manifest=None, budget=1000, worlds=60):
                "drift_status": fit["drift_status"]}
     md = man.to_dict()
     base = {"policy": md["allocator"], "manifest_status": md["status"], "env_fit": env_fit,
-            "bounds": {"scope": md["scope"]}}
+            "bounds": {"scope": md["scope"]},
+            "attestation": {"checks": list(ATTESTS), "never_certifies": list(DOES_NOT_ATTEST)}}
 
     if not fit["signals_present"]:
         return StagedAction(StagedAction.REFUSED,
