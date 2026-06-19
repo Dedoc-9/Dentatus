@@ -90,6 +90,7 @@ PYTHONHASHSEED=0 python3 tests/test_airlock.py      # 23 unit tests (laws, gates
 | `adapters_kv.py` | a **config/repo-state** adapter — `set`/`delete`/`bump`/`freeze` (proves reality ≠ physics) |
 | `contract.py` | the deterministic-adapter **contract** (`validate_adapter`) — the membrane's interface language |
 | `conformance.py` | portable membrane **conformance vectors** (`make_vector`/`verify_vector`) |
+| `impact.py` | **impact density → validation depth** — `impact_density`, `cheap_impact`, `validation_policy` (consequence sets proof depth, never outcome) |
 | `admissibility.py` | the geometry of **what almost happened** — proposal pressure + gate histogram (pure telemetry) |
 | `possibility.py` | the lawful **possibility space** — admissible set, freedom measure, admissible-but-unrealized ('arbitrary') |
 | `horizon.py` | the **geometry of the unrealized field** — reach, dispersion, possibility pressure around a realized state |

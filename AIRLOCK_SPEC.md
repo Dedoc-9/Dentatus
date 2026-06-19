@@ -176,3 +176,39 @@ instead of another admissible one?*. The engine can now count and shape those al
 
 **Honest bound:** pure shadow telemetry (reality is never touched); the geometry is measured *under the
 declared structure*, and "pressure"/"aliveness" are magnitudes, not claims about nature. `integrity ≠ truth`.
+
+## Impact density → validation depth (the resolution law)
+
+The severity dial, made a predicate of consequence. How carefully a *mutable* transition is resolved scales
+with how much future it touches — a shot at a wall is cheap; a shot at the artifact-holder is deep — but the
+committed result is **invariant** to that depth.
+
+```
+impact_density → validation depth (shadow depth · witness strength · rollback budget · network priority)   ALLOWED
+impact_density → committed outcome                                                                          FORBIDDEN
+```
+
+`airlock/impact.py`: `impact_density` (true downstream divergence, act-vs-natural), `cheap_impact` (the
+immediate effect magnitude — an O(apply) predicate), and `validation_policy(threshold)` → an airlock severity
+policy. Measured: the cheap predicate ranks transitions by true downstream impact (Spearman 1.00 on kinematic
+consequence) and a low-impact transition committed at game / strict / impact-policy severity yields the
+**identical** `post_hash` (`airlock/demo_impact.py`). Honest bound: 1.00 holds because kinematic divergence ≈
+immediate magnitude in linear-ish dynamics; the hard case (small cause, large downstream consequence — a
+trigger / chain reaction / quest unlock) needs nonlinear or game-state dynamics, where a cheap proxy may fail
+and fall back to true impact. The mechanism and the law are proven; that robustness is the open question.
+
+### The clean stack
+
+```
+kernel
+  └─ airlock
+       ├─ admissibility    can this happen?        (gate → committed truth)
+       └─ consequence field how much does it matter? (telemetry → never truth)
+            ├─ salience          where to spend compute      (attention scheduler)
+            ├─ validator depth   how much proof              (impact → severity)
+            ├─ network priority  what to send first
+            └─ AI attention      who gets to think
+```
+
+The single constraint that keeps this a runtime architecture and not a predictive simulator: **future
+importance can decide where we look; it can never decide what is true.**

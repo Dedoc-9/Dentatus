@@ -21,6 +21,7 @@ import admissibility as AD
 import possibility as PS
 import horizon as HZ
 import membrane as M
+import impact as IM
 
 K = A.K
 
@@ -425,6 +426,39 @@ class TestPossibilityNeighborhood(unittest.TestCase):
         cands = [{"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}, **B},
                  {"transition": {"op": "advance", "ticks": 5}, **B}]
         self.assertEqual(HZ.neighborhood(W, 0, cands, A), HZ.neighborhood(W, 0, cands, A))
+
+
+
+
+class TestImpactValidationDepth(unittest.TestCase):
+    """impact_density → validation depth (ALLOWED) ; impact_density → committed outcome (FORBIDDEN)."""
+    def _world(self):
+        return A.K.make_world([A.K.body(i, (i - 2, 5, 0), (0, 0, 0), (1, 1, 1)) for i in range(4)],
+                              ((-80, -80, -80), (80, 80, 80)))
+
+    def test_cheap_predicts_true_ordering(self):
+        W = self._world()
+        big = {"op": "impulse", "id": 0, "dv": [60, 0, 0]}
+        small = {"op": "impulse", "id": 0, "dv": [1, 0, 0]}
+        self.assertGreater(IM.cheap_impact(W, big, A), IM.cheap_impact(W, small, A))
+        self.assertGreater(IM.impact_density(W, big, A), IM.impact_density(W, small, A))
+
+    def test_policy_routes_by_impact(self):
+        W = self._world()
+        pol = IM.bind(IM.validation_policy(5 * (1 << 32)), A)
+        self.assertEqual(pol(W, {"op": "impulse", "id": 0, "dv": [1, 0, 0]}), "game")    # low → cheap
+        self.assertEqual(pol(W, {"op": "impulse", "id": 0, "dv": [60, 0, 0]}), "strict")  # high → deep
+
+    def test_validation_depth_never_changes_outcome(self):
+        # THE LAW: a transition committed at any depth (game / strict / impact-policy) yields the SAME state.
+        W = self._world()
+        pol = IM.bind(IM.validation_policy(5 * (1 << 32)), A)
+        p = {"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]},
+             "budget": {"max_cost": 5, "max_delta": 10**22}, "constraints": {"max_bodies": 8, "c_limit": 200 * (1 << 32)}}
+        hg = M.propose(W, dict(p), A, severity="game")["shard"]["post_hash"]
+        hs = M.propose(W, dict(p), A, severity="strict")["shard"]["post_hash"]
+        hp = M.propose(W, dict(p), A, severity=pol)["shard"]["post_hash"]
+        self.assertEqual(hg, hs); self.assertEqual(hs, hp)
 
 
 if __name__ == "__main__":
