@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherManifold/lyapunov.py — a discrete Lyapunov certificate (forked + compressed), as an exact observable.
 

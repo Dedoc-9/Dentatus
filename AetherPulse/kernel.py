@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherPulse/kernel.py — the deterministic 3-D fixed-point rigid-body reference kernel.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriSim/scenarios.py — deterministic fixed-point physics scenarios (toy models, clearly labelled).
 

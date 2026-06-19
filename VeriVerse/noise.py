@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriVerse/noise.py — deterministic INTEGER value-noise terrain. No floats, no language-dependent RNG.
 

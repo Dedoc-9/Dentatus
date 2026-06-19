@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherManifold/demo_manifold_stable.py — deterministic Riemannian optimization on the Stiefel manifold.
 

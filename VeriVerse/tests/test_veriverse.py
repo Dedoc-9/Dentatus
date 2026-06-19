@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """VeriVerse/tests/test_veriverse.py — deterministic world, chunk shards, provenance, physics."""
 import os, sys, unittest
 _V = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

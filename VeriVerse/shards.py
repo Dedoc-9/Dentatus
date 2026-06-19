@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriVerse/shards.py — content-addressed, signed chunk shards + a world Merkle root (lazy verification).
 

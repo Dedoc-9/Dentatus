@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 aegis_gate/app/policy.py — host-side AML/KYC validity predicates as EXACT GATES, plus the
 chronicle-bound decision function and its precommitted invariant.

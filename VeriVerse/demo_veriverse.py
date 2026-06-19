@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriVerse/demo_veriverse.py — a verifiable voxel world. "Don't just render the world. Prove it exists."
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """AetherManifold/tests/test_manifold_stable.py — Riemannian GD, projection, two-tier, stability, conformance."""
 import os, sys, unittest
 _M = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

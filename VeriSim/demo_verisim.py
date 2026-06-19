@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriSim/demo_verisim.py — verifiable simulation, end to end. "We prove the test was real, not the future."
 

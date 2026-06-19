@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriSim/runner.py — run a verifiable simulation and emit a Shard.
 

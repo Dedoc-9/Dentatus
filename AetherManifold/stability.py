@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherManifold/stability.py — stability as a measured OBSERVABLE of the trace, never a derived truth.
 

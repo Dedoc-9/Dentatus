@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriVerse/viewer/server.py — a minimal, stdlib-only "God Mode" viewer for the verifiable world.
 

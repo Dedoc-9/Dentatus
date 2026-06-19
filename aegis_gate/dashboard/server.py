@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 aegis_gate/dashboard/server.py — a stdlib-only audit dashboard (no third-party packages).
 

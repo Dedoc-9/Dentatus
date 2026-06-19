@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherPulse/snapshot.py — the L1/L2/L3 seam: only the logic layer is deterministic; visuals read, never write.
 

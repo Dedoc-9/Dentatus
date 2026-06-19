@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherManifold/objective.py — sample objectives with exact integer gradients (no autodiff, no float).
 

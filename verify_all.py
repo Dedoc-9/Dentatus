@@ -1,11 +1,13 @@
 """
 verify_all.py — the single top-level "verify everything" entrypoint for the whole repo.
 
-Two gates, one verdict:
-  1. the WORKBENCH preflight  — 26 sibling suites + the coupled/uncoupled parity proof
+Three gates, one verdict:
+  1. the WORKBENCH preflight  — 27 sibling suites + the coupled/uncoupled parity proof
      (integration/preflight_check.py)
   2. the APPLICATION conformance — the 5 standalone products reproduce their pinned content hashes
      (conformance_suite/run.py)
+  3. the LICENSE audit — every downstream product declares a recognized license track (NOTICE + SPDX)
+     (integration/license_audit.py)
 
 Exit 0 only if BOTH pass. This is the canonical green/red for the repo — workbench *and* the products
 downstream of it — that a CI gate or a contributor runs once. It does NOT re-implement either gate; it runs
@@ -21,6 +23,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 GATES = [
     ("workbench preflight  (36 suites + parity)", "integration/preflight_check.py"),
     ("application conformance (5 goldens)", "conformance_suite/run.py"),
+    ("license audit (every product declares its track)", "integration/license_audit.py"),
 ]
 
 

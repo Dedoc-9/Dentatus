@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriSim/court.py — the Replay Court: download a Shard, replay it locally, confirm bit-for-bit.
 

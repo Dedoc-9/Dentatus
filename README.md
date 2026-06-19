@@ -248,7 +248,12 @@ immutable instrument while the workbench around it keeps gaining purpose-built p
 
 The Sibling Law also scales up from *components* to whole *products*: a standalone application can import the
 frozen cores (and any siblings) **read-only** via a path shim, without being a sibling itself or entering the
-36-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
+36-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound — the
+full index, with each product's **license track**, lives in [`APPLICATIONS.md`](APPLICATIONS.md). Each carries
+a `NOTICE` declaring its track (AGPL-3.0 / Track A by default), and `integration/license_audit.py` fails the
+gate if any product is missing a parseable declaration, so "every product declares its track" is a verified
+invariant. *(They live at the repo root today; a physical `applications/` folder is deliberately deferred —
+moving them would break each app's `ROOT` path shim and change nothing about license scope. See APPLICATIONS.md.)*
 
 | Application | What it is | Honest bound |
 |---|---|---|

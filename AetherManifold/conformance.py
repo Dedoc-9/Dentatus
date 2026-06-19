@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherManifold/conformance.py — trajectory conformance vectors (the cross-language / native-port oracle).
 

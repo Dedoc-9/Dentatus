@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherPulse/conformance.py — conformance vectors: the contract a native (Rust/C++ SIMD) port must satisfy.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherManifold/riemann.py — deterministic Riemannian gradient descent on the Stiefel manifold St(n,k).
 

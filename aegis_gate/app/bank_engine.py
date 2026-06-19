@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 aegis_gate/app/bank_engine.py — a pure-integer financial state machine.
 

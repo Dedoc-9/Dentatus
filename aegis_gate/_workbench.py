@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 aegis_gate/_workbench.py — read-only access to frozen workbench primitives (the Sibling Law).
 

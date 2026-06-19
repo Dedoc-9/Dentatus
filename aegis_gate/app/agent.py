@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 aegis_gate/app/agent.py — the VOLATILE component. Treated as untrusted.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriVerse/physics.py — deterministic integer "falling sand" cellular automaton (a 2-D cross-section toy).
 

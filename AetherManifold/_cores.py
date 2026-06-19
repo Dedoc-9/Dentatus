@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherManifold/_cores.py — read-only access to the workbench (Sibling Law). A standalone research sandbox.
 

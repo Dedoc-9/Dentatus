@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherPulse/demo_aetherpulse.py — Stage-1 reference kernel: two cubes collide, provably, the same everywhere.
 

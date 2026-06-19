@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriSim/_cores.py — read-only access to the Dentatus/Chronicle workbench (the Sibling Law).
 

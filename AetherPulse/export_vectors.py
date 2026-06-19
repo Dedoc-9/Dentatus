@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 AetherPulse/export_vectors.py — emit conformance vectors as language-agnostic JSON for a native (C++/Rust) port.
 

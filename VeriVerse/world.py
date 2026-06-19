@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriVerse/world.py — deterministic voxel world generation + content-addressed chunks + provable provenance.
 

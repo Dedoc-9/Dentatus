@@ -1,0 +1,13 @@
+DENTATUS APPLICATION — NOTICE
+Component: VeriVerse  (a downstream product built on the Chronicle workbench; NOT a counted sibling)
+Copyright (c) 2026 Daniel J. Dillberg. All rights reserved.
+
+LICENSE-TRACK: AGPL-3.0-only (Track A)
+This application is a published module of the Dentatus workbench and is licensed under the GNU Affero
+General Public License v3.0 — see ../LICENSE and ../DUAL_LICENSE.md. It imports the frozen cores read-only
+via the Sibling Law (a path shim), and is not itself part of the engine core.
+
+A commercial, closed-source license (Track B) is available; contact bigdilly95@gmail.com,
+subject "Dentatus Commercial License".
+
+Honest scope: a verifiable procedural world/physics-engine prototype — a SCAFFOLD competing on provable determinism, not render speed.

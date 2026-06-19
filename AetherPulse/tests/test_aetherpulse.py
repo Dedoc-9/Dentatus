@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """AetherPulse/tests/test_aetherpulse.py — deterministic 3D fixed-point kernel + conformance vectors."""
 import os, sys, unittest
 _A = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

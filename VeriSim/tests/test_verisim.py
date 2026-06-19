@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """VeriSim/tests/test_verisim.py — verifiable simulation shards: run, replay, tamper, drift, spot-check."""
 import os, sys, unittest
 _V = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

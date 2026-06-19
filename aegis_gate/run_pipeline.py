@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 aegis_gate/run_pipeline.py — the application harness and loopback hook.
 

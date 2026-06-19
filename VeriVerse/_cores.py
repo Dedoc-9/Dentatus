@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 VeriVerse/_cores.py — read-only access to the workbench (Sibling Law). VeriVerse is a STANDALONE product.
 

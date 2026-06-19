@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """
 aegis_gate/tests/test_aegis.py — unit tests for the verifiable transfer app. Stdlib unittest only.
 
