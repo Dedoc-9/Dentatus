@@ -1,7 +1,7 @@
 # Dentatus/Chronicle — an honest technical overview
 
 > **Repo layout note.** The active project is the **Chronicle workbench**: two frozen cores
-> ([`chronicle/`](chronicle/README.md), [`llm_toolkit/`](llm_toolkit/README.md)) plus 22 decoupled
+> ([`chronicle/`](chronicle/README.md), [`llm_toolkit/`](llm_toolkit/README.md)) plus 24 decoupled
 > *sibling* components, gated by one command (`integration/preflight_check.py`). The full legacy Reality
 > Engine / Citadel implementation described in the second half of this document now lives under
 > [`docs/archive/`](docs/archive/) — run its proofs from there (`cd docs/archive` first). The
@@ -33,8 +33,8 @@ manifold — each is the same canonical-bytes → hash + capture-at-boundary dis
 
 ### The workbench today
 
-The `chronicle` core has been extended into a **26-component workbench** (2 frozen cores + 22 siblings,
-**380 unit tests across 33 suites**, all gated by one preflight). The siblings are deliberately decoupled —
+The `chronicle` core has been extended into a **26-component workbench** (2 frozen cores + 24 siblings,
+**387 unit tests across 33 suites**, all gated by one preflight). The siblings are deliberately decoupled —
 each imports the cores read-only (the "Sibling Law", verified by a parity proof), each is a small **reference
 implementation** of the one idea in a different domain, and **each states its own honest bound in its
 README**. They group into families: an audit core; governance & isolation (`guard_server`, `pact`, `quorum`,
@@ -98,18 +98,4 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 The methodology is more interesting than any feature, and the history shows it under load:
 
 - **Measure before optimizing.** A frame-time profiler was built before any optimization; it showed ~7×
-  headroom, so a tempting "v2 kernel" rewrite was *refused* as premature. Later profiling found the real
-  bottleneck was redundant hashing (75% of a tick), **not** the eigensolver everyone assumed.
-- **Caught fabricated numbers.** Several speculative experiments arrived with pre-written "results." Running
-  them disproved the numbers (a claimed 30.92% compression gain was really ~5% and sometimes *negative*; a
-  "Klein bottle" boundary had a real topological bug). Each was corrected in the ledger with the measured value.
-- **Found and fixed a real determinism leak.** Off-beat commits folded `time.time()` into a committed hash,
-  so replay would drift across machines — diagnosed, fixed (frame-derived), and proven.
-- **Honest framing enforced continuously.** Across the workbench expansion, marketing-shaped proposals
-  ("post-trust," "solves the Halting Problem," "diamond-hard," "100% certainty," a Collatz-indexed
-  derivative) were each either re-scoped to what the code proves or refused outright and recorded as a
-  non-claim. Every sibling README carries a "honest bounds" section.
-
-## Honest scope — what it is NOT
-
-- **Not a game engine or renderer.** A game was protot
+  headroom, so a tempting "v

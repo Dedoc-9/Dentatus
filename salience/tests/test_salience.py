@@ -13,6 +13,9 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import field as SAL
+import predictor as PR
+import atlas as ATL
+import bench as BN
 
 
 class TestAllocate(unittest.TestCase):
@@ -55,6 +58,54 @@ class TestAllocate(unittest.TestCase):
         peaked = SAL.allocate(SAL.density({"v": 1, "door": 999}), 1000)
         spread = SAL.allocate(SAL.density({"a": 1, "b": 1, "c": 1}), 1000)
         self.assertGreater(SAL.concentration(peaked), SAL.concentration(spread))
+
+
+
+
+class TestPredictorAtlas(unittest.TestCase):
+    def test_calibrate_predict_ranks_correctly(self):
+        rows = [[3, 6, 3, 2], [1, 2, 0, 120], [4, 6, 4, 1], [1, 2, 0, 80]]   # doorways high, valleys low
+        truth = [90.0, 1.0, 110.0, 2.0]
+        w = PR.calibrate(rows, truth)
+        self.assertGreater(PR.predict(w, rows[2]), PR.predict(w, rows[1]))    # doorway > valley
+        self.assertGreater(PR.predict(w, rows[0]), PR.predict(w, rows[3]))
+
+    def test_atlas_sample_and_budgeted_refresh(self):
+        a = ATL.PossibilityAtlas().build(["r0", "r1", "r2"], lambda r: {"r0": 5., "r1": 9., "r2": 1.}[r])
+        self.assertEqual(a.sample("r1"), 9.)
+        a.tick(); a.tick()
+        done = a.refresh(["r0", "r1", "r2"], lambda r: 0., budget=2)         # only 2 refreshed (budget)
+        self.assertEqual(len(done), 2)
+
+
+class TestFalsificationMetrics(unittest.TestCase):
+    def test_spearman_and_topk(self):
+        self.assertAlmostEqual(BN.spearman([1, 2, 3, 4], [1, 2, 3, 4]), 1.0)
+        self.assertAlmostEqual(BN.spearman([1, 2, 3, 4], [4, 3, 2, 1]), -1.0)
+        self.assertEqual(BN.top_k_overlap([9, 1, 8, 2], [9, 1, 8, 2], 2), 1.0)   # same top-2
+
+    def test_impactful_quality(self):
+        truth = [10, 0, 0, 0]
+        on_truth = BN.impactful_captured([1, 0, 0, 0], truth)
+        off_truth = BN.impactful_captured([0, 1, 1, 1], truth)
+        self.assertGreater(on_truth, off_truth)               # compute on possibility scores higher
+
+    def test_freshness_cheap_beats_expensive(self):
+        cheap = BN.frames_to_refresh_all(0.5, 30, 50.0)
+        true = BN.frames_to_refresh_all(600.0, 30, 50.0)
+        self.assertEqual(cheap, 1)
+        self.assertGreater(true, cheap)
+
+    def test_verdict_cheap_wins_when_high_quality_and_cheap(self):
+        # cheap matches true quality, beats distance, costs <10% of true, stays fresh
+        true = [9, 1, 8, 2, 0]; cheap = [8, 1, 9, 2, 0]; dist = [1, 1, 1, 1, 1]
+        rep = BN.evaluate(true, cheap, dist, {"distance": 0.1, "cheap": 0.5, "true": 600.0}, 5, 50.0)
+        self.assertEqual(rep["verdict"], "cheap-wins")
+
+    def test_verdict_inconclusive_when_cheap_is_expensive(self):
+        true = [9, 1, 8, 2, 0]; cheap = [8, 1, 9, 2, 0]; dist = [1, 1, 1, 1, 1]
+        rep = BN.evaluate(true, cheap, dist, {"distance": 0.1, "cheap": 100.0, "true": 600.0}, 5, 50.0)
+        self.assertEqual(rep["verdict"], "inconclusive")      # cheap not cheap enough → no win
 
 
 if __name__ == "__main__":
