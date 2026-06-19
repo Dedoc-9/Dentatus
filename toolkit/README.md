@@ -417,6 +417,21 @@ frame-time, SM/EU occupancy, and L1/texture-cache hit-rate per regime. The model
 only if the gated scheduler yields a **low-variance (flat) profile** across all three where the naive
 geometry-density path *spikes*. Until that measurement exists, the flat line is a property of the model.
 
+### Theoretical significance — policy vs. throughput
+
+The rasterization demo models allocation policies as *workload re-encodings*. Under a constructed
+micro-triangle explosion, `raster_priority` preserves **5.2×** the modeled useful work of the naive
+baseline.
+
+This does **not** prove a hardware speedup. It defines a strict, falsifiable structural hypothesis:
+that under sub-pixel stress the primary bottleneck is the *scheduling grammar*, not physical transistor
+throughput. The direction is corroborated by shipping tech (UE5 Nanite's software-rasterizer path), but
+the claim is unproven here and **expires immediately** if hardware profiling (cache hit-rate, SM/EU
+occupancy) disproves the flat-line utility trend. The value is the clean hypothesis, not a silicon win:
+*bad definitions destroy efficiency before the hardware ever runs* — a density-gated scheduler reads
+"more triangles" as "more budget" and maximizes helper-lane waste, while `visible_contribution ×
+coverage` reads the workload by actual utility.
+
 ## Honest scope — what this is and is not
 
 Two clarifications that keep the claims falsifiable:

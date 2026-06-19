@@ -25,6 +25,19 @@ import random
 from toolkit import compare, robustness, random_priority
 
 
+# HYPOTHESIS GENERATION -- design as a semantic expression (NOT a hardware claim).
+# This model treats the rasterization pipeline as a semantic grammar in which the fixed-function
+# 2x2 pixel quad is the hardware's vocabulary. The raster_priority policy re-encodes the workload --
+# it changes how the system interprets its constraints before the scheduler ever reads them.
+#
+#   REGIME FACT (proven here):      in this CONSTRUCTED world, changing the grammar preserves 5.2x
+#                                   more *modeled* useful work under micro-triangle stress.
+#   HARDWARE HYPOTHESIS (NOT here): that in the micro-triangle regime the binding constraint is the
+#                                   scheduling policy rather than raw transistor throughput.
+#                                   Corroborated in DIRECTION by UE5 Nanite's software-rasterizer path;
+#                                   unproven on silicon here. See the manifest's
+#                                   'expires_if: measured on real GPU silicon'.
+
 # -- policies (each maps one cluster -> an integer scheduling priority) -----------------------------
 
 def tri_count_only(item):
