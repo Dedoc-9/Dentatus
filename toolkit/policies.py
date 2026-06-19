@@ -22,6 +22,7 @@ Dev note -- the bounds that justify making the scorer swappable:
 A policy is an ESTIMATE of importance supplied by the caller. Quality of attention follows quality of signal.
 """
 from __future__ import annotations
+import zlib
 
 
 def future_surface(item):
@@ -47,3 +48,9 @@ def magnitude(item):
 def uniform(item):
     """Floor: every item scored alike, so greedy becomes cheapest-first (maximize coverage)."""
     return 1
+
+
+def random_priority(item):
+    """Deterministic pseudo-random baseline: priority is a stable hash of the id (no real signal).
+    Uses crc32 -- NOT Python's salted hash() -- so it is identical across runs and PYTHONHASHSEED."""
+    return 1 + (zlib.crc32(str(item["id"]).encode()) % 1_000_000)

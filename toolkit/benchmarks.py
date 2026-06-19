@@ -244,6 +244,12 @@ def run(budget=1000):
     print("      hidden_jackpot funded: %s  (future_surface is top; eligible=False)"
           % ("hidden_jackpot" in fair.chosen))
 
+    from .tournament import compare
+    comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
+                    policies.magnitude, policies.random_priority], worlds=200)
+    print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
+    print("\n".join("      " + ln for ln in comp.table().splitlines()))
+
     assert inf["future_surface"] > inf["magnitude"] and inf["future_surface"] > inf["uniform"], "informative must win"
     assert dft["future_surface"] <= dft["uniform"], "drift must lose to floor"
     assert adv["future_surface"] <= adv["uniform"], "adversarial must lose to floor"
@@ -255,7 +261,11 @@ def run(budget=1000):
     assert coh[0][0] > coh[0][1], "fresh allocation beats floor"
     assert coh[5][0] <= coh[5][1], "stale allocation loses to floor (finite coherence horizon)"
     assert "hidden_jackpot" not in fair.chosen, "ineligible item must get zero budget"
-    print("\n[OK] all eleven properties hold. The toolkit allocates by supplied signal; it does not")
+    assert comp.pct("future_surface") >= max(comp.pct(n) for n in ("min_gate", "magnitude", "random_priority")), \
+        "future_surface should lead the non-oracle field"
+    assert comp.pct("magnitude") < comp.pct("random_priority"), \
+        "butterfly world: size is anti-informative -> magnitude loses even to random"
+    print("\n[OK] all twelve properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 

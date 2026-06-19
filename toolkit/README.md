@@ -24,6 +24,14 @@ field  = attention.observe(world, scorer=min_gate)      # "a weak dimension caps
 budget = field.allocate(resources=1000)
 ```
 
+Or run a competition — which policy allocates best under stated conditions?
+
+```python
+from toolkit import compare, future_surface, magnitude, random_priority
+
+print(compare([future_surface, magnitude, random_priority], worlds=1000).table())
+```
+
 ## The contract
 
 ```
@@ -47,7 +55,7 @@ picked well because the model says so."
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Eleven asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Twelve asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -75,6 +83,22 @@ advantage is largest under scarcity and shrinks toward abundance (fs 83→99%, m
 **[6] `importance != eligibility`.** A top-`future_surface` but ineligible item (`eligible=False`)
 receives **zero** budget.
 
+**[7] Policy competition.** Run every policy over 1000 worlds, same budget, same hidden `M`, ranked
+by average capture (% of oracle):
+
+```
+policy                 avg captured M (% of oracle, 1000 worlds)
+  oracle               100%
+  future_surface        95%
+  min_gate              93%
+  random_priority       59%
+  magnitude             33%
+```
+
+Note `magnitude` (33%) ranks *below* `random` (59%): in a butterfly world "spend on the biggest" is
+anti-informative, worse than chance. The toolkit never asks "is future_surface true?" — only "does
+this policy out-allocate the alternatives under these conditions?"
+
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
@@ -85,7 +109,8 @@ toolkit/
     attention.py    observe() -> Field -> allocate() -> Budget, eligibility gate, tick()
     allocation.py   allocate() + captured()                      (the proven primitives)
     policies.py     future_surface / min_gate / weighted_product / magnitude / uniform
-    benchmarks.py   eleven asserted properties across eight worlds
+    benchmarks.py   twelve asserted properties across eight worlds
+    tournament.py   compare(policies, worlds=N) -> ranked table (the competition harness)
 ```
 
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`
