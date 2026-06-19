@@ -191,3 +191,14 @@ class CertificateDiff:
 
 def diff_certificates(old, new):
     return CertificateDiff(old, new)
+
+
+def replay(policy, certificate):
+    """Re-derive a certificate's evidence from the policy and check it REPRODUCES. Confidence is not
+    memory; it is reproducible evidence. A stored certificate is trustworthy only if re-running its
+    procedure on the current policy yields the same wins, fails, and claims -- otherwise the policy
+    has drifted from the certificate that vouches for it. Returns (reproduced_bool, mismatches)."""
+    fresh = certify(policy, worlds=certificate.worlds).to_dict()
+    recorded = certificate.to_dict()
+    mism = [k for k in ("wins", "fails", "claims") if fresh[k] != recorded[k]]
+    return (not mism, mism)

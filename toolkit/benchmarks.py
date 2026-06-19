@@ -276,8 +276,9 @@ def run(budget=1000):
           % ("hidden_jackpot" in fair.chosen))
 
     from .tournament import compare, robustness
-    from .certify import certify, diff_certificates
+    from .certify import certify, diff_certificates, replay
     from .monitor import Monitor
+    from .mutate import mutate
     comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
                     policies.magnitude, policies.random_priority], worlds=200)
     print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
@@ -380,7 +381,30 @@ def run(budget=1000):
     assert "M" in prov["not_read"], "provenance must declare M as a forbidden, unread channel"
     assert jackpot["eligible"] is False and jackpot["funded"] is False, "provenance must explain an eligibility exclusion"
 
-    print("\n[OK] all thirty properties hold. The toolkit allocates by supplied signal; it does not")
+    muts = {name: (det, why) for name, det, why in mutate(worlds=80)}
+    print("\n[13] mutation testing -- are the tests strong enough to NOTICE a degraded allocator?")
+    for name in ("drop_uncertainty", "invert_possibility", "cost_only", "constant", "reads_hidden"):
+        det, why = muts[name]
+        print("      %-20s detected=%-5s %s" % (name, det, why))
+    print("      => test_quality != test_count: the suite catches 4/5; it CANNOT catch inverting a")
+    print("         signal (possibility) that carried no information in the clean world -- an honest limit.")
+
+    fs_cert = certify(policies.future_surface, worlds=60)
+    ok, _ = replay(policies.future_surface, fs_cert)
+    bad, mism = replay(policies.weighted_product, fs_cert)
+    print("\n[14] certificate replay -- confidence is reproducible evidence, not memory:")
+    print("      replay(future_surface, its own certificate) -> reproduced=%s" % ok)
+    print("      replay(weighted_product, future_surface's certificate) -> reproduced=%s (mismatch: %s)"
+          % (bad, ", ".join(mism)))
+
+    assert muts["cost_only"][0] and muts["constant"][0] and muts["reads_hidden"][0] and muts["drop_uncertainty"][0], \
+        "the suite must detect the clearly-broken mutants"
+    assert muts["invert_possibility"][0] is False, \
+        "honest limit: inverting a non-informative signal is invisible to the suite (test_quality != test_count)"
+    assert ok is True, "a certificate must reproduce when replayed against its own policy"
+    assert bad is False and mism, "replay must catch a certificate that no longer matches the policy"
+
+    print("\n[OK] all thirty-four properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 

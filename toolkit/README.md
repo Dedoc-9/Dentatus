@@ -73,18 +73,20 @@ picked well because the model says so."
 | `observable drift != semantic drift` | a monitor sees marginals, not the signal->outcome map | `Monitor` blind-spot |
 | forbidden channels | the score must be invariant to M / future / hidden / private state | anti-oracle suite in `certify()` |
 | `attention should have provenance` | every decision cites observable signals, never truth | `Budget.reason()` / `.explain()` |
+| `test_quality != test_count` | a suite that cannot notice a broken allocator is one test | `mutate()` mutation testing |
+| `confidence != memory` | a certificate is trustworthy only if it reproduces | `replay()` |
 
 ## Commands
 
 ```
-python3 -m toolkit              # the full proof (thirty asserted properties)
+python3 -m toolkit              # the full proof (thirty-four asserted properties)
 python3 -m toolkit tournament  # compare() + robustness() tables
 python3 -m toolkit certify     # certificate for future_surface
 ```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Thirty asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Thirty-four asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -222,6 +224,32 @@ The proof asserts the trace never cites `M` and always declares it unread. Prove
 (every decision is explainable); hidden justification is *forbidden* (the explanation can only name
 what the policy was permitted to see).
 
+**[13] Mutation testing.** Turn the scrutiny on the suite itself: deliberately break the policy and
+check the harness *notices*.
+
+```
+drop_uncertainty     detected=True   clean score dropped 18%
+invert_possibility   detected=False  NOT detected -- degradation invisible to the suite
+cost_only            detected=True   lost the clean operating envelope
+constant             detected=True   clean score dropped 29%
+reads_hidden         detected=True   reads a forbidden channel (integrity)
+```
+
+It catches 4 of 5 — and is honest about the miss: inverting `possibility` is invisible *because that
+signal carried no information in the clean world*, so breaking it changes nothing. `test_quality !=
+test_count`: a suite that cannot notice a broken allocator is one test, however many it runs.
+
+**[14] Certificate replay.** A certificate is trustworthy only if it reproduces — `confidence !=
+memory`. `replay(policy, certificate)` re-derives the evidence and checks it matches:
+
+```
+replay(future_surface, its own certificate)            -> reproduced=True
+replay(weighted_product, future_surface's certificate) -> reproduced=False (mismatch: wins, fails)
+```
+
+A certificate that no longer matches its policy is caught — the policy has drifted from the evidence
+that vouches for it.
+
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
@@ -236,6 +264,7 @@ toolkit/
     tournament.py   compare() ranked table + robustness() policy x regime matrix
     certify.py      certify(policy) -> safety label + to_json() + diff_certificates()
     monitor.py      Monitor.observe(world) -> CERTIFIED/DEGRADED/QUARANTINED (runtime drift)
+    mutate.py       mutate() -> can the suite notice a degraded allocator? (+ replay in certify.py)
 ```
 
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`
