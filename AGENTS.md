@@ -85,6 +85,20 @@ not reduce to those two things, it probably does not belong.
 - Trust boundaries verify against **pinned** keys held in config — never a key
   taken from the payload/inputs. (PEP trust anchor, `assay` assessor registry.)
   Verifying against an input-supplied key silently defeats the property.
+- **The root principle (the generalization of `integrity ≠ truth`) — read before adding any observational
+  layer.** *The field allocates attention; it does not allocate truth.* Observational / allocation siblings
+  (`consequence`, `causal_runtime`'s ghost, `salience`, `intervention`, `falsification`, the LOD bench) **rank,
+  prioritize, cache, validate-deeper, render-at-higher-fidelity, or choose-what-to-investigate-next** — they may
+  **never** *certify, declare, or mutate committed state*. The operational test for a new such layer:
+  `X → attention / allocation` is ALLOWED; `X → committed truth` is FORBIDDEN. **They may RANK; they may not
+  DECLARE.** The only thing that certifies reality is the committed trajectory itself.
+- **How such a layer is judged (the burden of proof).** An attention/ranking claim is *not* a truth claim, so it
+  is judged by **comparative utility under a fixed budget**, never by correctness. A new ranking layer is "done"
+  only when it ships a **comparative benchmark with a negative control** answering *"did this allocation preserve
+  more future-relevant information than the alternative, at equal budget?"* — not *"did it identify what was
+  objectively important?"* (a truth claim in disguise). A score may be wrong about the cause and still succeed by
+  directing attention to where the model fails. Full treatment + the laws/findings/bounds split:
+  [`GENEALOGY.md`](GENEALOGY.md).
 
 ## 4. Extractability, dependencies, and crypto tiers
 
@@ -128,6 +142,11 @@ not reduce to those two things, it probably does not belong.
 - Mutating files / running commands without a PEP-signed, action-bound ticket.
 - Reading a clock / RNG / network inside state logic instead of via the capture seam.
 - Claiming a record proves a decision is correct/fair/safe. It proves integrity, not truth.
+- An observational/allocation layer that **certifies instead of ranks** — gating or mutating committed state on
+  a consequence/ghost/possibility/corroboration score, or letting `future_surface` reveal hidden information.
+  It allocates attention, not truth (§3).
+- Shipping a ranking/allocation layer **without a comparative benchmark + negative control** (correctness is the
+  wrong bar; comparative utility at equal budget is the right one).
 - "Improving" determinism by hand-rolling crypto or collapsing the dual (coupled/uncoupled) representations.
 - Reporting a change as *done* — or emitting any green/`[FOUNDRY]` status — without actually running
   `integration/preflight_check.py`. A status you did not earn by running is integrity-theater.
