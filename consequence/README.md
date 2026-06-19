@@ -50,8 +50,27 @@ according to *future consequence* while preserving invariant state identity.
 
 ```
 PYTHONHASHSEED=0 python3 demo_consequence.py        # butterfly + one field, four consumers
-PYTHONHASHSEED=0 python3 tests/test_consequence.py  # 8 unit tests
+PYTHONHASHSEED=0 python3 demo_butterfly.py          # the Butterfly Benchmark (consequence-wins-on-structure)
+PYTHONHASHSEED=0 python3 tests/test_consequence.py  # 11 unit tests
 ```
+
+## The Butterfly Benchmark — when does consequence-aware scheduling matter? (`demo_butterfly.py`)
+
+Two worlds identical in everything a conventional engine sees (node count, physics cost), differing ONLY in
+consequence topology; three schedulers allocate an attention budget; the metric is **future-divergence
+captured** (not FPS, not polygons). Measured (200 nodes, 10% budget):
+
+```
+world     distance   visibility   consequence
+flat      0.100      0.100        0.100      ← nothing to find: all tie at the budget fraction (negative control)
+chained   0.340      0.343        0.936      ← hidden dependency chain: consequence finds ~94% position misses
+```
+
+Verdict `consequence-wins-on-structure`: consequence-aware scheduling adds value **exactly when** a world has
+dependency structure decorrelated from position — there, distance/visibility are *structurally blind* to the
+hidden chain. On a flat world it ties the baselines (a fair negative control). It is not "always faster"; it
+"sees future surface area that proximity cannot." Honest bound: this proves position-blindness, not that the
+declared graph is true.
 
 ## Honest bound
 
@@ -65,4 +84,6 @@ computed under it, never validated by it. `integrity ≠ truth`.
 |---|---|
 | `graph.py` | `Graph`, `dependency_mass`, `consequence`, `field`, `taint` — the deterministic-integer taint map |
 | `demo_consequence.py` | the butterfly + one field, many consumers |
-| `tests/test_consequence.py` | 8 unit tests |
+| `butterfly.py` | the **Butterfly Benchmark** — flat vs hidden-chain worlds × distance/visibility/consequence schedulers |
+| `demo_butterfly.py` | runs the benchmark + the honest verdict |
+| `tests/test_consequence.py` | 11 unit tests |

@@ -5,6 +5,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import graph as G
+import butterfly as BF
 
 S = G.SCALE
 
@@ -57,6 +58,25 @@ class TestFieldAndTaint(unittest.TestCase):
         t = G.taint(g, {"hub": 10 * S})
         self.assertGreater(t["a"], 0)        # hub taints its dependents
         self.assertEqual(t.get("leaf", 0), 0)  # an unrelated leaf is untainted
+
+
+
+
+class TestButterflyBenchmark(unittest.TestCase):
+    def test_flat_world_ties_at_budget_fraction(self):
+        r = BF.run(n=200, seed=3, budget_frac=0.1)
+        for sch in ("distance", "visibility", "consequence"):
+            self.assertAlmostEqual(r["flat"][sch], 0.1, places=6)   # nothing to find ⇒ all = budget frac
+
+    def test_chained_world_consequence_dominates(self):
+        r = BF.run(n=200, seed=3)
+        self.assertGreater(r["chained"]["consequence"], 1.5 * r["chained"]["distance"])
+        self.assertGreater(r["chained"]["consequence"], 1.5 * r["chained"]["visibility"])
+
+    def test_verdict_and_determinism(self):
+        r1 = BF.run(seed=3); r2 = BF.run(seed=3)
+        self.assertEqual(r1["verdict"], "consequence-wins-on-structure")
+        self.assertEqual(r1, r2)                                     # deterministic given seed
 
 
 if __name__ == "__main__":

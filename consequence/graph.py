@@ -40,7 +40,7 @@ class Graph:
         return self
 
     def _edges(self, u):
-        return sorted(self.out.get(u, []))     # deterministic iteration order
+        return sorted(self.out.get(u, []), key=lambda e: (str(e[0]), e[1]))  # deterministic, any node type
 
 
 def dependency_mass(graph, node, depth=6, decay=(9, 10)):
