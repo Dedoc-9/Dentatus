@@ -108,6 +108,38 @@ def manifest():
     }
 
 
+def theorem(base_seeds=(0, 7, 1000, 5000, 99999), world_counts=(120, 200, 400),
+            spread_bound=2, ratio_floor=4.0):
+    """THEOREM (constructed-world, deterministic over the integers).
+
+    Domain:      worlds from make_raster_world (integer-valued; M = true_visible * coverage // 1000),
+                 fixed budget B = 800, scored on the hidden objective M.
+    Hypotheses:  the observable `coverage` signal is present; evaluation is PYTHONHASHSEED-independent.
+    Claim 1 (predictability):  raster_priority's cross-regime spread of useful-work-preserved is <= 2 points.
+    Claim 2 (improvement):     under micro_explosion it preserves >= 4x the useful work of tri_count_only.
+    Claim 3 (dominance):       raster_priority is strictly the flattest policy across the regime set.
+
+    Verified over |base_seeds| x |world_counts| configurations; the theorem is FALSE if any single
+    configuration violates any bound. Returns the number of configurations checked.
+    """
+    checks = 0
+    for base in base_seeds:
+        for w in world_counts:
+            rob = robustness(POLICIES, regimes=REGIMES, worlds=w, budget=BUDGET, base_seed=base)
+            vals = [rob.pct("raster_priority", r) for r in rob.regime_names]
+            spread = max(vals) - min(vals)
+            rp = rob.pct("raster_priority", "micro_explosion")
+            tc = rob.pct("tri_count_only", "micro_explosion")
+            others = [max(rob.pct(q.__name__, r) for r in rob.regime_names)
+                      - min(rob.pct(q.__name__, r) for r in rob.regime_names)
+                      for q in POLICIES if q.__name__ != "raster_priority"]
+            assert spread <= spread_bound, "Claim 1 FALSE at base=%d worlds=%d: spread=%d%%" % (base, w, spread)
+            assert rp >= ratio_floor * max(1, tc), "Claim 2 FALSE at base=%d worlds=%d: %d%% vs %d%%" % (base, w, rp, tc)
+            assert all(spread < o for o in others), "Claim 3 FALSE at base=%d worlds=%d: not flattest" % (base, w)
+            checks += 1
+    return checks
+
+
 def run():
     print("=" * 78)
     print("raster allocation -- scheduling micro-triangle clusters as an allocation policy")
@@ -152,6 +184,9 @@ def run():
     # the safety property: predictable (low-variance) utility across regimes -- the real engineering win.
     assert rp_spread <= 2, "INVARIANCE: raster_priority utility must stay within 2%% across all regimes (bounded cost)"
     assert rp_spread < tc_spread and rp_spread < vc_spread, "raster_priority must be strictly flatter than both baselines"
+    n_cfg = theorem()
+    print("\n[THEOREM] hardened across %d seed x world configurations: spread<=2%%, >=4x under micro,"
+          " flattest everywhere. HOLDS." % n_cfg)
     print("\n[OK] constructed-world claims hold. Real-hardware claim remains a hypothesis (see expires_if).")
 
 

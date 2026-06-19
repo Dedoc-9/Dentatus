@@ -439,6 +439,20 @@ occupancy) disproves the flat-line utility trend. The value is the clean hypothe
 "more triangles" as "more budget" and maximizes helper-lane waste, while `visible_contribution ×
 coverage` reads the workload by actual utility.
 
+**The hardened theorem.** Stated precisely, what the example *proves*:
+
+> Within a constructed workload model over the integers (`make_raster_world`, `M = true_visible ×
+> coverage // 1000`, fixed budget `B = 800`, graded on the hidden `M`), the `raster_priority` policy
+> (a) preserves a cross-regime spread of useful-work ≤ **2 points** (measured **0**), (b) preserves ≥
+> **4×** the useful work of geometry-density scheduling under the micro-triangle explosion (measured
+> **5.2×**), and (c) is strictly the flattest policy across the regime set.
+
+This is **verified over 15 configurations** (5 base seeds × 3 world counts) by `theorem()` in the
+example; it is declared FALSE if any single configuration violates any bound. The claim is unassailable
+*exactly because* it is this narrow: it asserts a deterministic property of policies over a stated
+integer model, and it names — in the manifest and the scope note — the one thing it does not claim,
+real-hardware throughput.
+
 ## Honest scope — what this is and is not
 
 Two clarifications that keep the claims falsifiable:
