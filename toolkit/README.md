@@ -355,6 +355,27 @@ explosion it loses even to random — while a coverage-gated scheduler preserves
 **`expires_if` measured on real GPU silicon** — it proves a property of the *constructed* workload, not
 of hardware. (See the scope note below.)
 
+**How the gain works (the scheduling logic).** GPUs shade in 2x2 pixel quads to compute `ddx`/`ddy`
+gradients, so a triangle smaller than a pixel still lights all four lanes. Quad efficiency is
+`covered_pixels / 4`; a 0.1-px micro-triangle runs at ~2.5% efficiency and discards the other ~97.5% as
+helper-lane waste. The logic of the gain is to **make that waste a scheduling input instead of a
+surprise**:
+
+```
+priority(cluster) = visible_contribution x coverage     # coverage = quad-efficiency proxy (0..1)
+
+  high coverage  -> full quad efficiency  -> fund full-fidelity (hardware quad raster)
+  low  coverage  -> mostly helper lanes   -> down-weight; route to coarse / software raster instead
+```
+
+Multiplying by `coverage` **down-weights sub-pixel clusters**, so the fixed budget flows to clusters
+where the quad is actually full rather than to geometry that is dense but mostly helper-lane waste. That
+is the two-path idea (hardware raster for large triangles, compute-shader software raster for tiny ones)
+expressed as a *router*: the policy decides the path per cluster from an observable efficiency signal.
+The naive baseline (`tri_count_only`) does the opposite — it schedules by raw geometry density, pouring
+budget into the densest (most sub-pixel) clusters and **maximizing** helper-lane waste. That is why it
+is the trap, and why it collapses precisely when geometry explodes.
+
 **Measured result (constructed workload, useful-work-preserved as % of an oracle):**
 
 | regime                | coverage-gated | naive (tri_count) | improvement |
@@ -368,6 +389,33 @@ naive geometry-density scheduling; in lighter regimes the gap widens to **12–1
 scheduling spends almost the entire budget on dense-but-inert geometry). These are ratios of
 useful-work-preserved in the *constructed* model — **not** a measured GPU speedup. Reproduce:
 `PYTHONHASHSEED=0 python3 examples/raster_allocation.py`.
+
+**The real win is predictability, not the multiplier.** In production rendering, the worst case isn't a
+slow frame — it's a frame-time *spike* (stutter) when the camera suddenly faces dense geometry. The
+multiplier is a side effect; the property that matters is the **flat line**:
+
+| policy                | clean | micro | occluded | **cross-regime spread** |
+|-----------------------|:-----:|:-----:|:--------:|:-----------------------:|
+| **raster_priority**   | 99%   | 99%   | 99%      | **0%** (bounded)        |
+| tri_count_only        | 7%    | 19%   | 8%       | 12% (collapses)         |
+| visible_contribution  | 96%   | 71%   | 95%      | 25% (swings the most)   |
+
+Only the coverage-gated policy is **both high and flat**. A flat utility line means the geometry pass
+becomes a *budgetable fixed cost* — the workload can't pathologically drift outside its bounds, so the
+scheduler converts a volatile hardware liability into a deterministic one. That is the engineering
+prize, and it is asserted as an **invariance safety property**: the example fails if `raster_priority`'s
+cross-regime spread exceeds 2%.
+
+*Honest caveat (by construction):* the flatness is this clean because, in the toy world, `coverage` is a
+near-perfect proxy for the efficiency term in `M`, so the policy's score is almost proportional to `M`
+in every regime. On real silicon `coverage` is noisier; the invariance is a property of *(policy ×
+world-family)*, not a guarantee about hardware.
+
+*How to falsify on silicon (the `expires_if` made actionable):* run the same three regimes on a real
+GPU — a uniform-triangle scene, an occluded scene, and a micro-triangle "forest" — and capture
+frame-time, SM/EU occupancy, and L1/texture-cache hit-rate per regime. The model's claim is corroborated
+only if the gated scheduler yields a **low-variance (flat) profile** across all three where the naive
+geometry-density path *spikes*. Until that measurement exists, the flat line is a property of the model.
 
 ## Honest scope — what this is and is not
 
