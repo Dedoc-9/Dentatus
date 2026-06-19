@@ -375,7 +375,7 @@ wrong by definition here — fix the change, not the test.
 
 ### The children — a deep dive by family, and how they compose in real use cases
 
-The twenty-five siblings are not a flat list; they fall into families that compose. Each entry states what it
+The twenty-six siblings are not a flat list; they fall into families that compose. Each entry states what it
 *is*, what it *proves*, and its honest bound. The use-case flows below show them working together — that
 composition is the actual product.
 
@@ -428,14 +428,35 @@ composition is the actual product.
   self-retracts (integer Gram-Schmidt), logging recovery. *Bound:* fixed-point is deterministic, not exact;
   orthonormality holds only within the declared epsilon.
 
+**The possibility-aware runtime — propose, allocate, and spend computation over the kernel (never into it).**
+- `airlock` (S23): the general reality-transition membrane — a proposer (LLM/agent/human) emits a bounded
+  candidate transition that passes `canon → fuel → shadow-apply → validate → witness` before the deterministic
+  kernel commits it; every *unrealized* transition is recorded (proposal pressure, the admissible set, the
+  geometry of the unrealized field). Laws `telemetry ≠ control`, `intent ≠ authority`. *Bound:* measures the
+  admissible field under the declared structure, never that the structure is right.
+- `salience` (S24): possibility-aware compute allocation — distributes a budget by *possibility density* via a
+  cheap predictor calibrated against occasional exact rollouts (dissolves the ~56× cost of computing the
+  future per frame). Law `possibility → allocation`, never `possibility → physics`. *Bound:* matches
+  hand-authored importance automatically; a measurement framework, not a shipping engine.
+- `consequence` (S25): the State-Graph Taint Map — a node's weight is `Δ · dependency_mass`, not magnitude
+  (`consequence ≠ magnitude`, the butterfly); the Causal Reconstruction Test deletes ~87% of compute while
+  preserving the full future on structured worlds. *Bound:* exact reconstruction iff the graph declares every
+  real coupling — an undeclared coupling collapses preservation to 0.414 (`integrity ≠ graph-truth`).
+- `causal_runtime` (S26): causal allocation of computation (the observation domain) — composes
+  `A = consequence × uncertainty × possibility + G⁺` into an `AttentionField` over streaming/AI/fidelity/
+  network/validation; a producer-agnostic novelty seam (`dini` is one producer) feeds uncertainty, and the
+  ghost `G⁺ = max(0, observed − predicted)` catches the undeclared coupling consequence is blind to. Law
+  `causal_information → attention`, never `→ mutation` — proven hash-identical against `AetherPulse`. *Bound:*
+  allocates compute and certainty, never truth; inherits the declared graph's limit.
+
 **The boundary, sensors, and domain siblings.**
 - `stasis` (S21): the Iron Canon (strict canonical bytes, rejects ambiguous/float types), the Divergence
   Ledger (gate-vs-observable: lie→FAIL, drift→WARN), the Lazy Merkle Lattice (batch + on-demand proofs).
 - `ration` (S10) integer step budgets · `stride` (S11) environment-fingerprinted transport · `assay` (S3)
   recomputable quality judgments · `glitch` (S6) deterministic state-space fuzzer · `dini` (S7) hyperbolic
-  novelty sensor (dual-use) · `anti_cheat` (S5) server-authoritative match forensics · `wobble` (S9)
-  verifiable synthetic-gene design · `selfaudit` (S8) the workbench evaluating itself · `integration` (S2)
-  the coupled full stack + parity proof.
+  novelty sensor (dual-use — also a novelty producer for `causal_runtime`) · `anti_cheat` (S5)
+  server-authoritative match forensics · `wobble` (S9) verifiable synthetic-gene design · `selfaudit` (S8)
+  the workbench evaluating itself · `integration` (S2) the coupled full stack + parity proof.
 
 #### Use case — a verifiable autonomous transaction (finance / operations)
 

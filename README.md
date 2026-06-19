@@ -40,9 +40,11 @@ declared rules* — three layers of a single offline-replayable proof. **The Col
 hardest seeds to break it. **Real-time & physics** (`lockstep`, `aether`, `manifold`) separate truth-rate
 from frame-rate and harden manifold geometry in fixed-point integers. **The boundary** (`stasis`) admits the
 messy real world — canonicalizing inputs, classifying drift-vs-lie, batching verification. **The
-possibility-aware runtime** (`airlock`, `salience`, `consequence`, `causal_runtime`) lets an untrusted proposer integrate with
-reality through a membrane, then allocates compute, validation depth, and attention by the consequence of
-nearby lawful futures. Every one is
+possibility-aware runtime** (`airlock`, `salience`, `consequence`, `causal_runtime`) lets an untrusted proposer
+integrate with reality through a membrane (`airlock`), allocates compute by *possibility density* (`salience`),
+weights everything by *future consequence* rather than magnitude (`consequence`, the butterfly), and spends
+computation — including on what it does not yet understand, via a surprise *ghost* — without ever touching the
+committed history (`causal_runtime`, proven hash-identical against `AetherPulse`). Every one is
 decoupled enough to lift out and stand alone, and every one states its own honest bound.
 
 ### The possibility-aware runtime — proposing reality through a membrane
@@ -74,6 +76,33 @@ deterministic; only the runtime's *awareness* of nearby lawful futures changes �
 bound: controlled reference results on synthetic scenarios — a measurement framework and a scheduling
 principle, **not** a shipping 240fps engine and **not** a claim about physical nature; it measures the
 admissible field under the declared structure, never that the structure is right. `integrity ≠ truth`.)*
+
+### The observation domain — consequence, causal awareness, and the ghost
+
+A second runtime layer sits *downstream* of the committed history and never writes back to it: the **reality
+domain** (the deterministic kernel) commits immutable history; the **observation domain** only reads that
+history to decide *where to spend computation*. `consequence/` is the **State-Graph Taint Map** — a node's
+*future sensitivity* is its downstream weighted reachability, so the consequence of perturbing a node is
+`Δ · dependency_mass(node)`, not its magnitude (`consequence ≠ magnitude`, the butterfly: the same delta is
+~37× more consequential at a hub than a leaf). Its **Causal Reconstruction Test** simulates only the causal
+frontier and measures what that buys: on a structured world it **deletes 87% of compute while preserving the
+full future** — *bounded* exactly by graph completeness, because an **undeclared coupling** makes preservation
+collapse to 0.414 (the honest limit, measured, not hidden).
+
+`causal_runtime/` turns that into **causal allocation of computation**. One future-surface field composes three
+orthogonal axes plus a surprise term — `A = consequence × uncertainty × possibility + G⁺` — and an
+`AttentionField` apportions streaming, AI tick-rate, fidelity, network, and validation depth from it (integer
+Hamilton apportionment). The epistemic axis is fed by a **producer-agnostic** novelty seam (`dini` is one
+producer, crossing a Q16 canon boundary; model disagreement and prediction error are others), and the
+**ghost** — `G⁺ = max(0, observed − predicted)`, rectified so surprise can only *raise* attention — catches
+exactly what the dependency graph cannot: an undeclared coupling moves a node the model rated zero, producing
+a pure attention spike with no structural cause. The **cardinal invariant** is proven against a real
+application (`AetherPulse`): attaching the observer leaves the committed hash trajectory **byte-identical**,
+so causal awareness changes *what we compute about*, never *what happened*. Three falsifications back it (the
+**Butterfly**, **Causal Freshness**, and **Blind Discovery** benchmarks, each with a negative control), under
+one more law — **`causal_information → attention` ALLOWED, `→ mutation` FORBIDDEN**. *(Honest bound: it
+allocates compute and certainty, never truth, and inherits the declared graph's limit — the ghost flags the
+undeclared as surprise, it does not make the graph complete. `integrity ≠ truth`.)*
 
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 

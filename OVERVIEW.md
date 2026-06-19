@@ -40,8 +40,10 @@ implementation** of the one idea in a different domain, and **each states its ow
 README**. They group into families: an audit core; governance & isolation (`guard_server`, `pact`, `quorum`,
 `polity`); a three-layer offline-replayable proof stack (`tessera` → `fuel` → `elenchus`); a
 hardware-invariant integer workload and its adversary (`syracuse`, `crucible`); real-time and fixed-point
-physics (`lockstep`, `aether`, `manifold`); and a boundary layer that admits the messy real world
-(`stasis`). None of them is a product; collectively they are a demonstration that one honest primitive
+physics (`lockstep`, `aether`, `manifold`); a boundary layer that admits the messy real world (`stasis`);
+and the possibility-aware runtime (`airlock`, `salience`, `consequence`, `causal_runtime`) that proposes,
+allocates, and spends computation over a deterministic kernel without ever mutating it. None of them is a
+product; collectively they are a demonstration that one honest primitive
 composes across surprisingly different problems. Two **standalone applications** in the repo show the same
 composition one level up — `aegis_gate/` (a verifiable transfer & KYC agent; a *mock* bank, proves the audit
 trail not the wisdom), `VeriSim/` (a verifiable simulation engine; proves the *test was real*, not that the
@@ -60,17 +62,30 @@ falsehood); a reasoning trace that follows the rules is not a true conclusion; a
 exactly constrained in integer space, not "perfect" in real space. The system is built *around* that limit
 rather than pretending to break it.
 
-**The possibility-aware runtime (`airlock`, `salience`).** The most recent layer turns the workbench into a
-deterministic reality engine an LLM/agent/human integrates with *as an untrusted proposer*. `airlock/` is a
-general reality-transition membrane: a proposer never mutates state — it emits a bounded candidate transition
-that passes `canon → fuel → shadow-apply → validate → witness` before the deterministic kernel commits it,
-under two laws (`telemetry ≠ control`, `intent ≠ authority`). Because every *unrealized* transition leaves a
-trace, the runtime measures what almost happened — proposal pressure, the lawful-but-unchosen "admissible"
-set, and the geometry of that unrealized field — and `salience/` allocates compute by *possibility density*
-(the doorway over the quiet valley) under one more law: `possibility → allocation`, never `possibility →
-physics`. Honest scope: this is a *reference runtime and a measurement framework*, not a shipping 240fps
-engine and not a claim about physical nature — it measures the admissible field under the declared structure,
-never that the structure is correct (`integrity ≠ truth`).
+**The possibility-aware runtime (`airlock`, `salience`, `consequence`, `causal_runtime`).** The most recent
+layer turns the workbench into a deterministic reality engine an LLM/agent/human integrates with *as an
+untrusted proposer*, and then allocates computation over the committed result. `airlock/` is a general
+reality-transition membrane: a proposer never mutates state — it emits a bounded candidate transition that
+passes `canon → fuel → shadow-apply → validate → witness` before the deterministic kernel commits it, under
+two laws (`telemetry ≠ control`, `intent ≠ authority`). Because every *unrealized* transition leaves a trace,
+the runtime measures what almost happened — proposal pressure, the lawful-but-unchosen "admissible" set, and
+the geometry of that unrealized field — and `salience/` allocates compute by *possibility density* (the
+doorway over the quiet valley) under one more law: `possibility → allocation`, never `possibility → physics`.
+
+Downstream of the commit, a **reality/observation domain split** governs *where computation goes* without ever
+touching what was committed. `consequence/` is the State-Graph Taint Map: a perturbation's weight is
+`Δ · dependency_mass`, not its magnitude (`consequence ≠ magnitude`, the butterfly), and its Causal
+Reconstruction Test deletes ~87% of compute while preserving the full future on structured worlds — *bounded*
+by graph completeness (an undeclared coupling collapses preservation to 0.414, measured). `causal_runtime/`
+composes that into one field, `A = consequence × uncertainty × possibility + G⁺`, and an `AttentionField`
+apportions streaming/AI/fidelity/network/validation depth from it. The epistemic axis is fed by a
+producer-agnostic novelty seam (`dini` is one producer, crossing a Q16 canon boundary), and the **ghost**
+`G⁺ = max(0, observed − predicted)` catches what the graph cannot — an undeclared coupling that moves a node
+the model rated zero. The **cardinal invariant** is proven against `AetherPulse`: attaching the observer
+leaves the committed hash trajectory byte-identical, under one more law `causal_information → attention`, never
+`→ mutation`. Honest scope: this is a *reference runtime and a measurement framework*, not a shipping 240fps
+engine and not a claim about physical nature — it allocates compute and certainty under the declared
+structure, never truth, and never that the structure is correct (`integrity ≠ truth`).
 
 **Native ports (C++/Rust).** Performance-critical pieces (e.g. the `AetherPulse` engine) may be ported to
 C++/Rust, but the **Python reference defines the semantics**: a native build is validated strictly against
@@ -90,6 +105,7 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 | Exact integer consensus + the 2D (lateral×temporal) attestation lattice | `quorum/demo_quorum.py` |
 | A bounded integer VM whose run mints an offline-replayable proof shard | `fuel/demo_fuel.py`, `tessera/demo_tessera.py` |
 | A 1,000,000-step fixed-point manifold with deterministic self-retraction, no nondeterministic drift | `aether/demo_aether_physics.py` |
+| Consequence-aware allocation that leaves reality untouched — committed hash byte-identical with/without the observer, while the ghost discovers an undeclared, low-visibility anomaly distance & consequence both miss | `causal_runtime/demo_aether_attention.py`, `causal_runtime/discovery.py`, `consequence/reconstruct.py` |
 | Standalone *applications* compose the stack into products (Sibling Law, read-only imports, own tests) | `aegis_gate/` (verifiable transfer agent, 14 tests), `VeriSim/` (verifiable simulation, 12 tests), `VeriVerse/` (verifiable voxel world+physics, 13 tests), `AetherPulse/` (deterministic engine kernel + conformance vectors, 15 tests), `AetherManifold/` (deterministic Riemannian optimization, 10 tests) |
 | *(legacy, in `docs/archive/`)* differential fuzzing 20k cases 0 violations; hardware-invariant replay; replay immunity; chaos-order invariance | `forge/oracle_fuzz.py`, `forge/duel_determinism_proof.py`, `forge/nonce_proof.py`, `forge/chaos_harness.py` |
 
