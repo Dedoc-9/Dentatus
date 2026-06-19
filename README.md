@@ -24,14 +24,14 @@ decision was correct, fair, or wise.
 In practice this changes your role on an AI project. Treat the LLM as a high-velocity but untrusted
 *engine* and the frozen cores as a rigid *chassis*: it generates fast while the workbench — not your
 attention — tracks determinism, structural purity, privilege isolation, and resource budgets.
-`integration/preflight_check.py` runs the whole 35-suite contract and `selfaudit/` proves the cores
+`integration/preflight_check.py` runs the whole 36-suite contract and `selfaudit/` proves the cores
 have not drifted, so your review shifts from line-by-line diff-reading to the one thing a machine
 cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
 its checks cover, not arbitrary badness — integrity is not truth.)
 
 ### The families, at a glance
 
-Twenty-eight components group into a few families, each a different hat on the one idea. **The audit core**
+Twenty-nine components group into a few families, each a different hat on the one idea. **The audit core**
 (`chronicle`, `llm_toolkit`) records and replays. **Governance & isolation** (`guard_server`, `polity`,
 `pact`, `quorum`) decide *who may act* and *what becomes true* across parties. **The Axiom triad**
 (`tessera` → `fuel` → `elenchus`) proves *the log is real*, *the machine ran*, and *the trace followed the
@@ -40,11 +40,13 @@ declared rules* — three layers of a single offline-replayable proof. **The Col
 hardest seeds to break it. **Real-time & physics** (`lockstep`, `aether`, `manifold`) separate truth-rate
 from frame-rate and harden manifold geometry in fixed-point integers. **The boundary** (`stasis`) admits the
 messy real world — canonicalizing inputs, classifying drift-vs-lie, batching verification. **The
-possibility-aware runtime** (`airlock`, `salience`, `consequence`, `causal_runtime`) lets an untrusted proposer
-integrate with reality through a membrane (`airlock`), allocates compute by *possibility density* (`salience`),
-weights everything by *future consequence* rather than magnitude (`consequence`, the butterfly), and spends
-computation — including on what it does not yet understand, via a surprise *ghost* — without ever touching the
-committed history (`causal_runtime`, proven hash-identical against `AetherPulse`). Every one is
+possibility-aware runtime** (`airlock`, `salience`, `consequence`, `causal_runtime`, `intervention`) lets an
+untrusted proposer integrate with reality through a membrane (`airlock`), allocates compute by *possibility
+density* (`salience`), weights everything by *future consequence* rather than magnitude (`consequence`, the
+butterfly), spends computation — including on what it does not yet understand, via a surprise *ghost* — without
+ever touching the committed history (`causal_runtime`, proven hash-identical against `AetherPulse`), and tests
+its own model with airlock-authorized `do()` experiments on shadow worlds that never move reality
+(`intervention`). Every one is
 decoupled enough to lift out and stand alone, and every one states its own honest bound.
 
 ### The possibility-aware runtime — proposing reality through a membrane
@@ -104,6 +106,17 @@ one more law — **`causal_information → attention` ALLOWED, `→ mutation` FO
 allocates compute and certainty, never truth, and inherits the declared graph's limit — the ghost flags the
 undeclared as surprise, it does not make the graph complete. `integrity ≠ truth`.)*
 
+Two layers close the loop without making the system self-modifying. When a ghost *persists*, `causal_runtime`'s
+coupling discovery turns it into a **proposed** graph edge — integer-counted evidence across distinct contexts,
+held behind four locks (propose-never-commit, evidence-not-authority, external review, reality-untouched), so
+even an *accepted* proposal updates a *model* while the committed world hash stays byte-identical
+(`graph improvement ≠ world modification`). Then `intervention/` resolves what observation cannot: an
+airlock-authorized `do()` experiment on a discarded **shadow world** separates a true coupling (**CONFIRMED**)
+from a confounder (**REJECTED** — A and C ride a hidden common cause) from a feedback loop (**CYCLE** warning),
+under one final law — **`causal_information → experiment` ALLOWED (shadow-only), `→ truth` FORBIDDEN**. The
+whole stack becomes a closed epistemic loop: kernel → consequence → ghost → proposal → intervention → a better
+*model* — the map improves, the territory (the committed hash trajectory) never moves.
+
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 
 Deploying Sibling 13 (`quorum/`) alongside `pact/` composes a **2D attestation lattice** for an untrusted
@@ -161,7 +174,7 @@ were not altered, and refuses unsafe ones at write time.
 cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 ```
 
-## The twenty-eight components
+## The twenty-nine components
 
 | Component | What it is | Run |
 |---|---|---|
@@ -194,7 +207,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`consequence/`](consequence/README.md) | **the State-Graph Taint Map** — the shared *what-matters-next?* field: dependency graph → consequence (`consequence ≠ magnitude`, the butterfly); one field, many consumers (compute · validation depth · network · AI); the Causal Reconstruction Test (delete most compute, keep the future — bounded by graph completeness) | `PYTHONHASHSEED=0 python3 demo_consequence.py` |
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 
-All twenty-eight refuse to run without `PYTHONHASHSEED=0`. Test suites total **457 unit tests across 35 suites**
+All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **470 unit tests across 36 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
@@ -221,7 +234,7 @@ immutable instrument while the workbench around it keeps gaining purpose-built p
 
 The Sibling Law also scales up from *components* to whole *products*: a standalone application can import the
 frozen cores (and any siblings) **read-only** via a path shim, without being a sibling itself or entering the
-35-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
+36-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
 
 | Application | What it is | Honest bound |
 |---|---|---|
@@ -328,7 +341,7 @@ primitives extract losslessly, so any layer lifts out as a standalone component 
 
 One command verifies the whole workbench before you build on it. For the **entire repo** — workbench *and* the five
 downstream applications — `python3 verify_all.py` runs both gates (the preflight + the application conformance
-harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 35 suites **and** the parity
+harness) and prints one green/red verdict; the per-workbench preflight below is the first of those two gates. It runs the 36 suites **and** the parity
 proof as subprocesses under `PYTHONHASHSEED=0`, and prints a green status **only if everything actually
 passed**. That same `verify_all.py` is the CI gate — [`.github/workflows/verify.yml`](.github/workflows/verify.yml)
 runs it on every push and PR (pinning the Ed25519 crypto tier the baselines were pinned under), so the
@@ -339,12 +352,12 @@ python3 integration/preflight_check.py
 ```
 
 On success it *emits* the status below — this is earned output from a real run, **not** a banner you paste
-by hand to assert state (asserting "35/35 green" without running it is exactly the integrity-theater this
+by hand to assert state (asserting "36/36 green" without running it is exactly the integrity-theater this
 project refuses):
 
 ```
 [FOUNDRY VERIFIED]
-  - 35/35 suites green; primitive parity holds (parity_proof.py)
+  - 36/36 suites green; primitive parity holds (parity_proof.py)
   - Out-of-process policy clamps + tiered hardware signer present and tested
   - Cognitive modesty acknowledged: integrity != truth
 Proceed with refactoring bounds secured.
@@ -382,7 +395,7 @@ the ledger):
 ## Verification Record — <change / decision id> — <date>
 
 - Command:            PYTHONHASHSEED=0 python3 integration/preflight_check.py
-- Preflight result:   [FOUNDRY VERIFIED]  (35/35 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
+- Preflight result:   [FOUNDRY VERIFIED]  (36/36 suites + PARITY HOLDS)   # paste the real tail, or BLOCKED
 - Replay Court:        VERIFIED — N records reproduced bit-for-bit       # or: REJECTED at seq <k> (<reason>)
 - ruleset/policy hash: <before> -> <after>   (changed? yes/no; if yes, why + version)
 - Signer:              algo=<ed25519|hmac-sha256>  tier=<1 hardware | 2 soft | 3 symmetric>

@@ -1,7 +1,7 @@
 # Dentatus/Chronicle — an honest technical overview
 
 > **Repo layout note.** The active project is the **Chronicle workbench**: two frozen cores
-> ([`chronicle/`](chronicle/README.md), [`llm_toolkit/`](llm_toolkit/README.md)) plus 26 decoupled
+> ([`chronicle/`](chronicle/README.md), [`llm_toolkit/`](llm_toolkit/README.md)) plus 27 decoupled
 > *sibling* components, gated by one command (`integration/preflight_check.py`). The full legacy Reality
 > Engine / Citadel implementation described in the second half of this document now lives under
 > [`docs/archive/`](docs/archive/) — run its proofs from there (`cd docs/archive` first). The
@@ -33,16 +33,16 @@ manifold — each is the same canonical-bytes → hash + capture-at-boundary dis
 
 ### The workbench today
 
-The `chronicle` core has been extended into a **28-component workbench** (2 frozen cores + 26 siblings,
-**457 unit tests across 35 suites**, all gated by one preflight). The siblings are deliberately decoupled —
+The `chronicle` core has been extended into a **29-component workbench** (2 frozen cores + 27 siblings,
+**470 unit tests across 36 suites**, all gated by one preflight). The siblings are deliberately decoupled —
 each imports the cores read-only (the "Sibling Law", verified by a parity proof), each is a small **reference
 implementation** of the one idea in a different domain, and **each states its own honest bound in its
 README**. They group into families: an audit core; governance & isolation (`guard_server`, `pact`, `quorum`,
 `polity`); a three-layer offline-replayable proof stack (`tessera` → `fuel` → `elenchus`); a
 hardware-invariant integer workload and its adversary (`syracuse`, `crucible`); real-time and fixed-point
 physics (`lockstep`, `aether`, `manifold`); a boundary layer that admits the messy real world (`stasis`);
-and the possibility-aware runtime (`airlock`, `salience`, `consequence`, `causal_runtime`) that proposes,
-allocates, and spends computation over a deterministic kernel without ever mutating it. None of them is a
+and the possibility-aware runtime (`airlock`, `salience`, `consequence`, `causal_runtime`, `intervention`) that
+proposes, allocates, spends, and *tests* computation over a deterministic kernel without ever mutating it. None of them is a
 product; collectively they are a demonstration that one honest primitive
 composes across surprisingly different problems. Two **standalone applications** in the repo show the same
 composition one level up — `aegis_gate/` (a verifiable transfer & KYC agent; a *mock* bank, proves the audit
@@ -83,9 +83,14 @@ producer-agnostic novelty seam (`dini` is one producer, crossing a Q16 canon bou
 `G⁺ = max(0, observed − predicted)` catches what the graph cannot — an undeclared coupling that moves a node
 the model rated zero. The **cardinal invariant** is proven against `AetherPulse`: attaching the observer
 leaves the committed hash trajectory byte-identical, under one more law `causal_information → attention`, never
-`→ mutation`. Honest scope: this is a *reference runtime and a measurement framework*, not a shipping 240fps
-engine and not a claim about physical nature — it allocates compute and certainty under the declared
-structure, never truth, and never that the structure is correct (`integrity ≠ truth`).
+`→ mutation`. When a ghost *persists*, `causal_runtime`'s coupling discovery proposes (never commits) a graph
+edge behind four locks, and `intervention/` resolves what observation cannot: an airlock-authorized `do()`
+experiment on a discarded shadow world separates true coupling (CONFIRMED) / confounder (REJECTED) / feedback
+(CYCLE), under a final law `causal_information → experiment` ALLOWED (shadow-only), never `→ truth`. The stack
+is a closed epistemic loop that improves the *model* while the committed history never moves. Honest scope:
+this is a *reference runtime and a measurement framework*, not a shipping 240fps engine and not a claim about
+physical nature — it allocates compute and certainty under the declared structure, never truth, and never that
+the structure is correct (`integrity ≠ truth`).
 
 **Native ports (C++/Rust).** Performance-critical pieces (e.g. the `AetherPulse` engine) may be ported to
 C++/Rust, but the **Python reference defines the semantics**: a native build is validated strictly against
@@ -99,5 +104,5 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 
 | Property | Evidence |
 |---|---|
-| The whole workbench passes one gate — 35/35 suites + coupled/uncoupled parity, run as real subprocesses | `integration/preflight_check.py` → `[FOUNDRY VERIFIED]` |
+| The whole workbench passes one gate — 36/36 suites + coupled/uncoupled parity, run as real subprocesses | `integration/preflight_check.py` → `[FOUNDRY VERIFIED]` |
 | Cores have not drifted from a pinned baseline; siblings vendor no core (t

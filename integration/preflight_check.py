@@ -52,6 +52,7 @@ SUITES = [
     "salience/tests/test_salience.py",
     "consequence/tests/test_consequence.py",
     "causal_runtime/tests/test_causal_runtime.py",
+    "intervention/tests/test_intervention.py",
 ]
 PARITY = "integration/parity_proof.py"
 
