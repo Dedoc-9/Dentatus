@@ -6,7 +6,7 @@
 
 **To any human or model editing this repository:** this is a high-assurance,
 deterministic, content-addressed workbench ("Dentatus/Chronicle"). Code you add
-is bound by the contract below. The boundaries are enforced by 374 tests across 32
+is bound by the contract below. The boundaries are enforced by 380 tests across 33
 suites and by the Replay Court / Parity Proof — violate them and the regression
 suite fails. Equally binding is the *epistemic* rule: **never oversell what the
 code protects.**
@@ -149,7 +149,7 @@ done
 PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLDS
 ```
 
-**Current verification state: 374 tests passing across 32 suites (+ coupled/uncoupled parity proof).**
+**Current verification state: 380 tests passing across 33 suites (+ coupled/uncoupled parity proof).**
 
 | Suite | Tests | Guards |
 |---|---|---|
@@ -169,7 +169,7 @@ PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLD
 
 A change is not complete until **all three** hold — anything less is not "done":
 
-1. `integration/preflight_check.py` prints `[FOUNDRY VERIFIED]` (it actually ran the 32 suites + parity).
+1. `integration/preflight_check.py` prints `[FOUNDRY VERIFIED]` (it actually ran the 33 suites + parity).
 2. A **Verification Record** is produced for review — the copy-paste template, run triggers, and reject
    criteria live in `README.md` -> *"Using this in a project"*. Hand a reviewer only **public** material
    (ledger + public key + hashes); never a private key or HMAC secret.
@@ -252,7 +252,7 @@ states the leverage *and* its bound — the point is throughput you can actually
 wrong (§3).
 
 1. **One replayable gate instead of a CI matrix (`integration/preflight_check.py` + `parity_proof.py`).**
-   The preflight *is* the definition of done: it runs all 32 suites + the coupled/uncoupled parity proof as
+   The preflight *is* the definition of done: it runs all 33 suites + the coupled/uncoupled parity proof as
    subprocesses under `PYTHONHASHSEED=0` and names the exact failing suite/file. You stop maintaining a
    sprawling pipeline and a pile of green-banner screenshots. *Bound:* it asserts what the suites assert —
    no regressions + frozen cores + lawful structure — not that uncovered new logic is correct.
@@ -322,7 +322,7 @@ each bounded:
 
 ```
 [ Traditional flow ]  Code -> manual review -> debug non-determinism -> slow deploy
-[ Workbench flow ]    Generate -> preflight (32 suites) -> replay verification -> fast deploy
+[ Workbench flow ]    Generate -> preflight (33 suites) -> replay verification -> fast deploy
 ```
 
 The role-shift: you go from anxious code supervisor to systems architect — the LLM is the engine, the
