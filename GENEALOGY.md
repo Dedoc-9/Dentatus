@@ -85,6 +85,74 @@ sophisticated ranking systems**, every one held to the same rule: *they may infl
 next; they may not redefine what happened.* The only thing that certifies reality is the committed trajectory
 itself.
 
+## Formal testability — what the math can and cannot decide
+
+The root principle has a precise mathematical reading, and it cleanly separates what is decidable from what is
+not. The field is a **scoring function `F`**; three different claims hide inside "the field works", and they do
+not share a burden of proof.
+
+**1. The allocation claim — TESTABLE.** Given budget `B`, allocating by `F` captures more *true* importance `M`
+than allocating by a baseline. It is a constrained optimization:
+
+```
+maximize   Σ aᵢ · Mᵢ            subject to   Σ aᵢ · cᵢ  ≤  B
+```
+
+Test: greedy-by-`F` vs greedy-by-baseline (distance, magnitude, screen, random), each *scored on M*. Runnable in
+`causal_runtime/allocation.py`.
+
+**2. The predictive claim — TESTABLE.** `F` ranks items by their true future importance:
+`Spearman(Fₜ, Mₜ) > Spearman(baseline, Mₜ)` over the next `N` ticks. Ordinary predictive-model evaluation.
+
+**3. The ontology claim — NOT mathematically decidable.** *"`F` captures what truly matters."* Undecidable,
+because `M` is not a mathematical primitive — player score, win-probability, future entropy, economic value,
+narrative weight, validation risk are all different choices of `M`, and different stakeholders choose different
+ones. The math can show `F → M` predicts well; it can **never** show `M` is the correct notion of importance.
+So in `allocation.py` **`M` is an explicit, independent parameter** (never the allocator's own score): every
+verdict is *"better under this M"*, and swapping `M` can flip it (`test_ontology_verdict_is_relative_to_M`).
+
+The rasterization hypothesis is the same shape — minimize future-weighted visual error at equal budget:
+
+```
+minimize   L = Σ Fᵢ · Eᵢ(Tᵢ)     subject to   Σ Tᵢ  ≤  B
+```
+
+If future-surface LOD consistently minimizes `L` at equal triangle budget vs distance/screen-space LOD, you have
+proven **better resource allocation** — not that future-surface is truth, causality, or *all* importance, only
+that it is a better allocator under the chosen objective.
+
+**The non-negotiable: the test must be able to fail the field.** A benchmark that scores `F` on a metric defined
+*using* `F` is circular and proves nothing. `allocation.py` is built to falsify: a `future_loses` world (where
+`F` is a *bad* estimate of `M`) shows future-surface **losing to distance** — measured, not hidden. A test that
+cannot fail the field is not a test. *(Honest note: the earlier `lod.py` bench weights its error by
+`future_surface`, so it is a self-consistency check, not an independent-objective test; `allocation.py` is the
+independent-`M`, falsifiable form.)*
+
+The whole reduction, in one line: the field is a scoring function, and the only rigorous question is **"does
+using it improve decisions under a fixed budget?"** — precise, measurable, falsifiable. Not "is it true?"
+
+## Failure mode — the distance floor (graceful degradation)
+
+The formal test admits the field can *lose*: when `future_surface` becomes a bad estimate of the objective, plain
+distance beats it. A runtime therefore needs an answer to *"what do I do when my own field has failed?"* — and
+it must answer **without a truth oracle**, because it cannot compare its estimate to the objective `M` at runtime
+(`M` is not yet known). `causal_runtime/fallback.py` solves it with the signal already on hand: the **ghost**.
+Sustained ghost saturation ("the model is surprised *everywhere*") is a runtime self-estimate that the
+structural field is unreliable; past a hysteresis-latched threshold the runtime degrades to the **distance
+floor** — the model-free baseline that makes no future claim and so cannot be catastrophically wrong about `M`.
+
+```
+future_surface → allocation   while RELIABLE
+distance       → allocation   at UNRECOVERABLE failure (sustained low reliability)
+```
+
+Two properties make it honest, both measured (Fallback benchmark): across a regime shift the degraded policy
+captures **best-of-both** (more `M` than *either* fixed policy — it keeps the field's early edge, then recovers
+to distance), and in a **stable** world it never needlessly falls back. "Unrecoverable" means *sustained* (a
+transient ghost spike must not drop the smart field) — and the trigger is the field's own doubt, never a check
+against reality. The ghost, which began as an attention engine for *ignorance*, is now also the **failure
+detector** that decides when to stop trusting the field.
+
 ## The method that generated everything
 
 The architecture did not grow by asking "what feature next?" It grew by asking, repeatedly:
@@ -121,6 +189,7 @@ Trace → Salience → Possibility → Consequence → Ghost → Coupling-discov
 | **intervention** | correlation that survives observation can still be confounded | a causal claim needs a controlled test that *never touches reality* | airlock-authorized `do()` on a shadow world |
 | **falsification** | evidence that can only increase builds self-sealing models | evidence must be falsifiable and *able to decay* | held-out corroboration track record |
 | **lod** | **future consequence *alone* does not determine render priority**, and a future-aware renderer could leak hidden information | render priority must combine future relevance *with legally-visible perceptibility*, and may never reveal the unseen | `render_priority = future_surface × perceptual_sensitivity`; occlusion-gated; `fairness_invariant` |
+| **fallback** | the smart field can be a *worse* estimate of the objective than plain distance when its regime breaks (proven in `allocation.py`) | at *detected, sustained* failure the runtime must degrade to a model-free floor — using a runtime self-signal, never a truth oracle | ghost-saturation `reliability` → hysteresis `DegradationLatch` → **distance floor** |
 
 ## Architectural Laws (design constraints — never weakened by new data)
 
@@ -162,6 +231,7 @@ evidence that only increases is self-sealing; a confounder & a regime-fluke pass
 observation alone cannot separate a true edge from a confounder; intervention can                       (Causal Intervention)
 consequence ≠ visibility; future consequence ALONE is insufficient for render priority                  (LOD Falsification)
 possibility-aware attention MATCHES hand-authored importance (automatically, at scale) — it does NOT beat it  (CCR)
+ghost-triggered distance fallback BEATS both fixed policies across a regime shift, and never degrades a stable world (Fallback)
 ```
 
 The last one is a deliberate **non-superiority** finding kept on the record: the value of possibility-attention

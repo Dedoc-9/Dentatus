@@ -252,7 +252,9 @@ PYTHONHASHSEED=0 python3 freshness.py                # the Causal Freshness Benc
 PYTHONHASHSEED=0 python3 demo_falsification.py       # held-out gate + Self-Confirmation Benchmark + tiers
 PYTHONHASHSEED=0 python3 self_confirmation.py        # the Self-Confirmation Benchmark alone
 PYTHONHASHSEED=0 python3 lod.py                      # the LOD Falsification Bench (consequence != visibility)
-PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 48 unit tests
+PYTHONHASHSEED=0 python3 allocation.py               # the FORMAL allocation+predictive test (M-parameterized, falsifiable)
+PYTHONHASHSEED=0 python3 fallback.py                 # graceful degradation: distance floor at unrecoverable field failure
+PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 62 unit tests
 ```
 
 ## Honest bound
@@ -283,4 +285,6 @@ claim about physical nature or a shipping 240fps engine. `integrity ≠ truth`; 
 | `demo_dini_novelty.py` | **dini** as a novelty producer (Q16 canon boundary) + ghost; invariant re-proven |
 | `_wb.py` | path shim so demos/tests wire real sources (AetherPulse, consequence, dini) without the core importing across siblings |
 | `lod.py` | the **LOD Falsification Bench** — render_priority = future_surface × perceptual_sensitivity; `consequence ≠ visibility` |
-| `tests/test_causal_runtime.py` | 48 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |
+| `allocation.py` | the **formal allocation + predictive test** — max Σaᵢ·Mᵢ s.t. Σaᵢ·cᵢ≤B against an *independent* M; falsifiable (a bad-estimate world makes future_surface LOSE); M is a parameter (ontology not decidable) |
+| `fallback.py` | **graceful degradation** — ghost-triggered hysteresis latch → **distance floor** at unrecoverable field failure; beats both fixed policies across a regime shift, never degrades a stable world |
+| `tests/test_causal_runtime.py` | 62 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |

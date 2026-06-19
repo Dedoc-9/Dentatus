@@ -20,6 +20,8 @@ import falsification as FAL
 import self_confirmation as SCB
 import tiers as TIER
 import lod as LOD
+import allocation as ALLOC
+import fallback as FB
 
 S = F.SCALE
 
@@ -347,6 +349,84 @@ class TestLODFalsificationBench(unittest.TestCase):
         hidden = {"id": "x", "coverage": 40, "future_surface": 10000, "occluded": True}
         self.assertGreater(LOD.render_priority(seen), 0)
         self.assertEqual(LOD.render_priority(hidden), 0)   # future_surface x 0 visible coverage = 0
+
+
+class TestFormalAllocation(unittest.TestCase):
+    def _cap(self, rows, w, p):
+        c = rows[w]["captured"]; return c[p] / max(1, c["M"])
+
+    def test_aligned_is_negative_control(self):
+        rows = ALLOC.run()
+        self.assertAlmostEqual(self._cap(rows, "aligned", "future_surface"),
+                               self._cap(rows, "aligned", "distance"), delta=0.05)
+
+    def test_future_wins_on_good_estimate(self):
+        rows = ALLOC.run()
+        self.assertGreater(self._cap(rows, "future_wins", "future_surface"),
+                           self._cap(rows, "future_wins", "distance"))
+
+    def test_falsifiable_future_loses_on_bad_estimate(self):
+        # the test MUST be able to fail the field — otherwise it is circular
+        rows = ALLOC.run()
+        self.assertLess(self._cap(rows, "future_loses", "future_surface"),
+                        self._cap(rows, "future_loses", "distance"))
+
+    def test_predictive_spearman_tracks_quality(self):
+        rows = ALLOC.run()
+        self.assertGreater(rows["future_wins"]["spearman_to_M"]["future_surface"], 800)   # good estimate
+        self.assertLess(rows["future_loses"]["spearman_to_M"]["future_surface"], 300)      # bad estimate
+
+    def test_ontology_verdict_is_relative_to_M(self):
+        # claim 3: swap the objective M and the field's advantage can vanish — "better under THIS M", never "true"
+        items = ALLOC._world("future_wins")
+        budget = int(sum(o["cost"] for o in items) * 0.3)
+        under_M  = ALLOC.evaluate(items, budget, m_key="M")          # F tracks M -> F wins
+        under_M2 = ALLOC.evaluate(items, budget, m_key="magnitude")  # F does not track magnitude
+        win_M  = under_M["captured"]["future_surface"]  > under_M["captured"]["distance"]
+        win_M2 = under_M2["captured"]["future_surface"] > under_M2["captured"]["magnitude"]
+        self.assertTrue(win_M)
+        self.assertFalse(win_M2)                                     # the verdict flipped with the objective
+
+    def test_verdict_and_determinism(self):
+        label, _ = ALLOC.verdict()
+        self.assertEqual(label, "allocation-test-is-comparative-and-falsifiable")
+        self.assertEqual(ALLOC.run(), ALLOC.run())
+
+
+class TestGracefulDegradation(unittest.TestCase):
+    def test_degraded_beats_both_fixed_across_a_shift(self):
+        r = FB.benchmark()["shift"]
+        self.assertGreaterEqual(r["degraded"], max(r["future"], r["distance"]))   # best-of-both
+
+    def test_falls_back_only_after_failure_begins(self):
+        r = FB.benchmark()["shift"]
+        self.assertIsNotNone(r["flip_at"])
+        self.assertGreaterEqual(r["flip_at"], r["t_shift"])                       # sustained, not pre-emptive
+
+    def test_stable_world_never_needlessly_degrades(self):
+        r = FB.benchmark()["stable"]
+        self.assertIsNone(r["flip_at"])
+        self.assertEqual(r["degraded"], r["future"])
+
+    def test_latch_requires_sustained_failure_not_a_transient(self):
+        latch = FB.DegradationLatch(threshold=FB.SCALE // 2, persist=3)
+        rel_hi, rel_lo = FB.SCALE, 0
+        for _ in range(3):
+            latch.update(rel_hi)
+        self.assertEqual(latch.update(rel_lo), FB.FUTURE)        # one low frame -> still FUTURE
+        self.assertEqual(latch.update(rel_hi), FB.FUTURE)        # recovered before the latch tripped
+        for _ in range(3):
+            latch.update(rel_lo)
+        self.assertEqual(latch.mode, FB.DISTANCE)               # sustained low -> DISTANCE
+
+    def test_trigger_is_the_ghost_not_M(self):
+        self.assertLess(FB.reliability(FB.SCALE * 3 // 4), FB.SCALE // 2)   # high ghost -> low reliability
+        self.assertGreater(FB.reliability(FB.SCALE // 8), FB.SCALE // 2)    # low ghost  -> high reliability
+
+    def test_verdict_and_determinism(self):
+        label, _ = FB.verdict()
+        self.assertEqual(label, "distance-floor-recovers-unrecoverable-field-failure")
+        self.assertEqual(FB.benchmark(), FB.benchmark())
 
 
 if __name__ == "__main__":

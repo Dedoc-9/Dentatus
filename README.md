@@ -221,7 +221,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 | [`intervention/`](intervention/README.md) | **controlled causal query protocol** — an airlock-authorized `do()` experiment on a discarded *shadow* world separates true coupling (CONFIRMED) / confounder (REJECTED) / feedback (CYCLE); law `causal_information→experiment` ALLOWED (shadow-only), never `→truth`; committed history untouched | `PYTHONHASHSEED=0 python3 demo_intervention.py` |
 
-All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **489 unit tests across 36 suites**
+All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **501 unit tests across 36 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
