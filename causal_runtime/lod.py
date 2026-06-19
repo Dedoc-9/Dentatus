@@ -16,6 +16,11 @@ where perceptual_sensitivity ≈ screen_coverage (error you can actually SEE). T
 construction: the switch (huge future_surface × ~0 coverage) gets ~0 render budget; the collapsing bridge
 (huge future_surface × real coverage) gets a lot.
 
+FAIRNESS LAW (so a future-aware renderer never becomes a gameplay oracle):
+    future_surface → fidelity allocation   ALLOWED   (smoother animation, sharper shading, more triangles)
+    future_surface → hidden information     FORBIDDEN  (perceptual_sensitivity is gated by LEGAL visibility, so
+                                                       an occluded enemy scores 0 no matter its future_surface)
+
 This is a FALSIFICATION BENCH, not a renderer. It allocates a fixed TRIANGLE budget across objects by three
 policies — distance LOD, screen-space LOD, and future-surface LOD — and measures FUTURE-RELEVANT VISUAL ERROR
 at equal budget. If future-surface preserves significantly more future-relevant fidelity per triangle than
@@ -29,19 +34,29 @@ from field import _hamilton
 Obj = None  # objects are plain dicts: {id, distance, coverage, future_surface, needed}
 
 
+def _visible_coverage(o):
+    """Perceptual sensitivity = on-screen footprint that is LEGALLY VISIBLE. An occluded object (behind a wall,
+    outside line-of-sight) has zero visible coverage no matter how future-critical it is — the fairness gate:
+    `future_surface → hidden information` is structurally impossible because the field multiplies by it."""
+    return 0 if o.get("occluded") else o["coverage"]
+
+
 def render_priority(o):
-    """future_surface × perceptual_sensitivity (screen_coverage). The corrected quantity: a node only earns
-    render detail if its future surface AND its on-screen footprint are both non-trivial."""
-    return o["future_surface"] * o["coverage"]
+    """future_surface × perceptual_sensitivity (LEGALLY-VISIBLE screen_coverage). A node earns render detail
+    only if its future surface AND its legally-visible footprint are both non-trivial. An occluded node scores
+    0 regardless of future_surface — the renderer may raise FIDELITY, never reveal INFORMATION."""
+    return o["future_surface"] * _visible_coverage(o)
 
 
 def _priorities(objs, policy):
+    # every policy occlusion-culls (an unseen object gets no triangles) — fidelity allocation never reveals info
+    vis = {o["id"]: (0 if o.get("occluded") else 1) for o in objs}
     if policy == "distance":
-        return {o["id"]: max(1, 1_000_000 // (o["distance"] + 1)) for o in objs}   # nearer -> higher
+        return {o["id"]: vis[o["id"]] * max(1, 1_000_000 // (o["distance"] + 1)) for o in objs}
     if policy == "screen":
-        return {o["id"]: o["coverage"] for o in objs}                              # bigger on screen -> higher
+        return {o["id"]: _visible_coverage(o) for o in objs}
     if policy == "future":
-        return {o["id"]: render_priority(o) for o in objs}                         # future_surface × coverage
+        return {o["id"]: render_priority(o) for o in objs}
     raise ValueError(policy)
 
 
@@ -92,6 +107,27 @@ def hidden_importance_world(n=30, seed=2):
     return objs
 
 
+def occlusion_world(n=20, seed=3):
+    """The anti-wallhack scenario: a visible bridge (future-critical, drawn) and an OCCLUDED sniper behind a
+    wall (future_surface even larger, but legally unseen). A correct allocator funds the bridge and gives the
+    sniper exactly ZERO — future relevance must not become hidden information."""
+    rng = random.Random(seed)
+    objs = [{"id": "clutter%d" % i, "distance": rng.randint(1, 8), "coverage": 100,
+             "future_surface": 0, "needed": 100} for i in range(n)]
+    objs.append({"id": "bridge", "distance": 60, "coverage": 40,
+                 "future_surface": 10000, "needed": 40, "occluded": False})
+    objs.append({"id": "sniper", "distance": 70, "coverage": 30,
+                 "future_surface": 50000, "needed": 30, "occluded": True})
+    return objs
+
+
+def fairness_invariant(objs, alloc):
+    """THE FAIRNESS LAW as a test: no object the player cannot legally see may receive render budget — no matter
+    its future_surface. Returns (ok, violations). `future_surface → hidden information` FORBIDDEN."""
+    violations = [o["id"] for o in objs if o.get("occluded") and alloc.get(o["id"], 0) > 0]
+    return (len(violations) == 0, violations)
+
+
 WORLDS = {"flat": flat_world, "hidden": hidden_importance_world}
 POLICIES = ("distance", "screen", "future")
 
@@ -137,5 +173,9 @@ if __name__ == "__main__":
     print("  Example B  bridge (future_surface huge, coverage 40): covered %d/%d triangles  (funded — pixels DO depend on it)" % (eff("bridge"), need["bridge"]))
     label, _ = verdict(rows)
     print("\nVERDICT:", label)
+    ow = occlusion_world(); b2 = int(sum(o["needed"] for o in ow) * 0.10)
+    fa = allocate(ow, b2, "future"); ok, _viol = fairness_invariant(ow, fa)
+    print("FAIRNESS  occluded sniper (future_surface 50000, behind a wall): render budget = %d  (fairness_ok=%s)" % (fa.get("sniper", 0), ok))
+    print("          visible bridge (future-critical, in line of sight):      render budget = %d  (funded)" % fa.get("bridge", 0))
     print("BOUND: consequence ≠ visibility ; render_priority = future_surface × perceptual_sensitivity")
     print("HONEST SCOPE: a LOD-allocation falsification bench, not a renderer — it does not draw pixels.")

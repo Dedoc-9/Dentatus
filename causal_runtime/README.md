@@ -180,6 +180,17 @@ because `consequence ≠ visibility`: its detail wouldn't be seen. Honest scope:
 triangle budget and measures error; it does **not** draw pixels. Until a real renderer consuming the field
 passes the same test, the rasterization benefit is a hypothesis (see [`GENEALOGY.md`](../GENEALOGY.md)).
 
+**Fairness — the renderer must never become a gameplay oracle.** A future-aware allocator could, naively, leak
+hidden information ("render the enemy through the wall because they're important"). The product structure
+forbids it: `perceptual_sensitivity` is gated by *legal visibility*, so an occluded object scores `future_surface
+× 0 = 0`. `fairness_invariant` proves it — in the occlusion world an **occluded sniper with the largest
+future_surface in the scene receives zero render budget under every policy**, while the visible bridge is funded.
+The law: `future_surface → fidelity` ALLOWED (smoother animation, sharper shading, more triangles); `future_surface
+→ hidden information` FORBIDDEN — i.e. `future relevance ≠ hidden information`. The renderer is just *another
+consumer* of the field; the deeper hypothesis is that one future-surface field coordinates compute, network,
+validation, AI, and rasterization so a fixed hardware budget preserves more of the state that decides what
+happens next (see [`GENEALOGY.md`](../GENEALOGY.md)).
+
 ## The Blind Discovery Benchmark — finding what nothing declared (`discovery.py`)
 
 A hidden node `H`: **consequence 0** (no declared dependency), **low visibility**, but an unusual transition at

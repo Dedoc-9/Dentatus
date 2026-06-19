@@ -41,7 +41,7 @@ Trace → Salience → Possibility → Consequence → Ghost → Coupling-discov
 | **coupling_discovery** | a self-modifying learner drifts toward reducing its own surprise | structure change must be *proposed*, never self-committed | `CouplingRegistry` behind four locks |
 | **intervention** | correlation that survives observation can still be confounded | a causal claim needs a controlled test that *never touches reality* | airlock-authorized `do()` on a shadow world |
 | **falsification** | evidence that can only increase builds self-sealing models | evidence must be falsifiable and *able to decay* | held-out corroboration track record |
-| **lod** | **future consequence *alone* does not determine render priority** | render priority must combine future relevance *with on-screen perceptibility* | `render_priority = future_surface × perceptual_sensitivity` |
+| **lod** | **future consequence *alone* does not determine render priority**, and a future-aware renderer could leak hidden information | render priority must combine future relevance *with legally-visible perceptibility*, and may never reveal the unseen | `render_priority = future_surface × perceptual_sensitivity`; occlusion-gated; `fairness_invariant` |
 
 ## Architectural Laws (design constraints — never weakened by new data)
 
@@ -60,10 +60,13 @@ ghost / proposal     → actual graph edge     FORBIDDEN     (→ proposed edge 
 prediction           → truth                 FORBIDDEN
 falsification        → committed reality      FORBIDDEN     (→ proposal status ALLOWED)
 causal_information   → experiment            ALLOWED *only* shadow-only, airlock-authorized
+future_surface       → fidelity allocation   ALLOWED       (smoother animation, sharper shading, more triangles)
+future_surface       → hidden information     FORBIDDEN     (the renderer must never become a gameplay oracle)
 ```
 
 Restated as the project's standing inequalities, these are the ones that are **laws**: `proposal ≠ authority`,
-`model improvement ≠ world modification`, `telemetry ≠ control`, `intent ≠ authority`.
+`model improvement ≠ world modification`, `telemetry ≠ control`, `intent ≠ authority`, and — for the renderer —
+`future relevance ≠ hidden information` (fidelity may rise; what a player can *see or know* may not).
 
 ## Empirical Findings (results — always challengeable by new data)
 
@@ -82,6 +85,28 @@ possibility-aware attention MATCHES hand-authored importance (automatically, at 
 
 The last one is a deliberate **non-superiority** finding kept on the record: the value of possibility-attention
 is automation + determinism + self-update, not that it outperforms a hand-tuned heuristic.
+
+## Three things that must not be conflated
+
+The architecture's strength is in exactly one of these, and the claims are only honest if the three stay
+separate:
+
+```
+1. Simulation truth          — what actually happened (the committed hash trajectory; singular, deterministic)
+2. Computation allocation    — where the engine spends finite effort (THIS is where the explicit bounds work)
+3. Player-visible rasterization — what is drawn, at what fidelity, from information already legally available
+```
+
+A competitive player does not benefit because the engine "knows causality." They benefit if the engine spends
+its finite budget — compute, network, validation, AI, *and* triangles — on the state likely to affect the next
+few seconds of play. The rasterization claim is therefore **not** "render causality"; it is "spend rendering
+budget according to expected future gameplay relevance" — and only on information the player may already see.
+A tiny objective door can be strategically dominant; a distant sniper can be about to become the most important
+object in your future; a thousand-pixel waterfall can have zero gameplay consequence. Future-surface allocation
+re-weights fidelity toward the first two — but it may never reveal the third claim's forbidden case (an enemy
+through a wall). That is the fairness law, and `causal_runtime/lod.py`'s `fairness_invariant` tests it: an
+occluded enemy with the *largest* future_surface in the scene receives exactly **zero** render budget under
+every policy, because the field multiplies by legal visibility.
 
 ## The one idea the chain converges on
 
@@ -139,7 +164,15 @@ its honest bound; a marketing-shaped claim is a non-claim.
   network / AI* allocation (Butterfly, Causal Freshness, Blind Discovery, Self-Confirmation, Causal
   Intervention). The committed hash trajectory is byte-identical with every observation layer attached (the
   cardinal invariant).
-- **Hypothesis under test (the image):** that a *renderer* driven by `future_surface × perceptual_sensitivity`
+- **Hypothesis under test (the deeper one):** the renderer is *not the destination* of the field — it is merely
+  another consumer. The real hypothesis is that a **single future-surface field can coordinate simulation,
+  networking, validation, AI attention, and rasterization** so that limited resources are spent on
+  future-relevant state rather than present magnitude — and for a competitive shooter the larger win may be
+  in **network bandwidth / rollback history / tick precision / validation depth** (where the chain has
+  repeatedly found the real bottleneck) *before* it ever reaches triangles. If it proves out, the benefit is
+  not that players see more pixels; it is that **at the same hardware budget the engine preserves more of the
+  information that determines what happens next.** The narrow, testable instance is that a *renderer* driven by
+  `future_surface × perceptual_sensitivity`
   preserves more future-relevant visual fidelity per triangle than distance- or screen-space-driven LOD. The
   **LOD Falsification Bench** (`causal_runtime/lod.py`) is the first evidence — at equal triangle budget on a
   hidden-importance world, future-surface LOD drives future-relevant visual error to ~0 where distance/screen

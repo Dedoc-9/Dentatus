@@ -330,6 +330,24 @@ class TestLODFalsificationBench(unittest.TestCase):
         self.assertEqual(v, "future-surface-LOD-preserves-future-relevant-fidelity")
         self.assertEqual(LOD.run(), LOD.run())
 
+    def test_fairness_occluded_high_future_gets_zero(self):
+        # the anti-wallhack invariant: an occluded enemy, however future-critical, is never rendered/revealed
+        objs = LOD.occlusion_world()
+        budget = int(sum(o["needed"] for o in objs) * 0.10)
+        for pol in LOD.POLICIES:
+            a = LOD.allocate(objs, budget, pol)
+            ok, viol = LOD.fairness_invariant(objs, a)
+            self.assertTrue(ok, "policy %s revealed occluded objects: %s" % (pol, viol))
+        a = LOD.allocate(objs, budget, "future")
+        self.assertEqual(a.get("sniper", 0), 0)            # most future-critical, but behind a wall -> 0
+        self.assertGreater(a.get("bridge", 0), 0)          # visible future-critical -> funded
+
+    def test_render_priority_zero_when_occluded(self):
+        seen = {"id": "x", "coverage": 40, "future_surface": 10000}
+        hidden = {"id": "x", "coverage": 40, "future_surface": 10000, "occluded": True}
+        self.assertGreater(LOD.render_priority(seen), 0)
+        self.assertEqual(LOD.render_priority(hidden), 0)   # future_surface x 0 visible coverage = 0
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
