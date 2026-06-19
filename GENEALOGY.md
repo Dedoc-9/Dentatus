@@ -5,6 +5,9 @@
 > dead branches). The most valuable artifact here may not be any module — it is the record of *what assumption
 > broke, what constraint that forced, and which implementation currently discharges it* (implementations are
 > replaceable; the constraints and the dead branches are not).
+>
+> **The one-line spine:** the field allocates attention; it does not allocate truth. Everything below is a
+> record of the reasons that turned out to matter.
 
 ## The method that generated everything
 
@@ -64,9 +67,11 @@ future_surface       → fidelity allocation   ALLOWED       (smoother animation
 future_surface       → hidden information     FORBIDDEN     (the renderer must never become a gameplay oracle)
 ```
 
-Restated as the project's standing inequalities, these are the ones that are **laws**: `proposal ≠ authority`,
-`model improvement ≠ world modification`, `telemetry ≠ control`, `intent ≠ authority`, and — for the renderer —
-`future relevance ≠ hidden information` (fidelity may rise; what a player can *see or know* may not).
+Each law is the *enforcement* that makes a corresponding **epistemic bound** (below) structurally true — e.g.
+`future_surface → hidden information FORBIDDEN` is what makes `future relevance ≠ hidden information` hold in
+code, not merely in prose. **Laws say what implementations may do; findings say what the benchmarks currently
+show; bounds say what a reader may conclude.** These are three different kinds of statement and the rest of this
+section keeps them apart.
 
 ## Empirical Findings (results — always challengeable by new data)
 
@@ -86,6 +91,44 @@ possibility-aware attention MATCHES hand-authored importance (automatically, at 
 The last one is a deliberate **non-superiority** finding kept on the record: the value of possibility-attention
 is automation + determinism + self-update, not that it outperforms a hand-tuned heuristic.
 
+## Epistemic Bounds — claims the system refuses to make
+
+The deepest statements in the project are neither enforcement rules nor benchmark results. They are **limits on
+interpretation**: they tell a reader what conclusion they are *forbidden from drawing* from any output. They do
+not change with new data or new code — they are the meaning of the whole arc, and arguably its most important
+semantics.
+
+```
+integrity         ≠ truth                 a hash certifies form, never correctness
+possibility       ≠ truth                 "lawful / high-possibility" is not "real"
+prediction        ≠ causation             a survived correlation is not a cause
+surprise (ghost)  ≠ truth                 "the model was wrong here" is not "here is what is true"
+proposal          ≠ authority             a proposed edge is evidence for review, not a fact
+corroboration     ≠ truth                 "survived falsification" is not "proven"
+model improvement ≠ world modification    the map changed; the territory did not
+future relevance  ≠ hidden information     "matters to the future" grants fidelity, never visibility
+```
+
+The single sentence the entire chain reduces to:
+
+> **The field allocates attention. The field does not allocate truth.**
+
+Every major correction — trace → salience → possibility → consequence → ghost → falsification → LOD — has been
+one more variation of the same refusal:
+
+```
+importance     ≠ truth
+prediction     ≠ truth
+surprise       ≠ truth
+proposal       ≠ truth
+corroboration  ≠ truth
+```
+
+The system gets stronger every time it finds a *new reason not to confuse attention with reality.* Each law
+(above) enforces one of these bounds in code; each finding (above) is benchmark evidence *about the world* and is
+permitted to be wrong — but a **bound is a promise the system makes about what it will never claim**, and that
+promise is not the benchmarks' to revoke.
+
 ## Three things that must not be conflated
 
 The architecture's strength is in exactly one of these, and the claims are only honest if the three stay
@@ -99,8 +142,9 @@ separate:
 
 A competitive player does not benefit because the engine "knows causality." They benefit if the engine spends
 its finite budget — compute, network, validation, AI, *and* triangles — on the state likely to affect the next
-few seconds of play. The rasterization claim is therefore **not** "render causality"; it is "spend rendering
-budget according to expected future gameplay relevance" — and only on information the player may already see.
+few seconds of play. The rasterization claim is therefore **not** "render what matters" (that smuggles in a truth claim); it is
+**"allocate finite rendering budget toward state *predicted* to matter"** — and only over information the player
+may already legally see. The hedge is load-bearing: *predicted to matter*, never *matters*.
 A tiny objective door can be strategically dominant; a distant sniper can be about to become the most important
 object in your future; a thousand-pixel waterfall can have zero gameplay consequence. Future-surface allocation
 re-weights fidelity toward the first two — but it may never reveal the third claim's forbidden case (an enemy
