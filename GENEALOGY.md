@@ -131,6 +131,41 @@ independent-`M`, falsifiable form.)*
 The whole reduction, in one line: the field is a scoring function, and the only rigorous question is **"does
 using it improve decisions under a fixed budget?"** — precise, measurable, falsifiable. Not "is it true?"
 
+## Adversarial boundaries — where the field stops being valid (`adversary.py`)
+
+The most valuable result is not "the field wins" but "here is the exact condition under which it stops being a
+valid allocator." Every other benchmark tests future_surface when future-relevance is *already correctly
+represented*; these attack that hidden assumption by making the field **late, wrong, or incomplete**. Each shows
+the naive field LOSING and names the repair (a measured boundary, not a hidden one):
+
+```
+adversary    failure of the field                                   measured boundary / repair
+LATE         a correct-but-OLD field allocates to yesterday's        stale field beats fresh distance only up to
+             importances                                             staleness ≈ 3 ticks (coherence 12), then LOSES
+                                                                     → repair: refresh within the coherence time
+WRONG        RAW consequence overspends on high-consequence /        raw=66% vs distance=93% of oracle → RAW LOSES;
+             LOW-probability branches ("renders impossible futures") expected value C×p = 100% → repair: × probability
+                                                                     (possibility ≠ likelihood — the composite's
+                                                                      possibility axis is not a branch probability)
+GAMEABLE     an actor inflates its OWN consequence to attract budget raw=56% vs guarded=98% → RAW funds manipulators;
+             (self-generated consequence)                            → repair: impact × INDEPENDENT_evidence
+                                                                      (proposal ≠ authority, applied to allocation)
+```
+
+These connect the adversaries back to the bounds: the WRONG boundary is `possibility ≠ likelihood` (a future
+being *lawful* is not a future being *probable* — expected value needs the probability, not just the admissible
+set); the GAMEABLE boundary is `proposal ≠ authority` re-derived for allocation (a score an actor can generate
+about itself is not evidence — it must be gated by *independent* corroboration, the same discipline as the
+held-out gate). The LATE boundary is why `fallback.py`'s reliability signal exists.
+
+**Open adversaries (not yet built — logged so they are not forgotten):** the *perception* gate (visible-tiny-
+critical vs visible-huge-irrelevant — needs a saliency model and a real renderer); the *cross-domain
+conservation* test (one shared field vs four specialized allocators across render/network/CPU/AI at equal total
+budget — the test that most directly attacks the underlying transfer thesis); and the *unknown-unknown* test
+(a hidden coupling → ghost fires → discovery proposes → attention rises → does allocation reach a thing the
+model does not yet understand? — the one that would connect the whole genealogy end to end). The pattern holds:
+the next high-value result is the next *boundary*, not the next win.
+
 ## Failure mode — the distance floor (graceful degradation)
 
 The formal test admits the field can *lose*: when `future_surface` becomes a bad estimate of the objective, plain
@@ -232,6 +267,9 @@ observation alone cannot separate a true edge from a confounder; intervention ca
 consequence ≠ visibility; future consequence ALONE is insufficient for render priority                  (LOD Falsification)
 possibility-aware attention MATCHES hand-authored importance (automatically, at scale) — it does NOT beat it  (CCR)
 ghost-triggered distance fallback BEATS both fixed policies across a regime shift, and never degrades a stable world (Fallback)
+a STALE field loses to fresh distance past a staleness boundary (~3 ticks at coherence 12) — the field needs freshness  (Adversary: late)
+RAW consequence overspends on improbable futures (high consequence ⟂ low probability) and loses to distance; ×probability repairs it  (Adversary: wrong)
+SELF-generated consequence is gameable — raw funds manipulators; ×independent_evidence repairs it  (Adversary: incomplete)
 ```
 
 The last one is a deliberate **non-superiority** finding kept on the record: the value of possibility-attention

@@ -22,6 +22,7 @@ import tiers as TIER
 import lod as LOD
 import allocation as ALLOC
 import fallback as FB
+import adversary as ADV
 
 S = F.SCALE
 
@@ -427,6 +428,29 @@ class TestGracefulDegradation(unittest.TestCase):
         label, _ = FB.verdict()
         self.assertEqual(label, "distance-floor-recovers-unrecoverable-field-failure")
         self.assertEqual(FB.benchmark(), FB.benchmark())
+
+
+class TestAdversarialBoundaries(unittest.TestCase):
+    def test_late_field_has_a_staleness_boundary(self):
+        sb = ADV.stale_boundary()
+        self.assertGreaterEqual(sb, 0)
+        self.assertLess(sb, 24)                                 # there IS a staleness past which it loses to fresh distance
+
+    def test_wrong_raw_consequence_loses_to_distance_on_improbable(self):
+        r = ADV.improbable_test()
+        self.assertLess(r["raw"], r["distance"])                # raw consequence overspends on improbable futures
+        self.assertGreater(r["expected"], r["raw"])             # ×probability (expected value) repairs it
+
+    def test_gameable_raw_funds_manipulators(self):
+        r = ADV.gamed_test()
+        self.assertLess(r["raw"], r["guarded"])                 # self-inflated consequence is exploitable
+        self.assertLess(r["raw"], r["M"])                       # raw captures less true importance than the oracle
+        self.assertGreater(r["guarded"], r["raw"])              # ×independent_evidence repairs it
+
+    def test_verdict_and_determinism(self):
+        label, _ = ADV.verdict()
+        self.assertEqual(label, "field-has-measured-boundaries-late-wrong-gameable")
+        self.assertEqual(ADV.verdict(), ADV.verdict())
 
 
 if __name__ == "__main__":

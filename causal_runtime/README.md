@@ -254,7 +254,8 @@ PYTHONHASHSEED=0 python3 self_confirmation.py        # the Self-Confirmation Ben
 PYTHONHASHSEED=0 python3 lod.py                      # the LOD Falsification Bench (consequence != visibility)
 PYTHONHASHSEED=0 python3 allocation.py               # the FORMAL allocation+predictive test (M-parameterized, falsifiable)
 PYTHONHASHSEED=0 python3 fallback.py                 # graceful degradation: distance floor at unrecoverable field failure
-PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 62 unit tests
+PYTHONHASHSEED=0 python3 adversary.py                # ADVERSARIAL boundaries: where future_surface stops being valid (late/wrong/gameable)
+PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 66 unit tests
 ```
 
 ## Honest bound
@@ -287,4 +288,5 @@ claim about physical nature or a shipping 240fps engine. `integrity ≠ truth`; 
 | `lod.py` | the **LOD Falsification Bench** — render_priority = future_surface × perceptual_sensitivity; `consequence ≠ visibility` |
 | `allocation.py` | the **formal allocation + predictive test** — max Σaᵢ·Mᵢ s.t. Σaᵢ·cᵢ≤B against an *independent* M; falsifiable (a bad-estimate world makes future_surface LOSE); M is a parameter (ontology not decidable) |
 | `fallback.py` | **graceful degradation** — ghost-triggered hysteresis latch → **distance floor** at unrecoverable field failure; beats both fixed policies across a regime shift, never degrades a stable world |
-| `tests/test_causal_runtime.py` | 62 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |
+| `adversary.py` | **where the field stops being valid** — late (stale → needs freshness), wrong (raw consequence overspends on improbable → needs ×probability), gameable (self-consequence exploitable → needs ×independent_evidence) |
+| `tests/test_causal_runtime.py` | 66 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |
