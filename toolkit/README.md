@@ -3,14 +3,14 @@
 A deterministic toolkit for deciding where limited resources should go when you cannot attend to
 everything.
 
-> **This toolkit does not discover importance. It allocates resources according to supplied
-> estimates of importance** — and it has a built-in way to prove itself wrong.
+> **This toolkit does not determine what matters. It assumes a signal exists and tests whether that
+> signal is a better allocator than simpler policies under constrained budgets** — and it has a
+> built-in way to prove itself wrong.
 
 ```python
 from toolkit import attention
 
-field  = attention.observe(world)
-budget = field.allocate(resources=1000, policy="future_surface")
+budget = attention.allocate(world, resources=1000)      # smallest path; you never name the metric
 ```
 
 `world` is a list of items; each is a dict with a `cost` and the signals your scorer reads. The
@@ -18,13 +18,10 @@ default scorer is `future_surface = consequence * uncertainty * possibility`, bu
 the identity of the toolkit — swap in any `item -> int`:
 
 ```python
-from toolkit import attention
+from toolkit import attention, min_gate
 
-def my_scorer(item):
-    return item["consequence"] * item["uncertainty"]
-
-field  = attention.observe(world, scorer=my_scorer)
-budget = field.allocate(resources=1000)              # ranks by the field's scorer by default
+field  = attention.observe(world, scorer=min_gate)      # "a weak dimension caps attention"
+budget = field.allocate(resources=1000)
 ```
 
 ## The contract
@@ -34,33 +31,61 @@ score -> allocation
 allocation != truth
 ```
 
-A score is a *request for resources*, not a fact about the world (`attention != truth`); a reachable
-option is not a probable one (`possibility != likelihood`). Every allocation is graded against a
-hidden, independent objective `M` the scorer never sees — so a win can never be "the model says it
+A score is a *request for resources*, not a fact about the world. Every allocation is graded against
+a hidden, independent objective `M` the scorer never sees, so a win can never be "the model says it
 picked well because the model says so."
+
+## Bounds (the doors this toolkit keeps shut)
+
+| bound | meaning | enforced by |
+|---|---|---|
+| `attention != truth` | a high score is a claim on budget, not a fact | grading on independent `M` |
+| `attention != discovery` | it finds importance only where the signal encodes it | unknown-unknown benchmark |
+| `possibility != likelihood` | a reachable option is not a probable one | scorer is an estimate, swappable |
+| `importance != eligibility` | a top score never buys budget an item is not entitled to | eligibility gate |
+| coherence time | a fixed allocation has a finite useful horizon | coherence benchmark + `Field.tick()` |
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Three scenarios, graded on the hidden `M` (% of the oracle upper bound):
+Eleven asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
-| scenario    | future_surface | magnitude | floor | meaning |
-|-------------|:--------------:|:---------:|:-----:|---------|
-| informative | **95%**        | 27%       | 61%   | good signal — uncertainty-aware allocation captured **3.40×** the consequence of size-based allocation at identical budget |
+**[1] Signal quality.**
+
+| scenario    | future_surface | magnitude | floor | |
+|-------------|:--------------:|:---------:|:-----:|---|
+| informative | **95%**        | 27%       | 61%   | good signal — **3.40×** the consequence of size-based allocation at identical budget |
 | drift       | 46%            | 44%       | 63%   | signal is noise — **loses to the floor** |
-| adversarial | 32%            | 75%       | 82%   | signal is confidently misleading (a loud `fake_crisis`, a silent `quiet_cascade`) — **loses to the floor** |
+| adversarial | 32%            | 75%       | 82%   | signal is confidently misleading — **loses to the floor** |
 
-The drift and adversarial rows are the feature, not the bug: a method that cannot lose is not a
-measurement. The quality of attention follows the quality of the signal.
+**[2] `attention != discovery`.** A low-consequence / high-`M` category is found *only* if
+uncertainty/possibility encode it: encoded → future_surface 88% vs floor 72% (found); uninformative
+signal → 60% vs floor 88% (**not** discovered). The toolkit does not find importance by magic.
+
+**[3] Calibration (aggregation is load-bearing).** Product-structured `M`: product 95% ≥ min_gate
+92%. Min-structured `M`: min_gate 99% ≥ product 93%. No single aggregation is universal; the right
+one depends on how importance composes.
+
+**[4] Budget curve.** Sweeping scarcity, future_surface dominates magnitude at every budget, and the
+advantage is largest under scarcity and shrinks toward abundance (fs 83→99%, mag 17→60% as budget
+100→3000). The claim is "better under *constrained* resources," made precise.
+
+**[5] Coherence time.** An allocation decided at `t=0`, graded as the world drifts: 97% → 68% → 14%
+→ 11% over 5 ticks, falling below a fresh floor (~57%) by `t=3`. Attention has a finite horizon.
+
+**[6] `importance != eligibility`.** A top-`future_surface` but ineligible item (`eligible=False`)
+receives **zero** budget.
+
+The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
 
 ```
 toolkit/
-    __init__.py     the three-line front door
-    attention.py    observe() -> Field -> allocate() -> Budget   (the surface)
+    __init__.py     the smallest front door + the contract
+    attention.py    observe() -> Field -> allocate() -> Budget, eligibility gate, tick()
     allocation.py   allocate() + captured()                      (the proven primitives)
-    policies.py     future_surface / magnitude / uniform         (swappable scorers)
-    benchmarks.py   informative / drift / adversarial worlds      (the falsifiable proof)
+    policies.py     future_surface / min_gate / weighted_product / magnitude / uniform
+    benchmarks.py   eleven asserted properties across eight worlds
 ```
 
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`

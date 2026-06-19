@@ -1,30 +1,46 @@
 """
 toolkit.policies — named scoring functions. A policy maps one item -> an integer priority.
 
-The toolkit does NOT privilege any single policy. `future_surface` is the default heuristic, not
-the identity of the toolkit: any callable `item -> int` is a valid scorer, so the library is
-"resource allocation under uncertainty", not a "future_surface library".
+The toolkit does NOT privilege any single policy. future_surface is the default heuristic, not the
+identity of the toolkit: any callable item->int is a valid scorer, so the library is "resource
+allocation under uncertainty", not a "future_surface library".
 
-Dev note — the bounds the architecture already discovered, which is why the scorer is swappable:
-  possibility != likelihood   — a reachable option is not a probable one.
-  attention   != truth        — a high score is a request for resources, not a fact about the world.
-A policy is therefore an ESTIMATE of importance supplied by the caller. Quality of attention follows
-quality of signal (see toolkit.benchmarks.make_adversarial_world, where a confident-but-wrong signal
-makes the default policy lose on purpose).
+Aggregation is a load-bearing CHOICE, not a fact (see benchmarks.calibration):
+  product           consequence * uncertainty * possibility   (1000*1000*1 beats 300*300*300)
+  min_gate          min(consequence, uncertainty, possibility) (a weak dimension caps attention)
+  weighted_product  consequence-weighted product               (consequence dominates)
+The right aggregation depends on how realized importance M actually composes; the benchmark discovers
+which assumption is load-bearing rather than asserting one.
+
+(geometric_mean is intentionally omitted: (c*u*p)**(1/3) is a monotone transform of the product, so it
+produces the IDENTICAL ranking and therefore the identical allocation. It would add a name, not a policy.)
+
+Dev note -- the bounds that justify making the scorer swappable:
+  possibility != likelihood   -- a reachable option is not a probable one.
+  attention   != truth        -- a high score is a request for resources, not a fact about the world.
+  attention   != discovery    -- the field finds importance only where the signal encodes it.
+A policy is an ESTIMATE of importance supplied by the caller. Quality of attention follows quality of signal.
 """
 from __future__ import annotations
 
 
 def future_surface(item):
-    """Default heuristic: spend where an item is at once consequential, uncertain, and live.
-
-        future_surface = consequence * uncertainty * possibility
-    """
+    """Default heuristic (product): spend where an item is at once consequential, uncertain, live."""
     return max(1, (item["consequence"] * item["uncertainty"] * item["possibility"]) // 1_000_000)
 
 
+def min_gate(item):
+    """A weak dimension caps attention: importance is the WEAKEST signal, not the product."""
+    return min(item["consequence"], item["uncertainty"], item["possibility"])
+
+
+def weighted_product(item):
+    """Consequence-weighted product: consequence counts twice, uncertainty/possibility once."""
+    return max(1, (item["consequence"] ** 2 * item["uncertainty"] * item["possibility"]) // 1_000_000_000)
+
+
 def magnitude(item):
-    """Naive baseline: spend on the biggest. Often wrong — the butterfly."""
+    """Naive baseline: spend on the biggest. Often wrong -- the butterfly."""
     return item.get("magnitude", item["consequence"])
 
 
