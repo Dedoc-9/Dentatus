@@ -259,6 +259,7 @@ def run(budget=1000):
           % ("hidden_jackpot" in fair.chosen))
 
     from .tournament import compare, robustness
+    from .certify import certify
     comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
                     policies.magnitude, policies.random_priority], worlds=200)
     print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
@@ -289,7 +290,21 @@ def run(budget=1000):
     assert any(rob.pct("future_surface", r) < max(rob.pct("magnitude", r), rob.pct("random_priority", r)) for r in others), \
         "future_surface must LOSE in at least one non-clean regime (wins when assumptions hold, not always)"
 
-    print("\n[OK] all fourteen properties hold. The toolkit allocates by supplied signal; it does not")
+    cert = certify(policies.future_surface, worlds=120)
+    def _oracle(item):              # a policy that reads the answer key -> must FAIL the no-hidden check
+        return item["M"]
+    cheat = certify(_oracle, worlds=40)
+    print("\n[9] allocator certification -- a policy must declare assumptions + failure envelope:")
+    print("\n".join("      " + ln for ln in cert.report().splitlines()))
+    print("      -- the certifier catches a cheater: an M-reading policy fails 'no hidden objective' ->",
+          "no_hidden =", cheat.no_hidden)
+
+    assert cert.deterministic and cert.no_hidden and cert.eligibility, "future_surface must pass the honesty checks"
+    assert any(r == "clean" for r, _, _ in cert.envelope), "future_surface must be certified in the clean regime"
+    assert any(r == "adversarial" for r, _, _ in cert.failures), "future_surface must declare adversarial as a failure"
+    assert cheat.no_hidden is False, "the certifier must catch a policy that reads the hidden objective M"
+
+    print("\n[OK] all eighteen properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 

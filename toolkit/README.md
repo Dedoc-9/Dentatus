@@ -34,6 +34,10 @@ print(compare([future_surface, magnitude, random_priority], worlds=1000).table()
 # or a policy x regime matrix: where does each policy win and lose?
 from toolkit import robustness
 print(robustness([future_surface, magnitude, random_priority]).table())
+
+# certify a policy: assumptions, honesty checks, and its known failure envelope
+from toolkit import certify
+print(certify(future_surface).report())
 ```
 
 ## The contract
@@ -56,10 +60,19 @@ picked well because the model says so."
 | `possibility != likelihood` | a reachable option is not a probable one | scorer is an estimate, swappable |
 | `importance != eligibility` | a top score never buys budget an item is not entitled to | eligibility gate |
 | coherence time | a fixed allocation has a finite useful horizon | coherence benchmark + `Field.tick()` |
+| `attention -> explanation` ALLOWED, `-> hidden justification` FORBIDDEN | every claim on a policy's label is a runnable check | `certify()` |
+
+## Commands
+
+```
+python3 -m toolkit              # the full proof (eighteen asserted properties)
+python3 -m toolkit tournament  # compare() + robustness() tables
+python3 -m toolkit certify     # certificate for future_surface
+```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Fourteen asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Eighteen asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -118,6 +131,27 @@ policy                   clean       noisy   adversarial       stale
 staleness — where `magnitude` and even `random` overtake it. The result is not "future_surface is
 best"; it is "future_surface wins when its assumptions hold, and loses when they do not."
 
+**[9] Allocator certification.** Treat a policy like any engineering primitive: make it declare its
+assumptions, failure modes, and evidence. `certify(policy)` emits a safety label:
+
+```
+Policy: future_surface
+Certified:
+  [x] deterministic
+  [x] does not use the hidden objective M
+  [x] respects eligibility (importance != eligibility)
+Operating envelope (beats the random floor):
+  + clean         96% vs random 58%
+Known failure envelope (does not beat random):
+  - noisy         52% vs random 59%
+  - adversarial   21% vs random 70%
+  - stale         11% vs random 43%
+Verdict: CERTIFIED as an allocator (with the failure envelope above)
+```
+
+The honesty checks are runnable, not assurances: a policy that reads `item["M"]` (the graded
+objective) **fails** the *no hidden objective* check automatically — the certifier catches a cheater.
+
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
@@ -128,8 +162,9 @@ toolkit/
     attention.py    observe() -> Field -> allocate() -> Budget, eligibility gate, tick()
     allocation.py   allocate() + captured()                      (the proven primitives)
     policies.py     future_surface / min_gate / weighted_product / magnitude / uniform
-    benchmarks.py   twelve asserted properties across eight worlds
+    benchmarks.py   eighteen asserted properties across nine worlds
     tournament.py   compare() ranked table + robustness() policy x regime matrix
+    certify.py      certify(policy) -> safety label (envelope + failure envelope)
 ```
 
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`
