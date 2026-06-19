@@ -30,7 +30,8 @@ summarizes how peaked an allocation is.
 ```
 PYTHONHASHSEED=0 python3 demo_salience.py            # physics → horizon → salience: doorway outranks valley
 PYTHONHASHSEED=0 python3 demo_bench.py               # Distance vs Cheap vs True falsification (cheap-wins)
-PYTHONHASHSEED=0 python3 tests/test_salience.py      # 15 unit tests
+PYTHONHASHSEED=0 python3 demo_ccr.py                 # Consequence Capture Ratio (possibility-wins-attention)
+PYTHONHASHSEED=0 python3 tests/test_salience.py      # 19 unit tests
 ```
 
 ## The Truth / Attention scheduler split (multiplayer-safe)
@@ -74,6 +75,35 @@ The honest correction the prototype forced: naive `ROA = impactful/cost` *over-r
 are *quality* (does compute land on possibility) and *freshness* (can the atlas be refreshed cheaply enough
 to stay current). Cheap wins both; distance loses quality; true loses freshness.
 
+## Consequence Capture Ratio — possibility-aware ATTENTION (`demo_ccr.py`)
+
+The deeper claim is **possibility-aware *attention*, not rendering**: spend compute by *future consequence
+density*, not proximity — and the biggest prize is **AI** (most NPCs cheap; the few near consequential
+futures expensive). To test it without circularity, **consequence** is an *independent counterfactual*:
+
+```
+consequence(region) = ‖ advance(apply(its most-impactful action))  −  advance(freeze) ‖   over H ticks
+```
+
+— never defined via possibility. Four rankers allocate an attention budget; CCR = fraction of total
+consequence the top budget captures. Measured (50 regions, top-20%):
+
+```
+ranker        CCR     Spearman(vs consequence)
+distance      0.105   −0.21      ← proximity is even slightly ANTI-correlated with consequence
+visibility    0.152   −0.25
+importance    0.485   +0.73      ← a good human designer's static tags
+possibility   0.485   +0.75      ← the cheap atlas (automatic)
+```
+
+**Honest verdict (`possibility-wins-attention`):** possibility-attention captures **3–5× more consequence
+than distance/visibility** (which are *anti*-correlated — what every engine schedules by is a poor proxy for
+where the future is dense). It **matches** hand-authored importance — *but automatically, deterministically,
+at scale, and it stays current as the world changes* (static tags cannot cover 100k entities or react). The
+win is **designer-quality attention without the designer**, not "smarter than humans." The same atlas signal
+serves AI, simulation, streaming, and rendering — one signal, many schedulers. Honest bound: a controlled
+reference result on a synthetic scenario; observability that guides attention, never gating physics.
+
 ## Honest bound
 
 `salience` reallocates *compute*, not reality — it does not make a world more *real*, only more *attended to*
@@ -90,6 +120,8 @@ density *under the declared structure* (airlock + adapter + constraints), never 
 | `predictor.py` | the **cheap O(local) possibility predictor** — local features, calibrated vs true `horizon` |
 | `atlas.py` | the **Possibility Atlas** — possibility cached as terrain (build · sample O(1) · budgeted refresh) |
 | `bench.py` | the **Distance vs Cheap vs True falsification** — accuracy, quality, cost, freshness, ROA verdict |
+| `ccr.py` | **Consequence Capture Ratio** — independent counterfactual consequence + 4-ranker attention comparison |
+| `demo_ccr.py` | possibility-attention vs distance/visibility/importance over real consequence ground truth |
 | `demo_bench.py` | the decisive experiment over real `horizon` ground truth |
 | `demo_salience.py` | the full pipeline: physics → possibility geometry → compute budget |
-| `tests/test_salience.py` | 15 unit tests |
+| `tests/test_salience.py` | 19 unit tests |

@@ -16,6 +16,7 @@ import field as SAL
 import predictor as PR
 import atlas as ATL
 import bench as BN
+import ccr as CCR
 
 
 class TestAllocate(unittest.TestCase):
@@ -106,6 +107,36 @@ class TestFalsificationMetrics(unittest.TestCase):
         true = [9, 1, 8, 2, 0]; cheap = [8, 1, 9, 2, 0]; dist = [1, 1, 1, 1, 1]
         rep = BN.evaluate(true, cheap, dist, {"distance": 0.1, "cheap": 100.0, "true": 600.0}, 5, 50.0)
         self.assertEqual(rep["verdict"], "inconclusive")      # cheap not cheap enough → no win
+
+
+
+
+class TestConsequenceCapture(unittest.TestCase):
+    """CCR pure metrics: does a signal's top-budget capture the truly-consequential regions?"""
+    def test_ccr_perfect_vs_anti(self):
+        cons = [10, 8, 1, 1, 0]
+        perfect = [10, 8, 1, 1, 0]      # ranks exactly by consequence
+        anti = [0, 1, 1, 8, 10]         # reversed
+        self.assertGreater(CCR.ccr(perfect, cons, 0.4), CCR.ccr(anti, cons, 0.4))
+        self.assertAlmostEqual(CCR.ccr(perfect, cons, 0.4), (10 + 8) / 20)
+
+    def test_spearman(self):
+        self.assertAlmostEqual(CCR.spearman([1, 2, 3], [1, 2, 3]), 1.0)
+        self.assertAlmostEqual(CCR.spearman([1, 2, 3], [3, 2, 1]), -1.0)
+
+    def test_verdict_possibility_wins(self):
+        cons = [9, 8, 1, 1, 0]
+        sig = {"distance": [0, 0, 1, 1, 9], "visibility": [0, 1, 1, 1, 9],
+               "importance": [9, 8, 1, 1, 0], "possibility": [9, 7, 1, 2, 0]}
+        rep = CCR.compare(sig, cons)
+        self.assertEqual(rep["verdict"], "possibility-wins-attention")
+
+    def test_verdict_inconclusive_when_proximity_wins(self):
+        cons = [9, 8, 1, 1, 0]
+        sig = {"distance": [9, 8, 1, 1, 0], "visibility": [9, 8, 1, 1, 0],
+               "importance": [9, 8, 1, 1, 0], "possibility": [0, 0, 1, 1, 9]}
+        rep = CCR.compare(sig, cons)
+        self.assertEqual(rep["verdict"], "inconclusive")
 
 
 if __name__ == "__main__":
