@@ -6,8 +6,46 @@
 > broke, what constraint that forced, and which implementation currently discharges it* (implementations are
 > replaceable; the constraints and the dead branches are not).
 >
-> **The one-line spine:** the field allocates attention; it does not allocate truth. Everything below is a
-> record of the reasons that turned out to matter.
+> **The root principle (below):** *the field allocates attention; it does not allocate truth.* Nearly every
+> law, finding, and bound here is a consequence of that one distinction.
+
+## ROOT PRINCIPLE
+
+> **The field allocates attention. The field does not allocate truth.**
+
+This is the parent of every law, finding, and bound in this document — including `integrity ≠ truth`, which is
+merely its special case for the audit core. A mechanism in this architecture may decide *where to look, what to
+test, what to cache, what to validate, what to render, or what to investigate next.* **It may not decide what is
+true.** Every paired statement the project has accumulated is that one distinction wearing a different hat:
+
+```
+possibility    → attention            ALLOWED        possibility    ≠ truth
+consequence    → attention            ALLOWED        consequence    ≠ truth
+prediction     → attention            ALLOWED        prediction     ≠ truth
+ghost          → attention            ALLOWED        ghost          ≠ truth
+proposal       → attention            ALLOWED        proposal       ≠ authority
+corroboration  → attention            ALLOWED        corroboration  ≠ truth
+future_surface → rendering attention  ALLOWED        future_surface ≠ visibility (hidden information)
+```
+
+So each observational layer is, precisely, an **attention engine** for *one kind of uncertainty* — never a
+truth engine for it:
+
+| Layer | Is NOT | IS |
+|---|---|---|
+| `consequence` | a causality engine | an attention engine for **future sensitivity** |
+| `ghost` | a discovery engine | an attention engine for **ignorance** |
+| `falsification` | a truth engine | an attention engine for **doubt** |
+| `intervention` | a causal oracle | an attention engine for **confounding** |
+| `salience` / `possibility` | a physics engine | an attention engine for **the unrealized** |
+| renderer *(hypothesis)* | a gameplay oracle | an attention engine for **finite triangles** |
+
+The phrase is foundational because it does not describe one sibling — it describes the role *every* observational
+layer is permitted to play relative to reality. **The committed hash trajectory is the only thing allowed to be
+"true"; everything downstream is allowed only to decide where attention goes.** The renderer is the clean test:
+it may spend more budget on an *already-visible* object because it is predicted to matter; it may not reveal a
+*hidden* object because it is predicted to matter. The difference between those two is the difference between
+attention and truth.
 
 ## The method that generated everything
 
