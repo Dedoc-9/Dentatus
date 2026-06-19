@@ -1,15 +1,18 @@
 """
-toolkit.tournament — a policy competition harness.
+toolkit.tournament — policy competition and robustness.
 
-The central question of the toolkit is not "is future_surface true?" It is "used as an allocator,
-does this policy outperform alternatives under stated conditions?" `compare` answers exactly that:
-it runs every policy on the SAME worlds, the SAME budget, and the SAME hidden objective M, then ranks
-them by average captured M as a percentage of the oracle.
+The central question is never "is future_surface true?" It is "used as an allocator, does this policy
+outperform alternatives under stated conditions?" Two harnesses answer it:
 
-    from toolkit import compare, future_surface, magnitude, random_priority
+  compare(policies, worlds=N)               one regime: rank policies by mean captured M (% of oracle)
+  robustness(policies, regimes=..., N)      a policy x regime MATRIX: where does each policy win/lose?
+
+Both hold the experiment fixed -- same worlds, same budget, same hidden objective M -- so the only
+variable is the policy. Deterministic: distinct world seeds, integer math, stdlib only.
+
+    from toolkit import compare, robustness, future_surface, magnitude, random_priority
     print(compare([future_surface, magnitude, random_priority], worlds=1000).table())
-
-Deterministic: each world has a distinct seed; integer math; stdlib only.
+    print(robustness([future_surface, magnitude, random_priority]).table())
 """
 from __future__ import annotations
 
@@ -54,3 +57,48 @@ def compare(policies, worlds=1000, world_fn=None, budget=1000, base_seed=0):
     rows = sorted((((100 * tot) // max(1, oracle_total), name) for name, tot in totals.items()),
                   reverse=True)
     return Result([(name, pct) for pct, name in rows], worlds, budget)
+
+
+def default_regimes():
+    """The four standard regimes, each a world_fn(seed): a policy is judged across all of them."""
+    return {
+        "clean":       benchmarks.make_world,             # signals are noisy views of truth
+        "noisy":       benchmarks.make_drift_world,        # signals are pure noise
+        "adversarial": benchmarks.make_adversarial_world,  # signals are confidently misleading
+        "stale":       benchmarks.make_stale_world,        # signals lag a world that has drifted
+    }
+
+
+class Matrix:
+    def __init__(self, cells, policy_names, regime_names, worlds):
+        self.cells = cells                  # {regime: {policy_name: pct}}
+        self.policy_names = policy_names
+        self.regime_names = regime_names
+        self.worlds = worlds
+
+    def pct(self, policy, regime):
+        return self.cells[regime].get(policy, 0)
+
+    def table(self):
+        regs = self.regime_names
+        header = "  %-18s" % "policy" + "".join("%12s" % r for r in regs)
+        lines = [header, "-" * len(header),
+                 "  %-18s" % "oracle" + "".join("%11d%%" % 100 for _ in regs)]
+        for p in self.policy_names:
+            lines.append("  %-18s" % p + "".join("%11d%%" % self.cells[r].get(p, 0) for r in regs))
+        return "\n".join(lines)
+
+    def __repr__(self):
+        return "Matrix(policies=%d, regimes=%r)" % (len(self.policy_names), self.regime_names)
+
+
+def robustness(policies, regimes=None, worlds=200, budget=1000, base_seed=0):
+    """policy x regime matrix of mean captured M (%% of oracle). Each regime is a world_fn(seed). The
+    point is not a single winner but WHERE each policy wins and loses -- a policy survives only where
+    its assumptions hold."""
+    regimes = regimes or default_regimes()
+    cells = {}
+    for rname, wfn in regimes.items():
+        res = compare(policies, worlds=worlds, world_fn=wfn, budget=budget, base_seed=base_seed)
+        cells[rname] = dict(res.rows)
+    return Matrix(cells, [p.__name__ for p in policies], list(regimes.keys()), worlds)

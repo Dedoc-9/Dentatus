@@ -158,6 +158,20 @@ def make_fairness_world(n=20, seed=1):
     return world
 
 
+def make_stale_world(n=60, seed=1, lag=5):
+    """A single static world that encodes signal staleness: the observed signals are what a fresh field
+    saw at t=0, but the objective M is the world as it has since drifted to t=lag. A policy that trusts
+    the (now stale) signal is graded against a world that moved. (compare/robustness 'stale' regime)"""
+    fresh = {o["id"]: o for o in make_drifting_world(n=n, seed=seed, t=0)}
+    later = {o["id"]: o for o in make_drifting_world(n=n, seed=seed, t=lag)}
+    world = []
+    for k in fresh:
+        o = dict(fresh[k])
+        o["M"] = later[k]["M"]
+        world.append(o)
+    return world
+
+
 # -- graders ---------------------------------------------------------------------------------------
 
 def grade(world, budget=1000):
@@ -244,7 +258,7 @@ def run(budget=1000):
     print("      hidden_jackpot funded: %s  (future_surface is top; eligible=False)"
           % ("hidden_jackpot" in fair.chosen))
 
-    from .tournament import compare
+    from .tournament import compare, robustness
     comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
                     policies.magnitude, policies.random_priority], worlds=200)
     print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
@@ -265,7 +279,17 @@ def run(budget=1000):
         "future_surface should lead the non-oracle field"
     assert comp.pct("magnitude") < comp.pct("random_priority"), \
         "butterfly world: size is anti-informative -> magnitude loses even to random"
-    print("\n[OK] all twelve properties hold. The toolkit allocates by supplied signal; it does not")
+    rob = robustness([policies.future_surface, policies.magnitude, policies.random_priority], worlds=150)
+    print("\n[8] policy robustness -- avg captured M (% oracle); a policy survives only where its")
+    print("    assumptions hold (oracle=100% everywhere by definition):")
+    print("\n".join("      " + ln for ln in rob.table().splitlines()))
+    others = [r for r in rob.regime_names if r != "clean"]
+    assert rob.pct("future_surface", "clean") >= max(rob.pct("magnitude", "clean"), rob.pct("random_priority", "clean")), \
+        "future_surface should win the clean regime"
+    assert any(rob.pct("future_surface", r) < max(rob.pct("magnitude", r), rob.pct("random_priority", r)) for r in others), \
+        "future_surface must LOSE in at least one non-clean regime (wins when assumptions hold, not always)"
+
+    print("\n[OK] all fourteen properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 

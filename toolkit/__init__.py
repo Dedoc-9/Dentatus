@@ -27,12 +27,12 @@ from .attention import attention, Field, Budget
 from .allocation import allocate, captured
 from . import policies, benchmarks, tournament
 from .policies import future_surface, min_gate, weighted_product, magnitude, uniform, random_priority
-from .tournament import compare
+from .tournament import compare, robustness
 
 __all__ = [
     "attention", "Field", "Budget",
     "allocate", "captured",
-    "policies", "benchmarks", "tournament", "compare",
+    "policies", "benchmarks", "tournament", "compare", "robustness",
     "future_surface", "min_gate", "weighted_product", "magnitude", "uniform", "random_priority",
 ]
 __version__ = "0.1.0"

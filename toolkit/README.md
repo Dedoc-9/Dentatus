@@ -30,6 +30,10 @@ Or run a competition — which policy allocates best under stated conditions?
 from toolkit import compare, future_surface, magnitude, random_priority
 
 print(compare([future_surface, magnitude, random_priority], worlds=1000).table())
+
+# or a policy x regime matrix: where does each policy win and lose?
+from toolkit import robustness
+print(robustness([future_surface, magnitude, random_priority]).table())
 ```
 
 ## The contract
@@ -55,7 +59,7 @@ picked well because the model says so."
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Twelve asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Fourteen asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -99,6 +103,21 @@ Note `magnitude` (33%) ranks *below* `random` (59%): in a butterfly world "spend
 anti-informative, worse than chance. The toolkit never asks "is future_surface true?" — only "does
 this policy out-allocate the alternatives under these conditions?"
 
+**[8] Policy robustness.** The same experiment across four regimes — a policy survives only where its
+assumptions hold:
+
+```
+policy                   clean       noisy   adversarial       stale
+  oracle                  100%        100%        100%        100%
+  future_surface           96%         52%         21%         11%
+  magnitude                33%         32%         67%         43%
+  random_priority          58%         59%         70%         43%
+```
+
+`future_surface` dominates the clean regime and **collapses** under noise, misleading signal, and
+staleness — where `magnitude` and even `random` overtake it. The result is not "future_surface is
+best"; it is "future_surface wins when its assumptions hold, and loses when they do not."
+
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
@@ -110,7 +129,7 @@ toolkit/
     allocation.py   allocate() + captured()                      (the proven primitives)
     policies.py     future_surface / min_gate / weighted_product / magnitude / uniform
     benchmarks.py   twelve asserted properties across eight worlds
-    tournament.py   compare(policies, worlds=N) -> ranked table (the competition harness)
+    tournament.py   compare() ranked table + robustness() policy x regime matrix
 ```
 
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`
