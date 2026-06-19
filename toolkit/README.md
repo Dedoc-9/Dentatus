@@ -344,6 +344,17 @@ The system may decide where to look.
 It may never decide what reality is.
 ```
 
+## Example — applying it to a real problem
+
+[`examples/raster_allocation.py`](../examples/raster_allocation.py) maps the GPU micro-triangle
+rasterization scheduling problem onto this harness: triangle clusters are items, `coverage` is a
+quad-efficiency signal, and `M` is useful work preserved (pixels shaded, not helper-lane waste). It
+shows that scheduling by raw geometry density (`tri_count_only`) is the trap — under a micro-triangle
+explosion it loses even to random — while a coverage-gated scheduler preserves the useful work. Run:
+`PYTHONHASHSEED=0 python3 examples/raster_allocation.py`. The example ships a manifest whose evidence
+**`expires_if` measured on real GPU silicon** — it proves a property of the *constructed* workload, not
+of hardware. (See the scope note below.)
+
 ## Honest scope — what this is and is not
 
 Two clarifications that keep the claims falsifiable:
