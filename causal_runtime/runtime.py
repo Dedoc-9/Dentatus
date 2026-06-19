@@ -32,13 +32,21 @@ class AttentionField:
         self._tokens = {}                         # last observed {node: AttentionToken}
         self._surface = {}
 
-    def observe(self, consequence, uncertainty=None, possibility=None, now=0):
-        """Ingest the frame's three substrates. Returns {node: AttentionToken}. Pure: depends only on inputs;
-        no side effect outside this object's telemetry; cannot reach any world."""
+    def observe(self, consequence, uncertainty=None, possibility=None, now=0, ghost=None):
+        """Ingest the frame's three substrates plus an optional epistemic GHOST (novelty.ghost_field). Returns
+        {node: AttentionToken}. Pure: depends only on inputs; no side effect outside this object's telemetry;
+        cannot reach any world. With a ghost, surprise pulls compute toward structurally-invisible nodes."""
         self._surface = future_surface(consequence, uncertainty or {}, possibility)
+        if ghost:                                          # mirror field: ghost shifts the allocation surface
+            smax = max(self._surface.values()) if self._surface else 0
+            ref = smax if smax > 0 else SCALE
+            from field import _q
+            for n in set(self._surface) | set(ghost):
+                self._surface[n] = self._surface.get(n, 0) + _q(ghost.get(n, 0)) * ref // SCALE
         self._tokens = attention_tokens(consequence, uncertainty, possibility,
                                         budget=max(self.budgets.values()) if self.budgets else 1000,
-                                        depth_levels=self.depth_levels, base_fresh=self.base_fresh, now=now)
+                                        depth_levels=self.depth_levels, base_fresh=self.base_fresh, now=now,
+                                        ghost=ghost)
         return dict(self._tokens)
 
     def allocation(self):

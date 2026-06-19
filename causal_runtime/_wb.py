@@ -30,3 +30,11 @@ def consequence_graph():
         sys.path.insert(0, cdir)
     import graph as g           # noqa
     return g
+
+
+def dini_compass():
+    ddir = os.path.join(ROOT, "dini")
+    if ddir not in sys.path:
+        sys.path.insert(0, ddir)
+    import compass as d        # noqa  (compass self-adds the chronicle core to sys.path)
+    return d

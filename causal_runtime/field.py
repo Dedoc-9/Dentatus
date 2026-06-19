@@ -90,11 +90,21 @@ def _hamilton(weights, budget):
 
 
 def attention_tokens(consequence, uncertainty=None, possibility=None,
-                     budget=1000, depth_levels=4, base_fresh=240, now=0):
-    """Build {node: AttentionToken} from the three substrates. recommended_budget = Hamilton(surface, budget);
-    validation_depth = batch-relative bucket in [0, depth_levels]; freshness = base_fresh // (depth+1)
-    (higher surface -> refresh sooner). Pure & deterministic."""
+                     budget=1000, depth_levels=4, base_fresh=240, now=0,
+                     ghost=None, ghost_gain=SCALE):
+    """Build {node: AttentionToken} from the three substrates, plus an optional rectified GHOST term (the
+    epistemic surprise from novelty.ghost_field). The ghost is scaled commensurate with the structural surface
+    (a full ghost == the most consequential structural node) and ADDED before budgeting, so surprise can pull
+    compute toward nodes the structural model rates zero (undeclared couplings). ghost=None -> identical to the
+    structural-only field. recommended_budget = Hamilton(surface_eff, budget); validation_depth = batch-relative
+    bucket; freshness = base_fresh//(depth+1). Pure & deterministic."""
     surface = future_surface(consequence, uncertainty or {}, possibility)
+    if ghost:
+        smax = max(surface.values()) if surface else 0
+        ref = smax if smax > 0 else SCALE                 # if no structure, ghost alone sets the scale
+        for n in set(surface) | set(ghost):
+            add = _q(ghost.get(n, 0)) * ref // SCALE * ghost_gain // SCALE
+            surface[n] = surface.get(n, 0) + add
     alloc = _hamilton(surface, budget)
     smax = max(surface.values()) if surface else 0
     tokens = {}

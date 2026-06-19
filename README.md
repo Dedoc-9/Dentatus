@@ -24,14 +24,14 @@ decision was correct, fair, or wise.
 In practice this changes your role on an AI project. Treat the LLM as a high-velocity but untrusted
 *engine* and the frozen cores as a rigid *chassis*: it generates fast while the workbench — not your
 attention — tracks determinism, structural purity, privilege isolation, and resource budgets.
-`integration/preflight_check.py` runs the whole 34-suite contract and `selfaudit/` proves the cores
+`integration/preflight_check.py` runs the whole 35-suite contract and `selfaudit/` proves the cores
 have not drifted, so your review shifts from line-by-line diff-reading to the one thing a machine
 cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
 its checks cover, not arbitrary badness — integrity is not truth.)
 
 ### The families, at a glance
 
-Twenty-seven components group into a few families, each a different hat on the one idea. **The audit core**
+Twenty-eight components group into a few families, each a different hat on the one idea. **The audit core**
 (`chronicle`, `llm_toolkit`) records and replays. **Governance & isolation** (`guard_server`, `polity`,
 `pact`, `quorum`) decide *who may act* and *what becomes true* across parties. **The Axiom triad**
 (`tessera` → `fuel` → `elenchus`) proves *the log is real*, *the machine ran*, and *the trace followed the
@@ -40,7 +40,7 @@ declared rules* — three layers of a single offline-replayable proof. **The Col
 hardest seeds to break it. **Real-time & physics** (`lockstep`, `aether`, `manifold`) separate truth-rate
 from frame-rate and harden manifold geometry in fixed-point integers. **The boundary** (`stasis`) admits the
 messy real world — canonicalizing inputs, classifying drift-vs-lie, batching verification. **The
-possibility-aware runtime** (`airlock`, `salience`, `consequence`) lets an untrusted proposer integrate with
+possibility-aware runtime** (`airlock`, `salience`, `consequence`, `causal_runtime`) lets an untrusted proposer integrate with
 reality through a membrane, then allocates compute, validation depth, and attention by the consequence of
 nearby lawful futures. Every one is
 decoupled enough to lift out and stand alone, and every one states its own honest bound.
@@ -165,7 +165,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`consequence/`](consequence/README.md) | **the State-Graph Taint Map** — the shared *what-matters-next?* field: dependency graph → consequence (`consequence ≠ magnitude`, the butterfly); one field, many consumers (compute · validation depth · network · AI); the Causal Reconstruction Test (delete most compute, keep the future — bounded by graph completeness) | `PYTHONHASHSEED=0 python3 demo_consequence.py` |
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 
-All twenty-eight refuse to run without `PYTHONHASHSEED=0`. Test suites total **437 unit tests across 35 suites**
+All twenty-eight refuse to run without `PYTHONHASHSEED=0`. Test suites total **448 unit tests across 35 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
@@ -192,7 +192,7 @@ immutable instrument while the workbench around it keeps gaining purpose-built p
 
 The Sibling Law also scales up from *components* to whole *products*: a standalone application can import the
 frozen cores (and any siblings) **read-only** via a path shim, without being a sibling itself or entering the
-34-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
+35-suite count. Five are in-repo as worked examples, each with its own tests and its own honest bound:
 
 | Application | What it is | Honest bound |
 |---|---|---|
@@ -518,11 +518,4 @@ proven (no Sybil defense); a colluding ≥k majority certifies a falsehood — c
 *unforged, exactly reproducible, and rule-faithful*, and that an authorization was *genuinely granted
 under a pinned policy*. They do **not** claim the underlying decision was correct, fair, or wise.
 
-`assay` then applies the same discipline to the *judgments about* those decisions. It still does not
-certify truth — it makes a quality judgment a first-class, recomputable (metrics) or attributable (signed
-opinion) artifact, so a claim of "correct / fair / wise" is itself auditable, not asserted.
-
-`quorum` is the **other half of that boundary**. `integrity ⊬ truth` is one clause — a lone verified
-record is honest and can still be wrong. `quorum` supplies the complementary clause that defines the
-truth you *can* operate on: `Truth_op := the exact hash on which a k-quorum of independent integrities
-coincide`. The two on
+`assay` then applies the same discipline to the *judgme

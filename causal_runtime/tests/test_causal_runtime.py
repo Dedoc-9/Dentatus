@@ -12,6 +12,8 @@ sys.path.insert(0, os.path.dirname(HERE))
 import field as F
 import runtime as R
 import freshness as FR
+import novelty as NV
+import discovery as DV
 
 S = F.SCALE
 
@@ -104,6 +106,71 @@ class TestAetherInvariant(unittest.TestCase):
 
     def test_deterministic(self):
         self.assertEqual(self.D.run(ticks=16), self.D.run(ticks=16))
+
+
+class TestNoveltyAndGhost(unittest.TestCase):
+    def test_ghost_rectified_nonnegative(self):
+        g = NV.ghost_field({"x": 10}, {"x": 10 ** 6})       # model OVER-predicted
+        self.assertEqual(g["x"], 0)                          # surprise floor: never negative
+
+    def test_hidden_coupling_spikes_ghost(self):
+        # H changes most but consequence predicted 0 (undeclared) -> full ghost
+        g = NV.ghost_field({"a": 100, "b": 80, "H": 1000}, {"a": 800, "b": 400, "H": 0})
+        self.assertEqual(g["H"], F.SCALE)
+        self.assertEqual(g["a"], 0)
+
+    def test_aggregate_confidence_weighted(self):
+        sigs = NV.ingest("dini", {"n": F.SCALE}, confidence=F.SCALE // 2)
+        self.assertEqual(NV.aggregate(sigs)["n"], F.SCALE // 2)
+
+    def test_attention_adds_ghost(self):
+        cons = {"a": 800, "H": 0}
+        base = NV.attention_field(cons)
+        with_g = NV.attention_field(cons, ghost={"H": F.SCALE})
+        self.assertGreater(with_g["H"], base["H"])           # surprise lifts a zero-consequence node
+
+    def test_ghost_pulls_node_into_frontier(self):
+        af = R.AttentionField(budgets={"validation": 2})
+        cons = {"a": 800, "b": 400, "H": 0}
+        af.observe(cons, {"a": F.SCALE, "b": F.SCALE, "H": F.SCALE})
+        self.assertNotIn("H", af.frontier("validation", 2))
+        af.observe(cons, {"a": F.SCALE, "b": F.SCALE, "H": F.SCALE},
+                   ghost=NV.ghost_field({"a": 1, "b": 1, "H": 1000}, cons))
+        self.assertIn("H", af.frontier("validation", 2))
+
+
+class TestBlindDiscovery(unittest.TestCase):
+    def test_ghost_discovers_hidden_anomaly(self):
+        r = DV.discover("hidden")
+        self.assertIsNone(r["latency"]["distance"])          # blind to low visibility
+        self.assertIsNone(r["latency"]["consequence"])       # blind to undeclared coupling
+        self.assertIsNotNone(r["latency"]["ghost"])          # surprise catches it
+
+    def test_declared_is_negative_control(self):
+        r = DV.discover("declared")
+        self.assertTrue(all(v is not None for v in r["latency"].values()))  # all find a declared node
+
+    def test_verdict_and_determinism(self):
+        v, _ = DV.verdict()
+        self.assertEqual(v, "ghost-discovers-the-undeclared-anomaly")
+        self.assertEqual(DV.run(), DV.run())
+
+
+class TestDiniProducerInvariant(unittest.TestCase):
+    def setUp(self):
+        import demo_dini_novelty as D
+        self.D = D
+
+    def test_cardinal_invariant_holds_with_dini(self):
+        r = self.D.run(ticks=20)
+        self.assertTrue(r["identical_hashes"])               # dini changes attention, not the hash
+
+    def test_novelty_signal_nontrivial(self):
+        r = self.D.run(ticks=20)
+        self.assertTrue(r["novelty_grows"])
+
+    def test_deterministic(self):
+        self.assertEqual(self.D.run(ticks=14), self.D.run(ticks=14))
 
 
 if __name__ == "__main__":
