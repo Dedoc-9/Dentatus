@@ -66,18 +66,19 @@ picked well because the model says so."
 | `importance != eligibility` | a top score never buys budget an item is not entitled to | eligibility gate |
 | coherence time | a fixed allocation has a finite useful horizon | coherence benchmark + `Field.tick()` |
 | `attention -> explanation` ALLOWED, `-> hidden justification` FORBIDDEN | every claim on a policy's label is a runnable check | `certify()` |
+| `observable drift != semantic drift` | a monitor sees marginals, not the signal->outcome map | `Monitor` blind-spot |
 
 ## Commands
 
 ```
-python3 -m toolkit              # the full proof (twenty-two asserted properties)
+python3 -m toolkit              # the full proof (twenty-five asserted properties)
 python3 -m toolkit tournament  # compare() + robustness() tables
 python3 -m toolkit certify     # certificate for future_surface
 ```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Twenty-two asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Twenty-five asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -176,6 +177,21 @@ envelope moved in an understood way, never because the number went up. And the c
 fixed in the artifact itself — *"certified under the tested regimes with the declared assumptions;
 never a claim of correctness."*
 
+**[11] Runtime drift monitor.** A certificate has to keep being earned after deployment. `Monitor`
+tracks how far the live input has moved from the certified distribution and reports a lifecycle status
+— `CERTIFIED -> DEGRADED -> QUARANTINED` (outside its evidence boundary, not "wrong"):
+
+```
+clean input stream      -> status=CERTIFIED    drift_ema=55
+shifting input domain   -> status=QUARANTINED  drift_ema=510
+adversarial stream      -> status=CERTIFIED    drift_ema=56   (BLIND SPOT)
+```
+
+The blind spot is the honest part: a distribution monitor sees the **marginals** of the signals, not
+the signal->outcome relationship, so it catches a new input domain but is invisible to a confidently
+misleading world. `observable drift != semantic drift`. The certificate artifact carries this in its
+`expires_if` field (input shift / policy change / new hidden variable).
+
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
@@ -188,7 +204,8 @@ toolkit/
     policies.py     future_surface / min_gate / weighted_product / magnitude / uniform
     benchmarks.py   eighteen asserted properties across nine worlds
     tournament.py   compare() ranked table + robustness() policy x regime matrix
-    certify.py      certify(policy) -> safety label (envelope + failure envelope)
+    certify.py      certify(policy) -> safety label + to_json() + diff_certificates()
+    monitor.py      Monitor.observe(world) -> CERTIFIED/DEGRADED/QUARANTINED (runtime drift)
 ```
 
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`

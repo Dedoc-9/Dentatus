@@ -172,6 +172,23 @@ def make_stale_world(n=60, seed=1, lag=5):
     return world
 
 
+def make_shifted_world(n=60, seed=1, shift=0):
+    """Input distribution shift: the consequence/uncertainty signal MEANS move by ~shift. This is an
+    observable change of input domain -- a runtime monitor can detect it from signal statistics alone,
+    with no truth oracle. (monitor 'drift' stream)"""
+    rng = random.Random(seed)
+    world = []
+    for i in range(n):
+        c = min(1000, rng.randint(1, 1000) + shift)
+        u = min(1000, rng.randint(1, 1000) + shift)
+        world.append({
+            "id": "region_%02d" % i, "cost": rng.randint(20, 100),
+            "consequence": c, "uncertainty": u, "possibility": rng.randint(300, 1000),
+            "magnitude": rng.randint(1, 1000), "M": max(1, (c * u) // 1000),
+        })
+    return world
+
+
 # -- graders ---------------------------------------------------------------------------------------
 
 def grade(world, budget=1000):
@@ -260,6 +277,7 @@ def run(budget=1000):
 
     from .tournament import compare, robustness
     from .certify import certify, diff_certificates
+    from .monitor import Monitor
     comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
                     policies.magnitude, policies.random_priority], worlds=200)
     print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
@@ -322,7 +340,27 @@ def run(budget=1000):
         "regression gate must REJECT a higher-scoring policy that cheats (reads M)"
     assert d_legit.acceptable() is True, "a legitimate policy change must not trip the integrity gate"
 
-    print("\n[OK] all twenty-two properties hold. The toolkit allocates by supplied signal; it does not")
+    m_clean = Monitor()
+    for s in range(20, 30):
+        m_clean.observe(make_world(seed=s))
+    m_shift = Monitor()
+    for sh in (0, 150, 300, 500, 700):
+        m_shift.observe(make_shifted_world(seed=1, shift=sh))
+    m_adv = Monitor()
+    for s in range(1, 11):
+        m_adv.observe(make_adversarial_world(seed=s))
+    print("\n[11] runtime drift monitor -- a certificate must keep being earned after deployment:")
+    print("      clean input stream      -> %s" % m_clean.report())
+    print("      shifting input domain   -> %s" % m_shift.report())
+    print("      adversarial stream      -> %s  (BLIND SPOT: signals look normal)" % m_adv.report())
+    print("      => observable drift != semantic drift: the monitor catches a new input domain, but a")
+    print("         confidently-misleading world is invisible to a marginal-distribution monitor.")
+
+    assert m_clean.status == Monitor.CERTIFIED, "clean stream must stay certified"
+    assert m_shift.status == Monitor.QUARANTINED, "a strong input-domain shift must quarantine the policy"
+    assert m_adv.status == Monitor.CERTIFIED, "the monitor is BLIND to adversarial inversion (declared limitation)"
+
+    print("\n[OK] all twenty-five properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 

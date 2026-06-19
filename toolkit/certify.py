@@ -94,6 +94,12 @@ class Certificate:
                      for r, p, b in self.envelope],
             "fails": [{"regime": r, "score_pct": p, "baseline": "random", "deficit_pct": b - p}
                       for r, p, b in self.failures],
+            "valid_for": ["the tested regimes (clean/noisy/adversarial/stale)",
+                          "worlds_per_regime=%d" % self.worlds,
+                          "the observable signal distribution it was certified on"],
+            "expires_if": ["the input distribution shifts (a new domain)",
+                           "the policy changes",
+                           "a new hidden variable appears"],
             "certified": self.certified(),
         }
 
