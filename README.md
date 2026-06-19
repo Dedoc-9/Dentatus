@@ -117,6 +117,19 @@ under one final law — **`causal_information → experiment` ALLOWED (shadow-on
 whole stack becomes a closed epistemic loop: kernel → consequence → ghost → proposal → intervention → a better
 *model* — the map improves, the territory (the committed hash trajectory) never moves.
 
+Said plainly, the honest invariant that survived every experiment is this: **the system is not a causal discoverer — it is a falsifiable structure-maintenance system.** A dependency graph is predictive at best, so a proposed edge is never believed because it recurred; it is **corroborated only by surviving attempts to falsify it on held-out history**, and its standing can *decay* (`falsification.py`'s `StructureProposal` track record, where held-out misses grow). The graph is split into two tiers — a **predictive** tier that drives allocation with no causal claim, and a **corroborated** tier (the strict subset that survived the held-out gate) that alone may wear structural vocabulary. The Self-Confirmation Benchmark shows the naive frequency-only model promoting a true edge, a confounder, *and* a regime-local regularity alike, while the gate corroborates only the true one. The full law set:
+
+```
+correlation / prediction → allocation        ALLOWED
+prediction → truth                            FORBIDDEN
+ghost → proposal                              ALLOWED
+proposal → graph                              FORBIDDEN
+falsification → proposal status               ALLOWED
+falsification → committed reality             FORBIDDEN
+```
+
+The ghost, then, is not a causal oracle but a **self-skepticism engine** — and that is the more general, more defensible architecture: *a system that maintains a continuously falsifiable model of where its own abstractions fail, and spends compute accordingly.*
+
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 
 Deploying Sibling 13 (`quorum/`) alongside `pact/` composes a **2D attestation lattice** for an untrusted
@@ -208,7 +221,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 | [`intervention/`](intervention/README.md) | **controlled causal query protocol** — an airlock-authorized `do()` experiment on a discarded *shadow* world separates true coupling (CONFIRMED) / confounder (REJECTED) / feedback (CYCLE); law `causal_information→experiment` ALLOWED (shadow-only), never `→truth`; committed history untouched | `PYTHONHASHSEED=0 python3 demo_intervention.py` |
 
-All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **470 unit tests across 36 suites**
+All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **482 unit tests across 36 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows

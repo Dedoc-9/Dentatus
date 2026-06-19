@@ -12,6 +12,7 @@ import protocol as P
 import experiment as E
 import query as Q
 import benchmark as B
+import natural_experiment as NE
 
 MOD = B.MOD
 
@@ -97,6 +98,28 @@ class TestExperimentInvariantOnKernel(unittest.TestCase):
         r = self.D.run()
         self.assertTrue(r["authorized"])
         self.assertTrue(r["committed_history_identical"])
+
+
+class TestNaturalExperiment(unittest.TestCase):
+    def test_supports_when_isolated_cause_moves_target(self):
+        hist = [{"A": i, "C": 3 * i, "X": 0} for i in range(8)]
+        self.assertEqual(NE.mine("A", "C", ["X"], hist).verdict, "SUPPORTS")
+
+    def test_refutes_confounded_pair_under_isolation(self):
+        hist = [{"A": i, "C": 200, "X": 0} for i in range(8)]    # A isolated from X, C does not respond
+        r = NE.mine("A", "C", ["X"], hist)
+        self.assertEqual(r.verdict, "REFUTES")
+        self.assertGreater(r.refutes, 0)
+
+    def test_none_when_history_never_isolates_cause(self):
+        hist = [{"A": 5, "C": i, "X": i} for i in range(8)]      # A never varies
+        self.assertEqual(NE.mine("A", "C", ["X"], hist).verdict, "NONE")
+
+    def test_pure_read_no_mutation(self):
+        hist = [{"A": i, "C": 3 * i, "X": 0} for i in range(5)]
+        snap = [dict(s) for s in hist]
+        NE.mine("A", "C", ["X"], hist)
+        self.assertEqual(hist, snap)                             # history untouched
 
 
 if __name__ == "__main__":

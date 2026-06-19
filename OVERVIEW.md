@@ -34,7 +34,7 @@ manifold — each is the same canonical-bytes → hash + capture-at-boundary dis
 ### The workbench today
 
 The `chronicle` core has been extended into a **29-component workbench** (2 frozen cores + 27 siblings,
-**470 unit tests across 36 suites**, all gated by one preflight). The siblings are deliberately decoupled —
+**482 unit tests across 36 suites**, all gated by one preflight). The siblings are deliberately decoupled —
 each imports the cores read-only (the "Sibling Law", verified by a parity proof), each is a small **reference
 implementation** of the one idea in a different domain, and **each states its own honest bound in its
 README**. They group into families: an audit core; governance & isolation (`guard_server`, `pact`, `quorum`,
@@ -86,7 +86,7 @@ leaves the committed hash trajectory byte-identical, under one more law `causal_
 `→ mutation`. When a ghost *persists*, `causal_runtime`'s coupling discovery proposes (never commits) a graph
 edge behind four locks, and `intervention/` resolves what observation cannot: an airlock-authorized `do()`
 experiment on a discarded shadow world separates true coupling (CONFIRMED) / confounder (REJECTED) / feedback
-(CYCLE), under a final law `causal_information → experiment` ALLOWED (shadow-only), never `→ truth`. The stack
+(CYCLE), under a final law `causal_information → experiment` ALLOWED (shadow-only), never `→ truth`. A persistent ghost is not believed for recurring: it becomes a `StructureProposal` whose status is set by a **held-out falsification gate** (evidence can decay), and only edges that survive may wear structural vocabulary — the system is a **falsifiable structure-maintenance system**, not a causal discoverer (`prediction → truth` FORBIDDEN; `falsification → proposal status` ALLOWED, `→ committed reality` FORBIDDEN). The stack
 is a closed epistemic loop that improves the *model* while the committed history never moves. Honest scope:
 this is a *reference runtime and a measurement framework*, not a shipping 240fps engine and not a claim about
 physical nature — it allocates compute and certainty under the declared structure, never truth, and never that

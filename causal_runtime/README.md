@@ -4,6 +4,8 @@ A deterministic **observation-domain** substrate. It reads three orthogonal fiel
 already committed, and recommends **where computation should be spent** — streaming residency, AI tick rate,
 animation fidelity, network replication, validation depth. It is structurally incapable of touching state.
 
+> **What it is, precisely.** Not a *causal discoverer* — a **falsifiable structure-maintenance system**. A dependency graph is predictive at best; this layer keeps a continuously *falsifiable* model of where its own abstractions fail, and spends compute accordingly.
+
 ```
                  REALITY DOMAIN
         deterministic transition kernel ──▶ immutable history
@@ -96,6 +98,42 @@ ghost → PROPOSED coupling   ALLOWED        ghost → ACTUAL coupling   FORBIDD
    the committed AetherPulse world hash is byte-identical before and after the model learns the edge
    (`graph improvement ≠ world modification`). A ghost is evidence of model failure, not a new fact.
 
+## Falsifiable structure maintenance — the held-out gate, decay, and two tiers (`falsification.py`, `tiers.py`)
+
+`coupling_discovery` had a self-sealing asymmetry: a persistent ghost only ever *raised* a candidate's
+frequency, so it became monotonically harder to dislodge. The repair changes the epistemic physics — a
+`StructureProposal` keeps a **track record**, not a confidence:
+
+```
+StructureProposal: source target  train_hits train_misses  heldout_hits heldout_misses  last_test_epoch status
+```
+
+A proposal is tested on a **held-out** window of committed history it was *not* derived from. A held-out
+**miss** lowers its standing — `heldout_misses` can grow, so **evidence can go down**. Status is Popperian
+(*survived attempts to fail it*, not *fit the data that generated it*): `PROPOSED` (untested, or the held-out
+window offered no discriminating opportunity — "no falsification attempt available" is **not** "survived"),
+`CORROBORATED` (held-out hits, zero held-out misses), `DECAYING` (a held-out miss appeared), `REJECTED`
+(miss-rate crossed the floor).
+
+**The Self-Confirmation Benchmark (`self_confirmation.py`)** is the brutal test — three worlds whose *training*
+evidence is identical (A and C correlate, a proposal forms) but whose held-out behaviour is not:
+
+```
+world        structure                       held-out            naive     held-out gate
+true         A → C                            C follows A         promote   CORROBORATED
+confounder   A ← X → C                        A alone, C flat     promote   REJECTED   (the case the old model fails)
+regime       A → C only when temp>thr         new regime, C flat  promote   REJECTED   (local regularity, not structure)
+```
+
+Verdict `held-out-gate-breaks-self-confirmation`: the naive frequency-only model promotes **all three**; the
+gate corroborates **only** the true edge.
+
+**Two tiers (`tiers.py`).** The graph does two jobs with two proof burdens. The **predictive** tier (correlation
+/ dependency / association) is *enough* for allocation — salience, validation depth, streaming, attention — and
+makes **no causal claim**. The **corroborated** tier is the strict subset of edges that survived the held-out
+gate, and **only it may wear structural vocabulary**. Allocation never waits on falsification; the strong claim
+is always earned. `vocabulary_for(edge)` enforces the wording so prose cannot overclaim.
+
 ### The Ghost Persistence Benchmark (`ghost_persistence.py`)
 
 A hidden coupling `A → C` (A drives C; the declared graph does not say so) plus uncorrelated noise:
@@ -173,7 +211,9 @@ PYTHONHASHSEED=0 python3 discovery.py                # the Blind Discovery Bench
 PYTHONHASHSEED=0 python3 ghost_persistence.py        # the Ghost Persistence Benchmark
 PYTHONHASHSEED=0 python3 demo_coupling_discovery.py  # epistemic trap closed (world hash invariant)
 PYTHONHASHSEED=0 python3 freshness.py                # the Causal Freshness Benchmark
-PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 35 unit tests
+PYTHONHASHSEED=0 python3 demo_falsification.py       # held-out gate + Self-Confirmation Benchmark + tiers
+PYTHONHASHSEED=0 python3 self_confirmation.py        # the Self-Confirmation Benchmark alone
+PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 43 unit tests
 ```
 
 ## Honest bound
@@ -192,6 +232,10 @@ claim about physical nature or a shipping 240fps engine. `integrity ≠ truth`; 
 | `novelty.py` | the **epistemic seam** — producer-agnostic `NoveltySignal` aggregation, `ghost_field`, final `A = C×P×U + G⁺` |
 | `freshness.py` | the **Causal Freshness Benchmark** — consequence×uncertainty vs distance/visibility |
 | `discovery.py` | the **Blind Discovery Benchmark** — ghost finds the undeclared, low-visibility anomaly |
+| `falsification.py` | **the held-out falsification gate** — `StructureProposal` track record; evidence that can DECAY; PROPOSED/CORROBORATED/DECAYING/REJECTED |
+| `self_confirmation.py` | the **Self-Confirmation Benchmark** — true / confounder / regime-trap; naive promotes all, the gate does not |
+| `tiers.py` | **predictive vs corroborated** split — correlation feeds allocation; only survived edges may claim structure |
+| `demo_falsification.py` | the falsifiable-structure layer end to end |
 | `coupling_discovery.py` | **persistent ghost → proposed edge** — `CouplingRegistry` (propose-never-commit; no graph handle); the four locks against the epistemic trap |
 | `ghost_persistence.py` | the **Ghost Persistence Benchmark** — single (reject) / repeatable (propose A→C) / declared (no re-propose) |
 | `demo_coupling_discovery.py` | closes the trap on AetherPulse: an accepted proposal leaves the committed world hash unchanged |
@@ -199,4 +243,4 @@ claim about physical nature or a shipping 240fps engine. `integrity ≠ truth`; 
 | `demo_aether_attention.py` | wires the field onto **AetherPulse** + proves the committed-hash invariant |
 | `demo_dini_novelty.py` | **dini** as a novelty producer (Q16 canon boundary) + ghost; invariant re-proven |
 | `_wb.py` | path shim so demos/tests wire real sources (AetherPulse, consequence, dini) without the core importing across siblings |
-| `tests/test_causal_runtime.py` | 35 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |
+| `tests/test_causal_runtime.py` | 43 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |

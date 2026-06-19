@@ -16,6 +16,9 @@ import novelty as NV
 import discovery as DV
 import coupling_discovery as CDsc
 import ghost_persistence as GPb
+import falsification as FAL
+import self_confirmation as SCB
+import tiers as TIER
 
 S = F.SCALE
 
@@ -233,6 +236,67 @@ class TestEpistemicTrapClosed(unittest.TestCase):
         self.assertTrue(r["model_changed"])                    # the model DID learn a new edge
         self.assertTrue(r["world_hash_unchanged"])             # ...and reality was untouched
         self.assertFalse(r["registry_can_mutate_graph"])       # discovery cannot reach a graph
+
+
+class TestFalsificationGate(unittest.TestCase):
+    def test_corroborated_when_heldout_clean(self):
+        hist = [{"A": i, "C": 3 * i} for i in range(8)]
+        h, m, _ = FAL.test_edge("A", "C", hist)
+        p = FAL.apply_heldout(FAL.make_proposal("A", "C", train_hits=5), h, m, 1)
+        self.assertEqual(p.status, FAL.CORROBORATED)
+
+    def test_evidence_can_decay_to_rejected(self):
+        flat = [{"A": i, "C": 0} for i in range(8)]          # A changes, C never responds
+        h, m, _ = FAL.test_edge("A", "C", flat)
+        p = FAL.apply_heldout(FAL.make_proposal("A", "C", train_hits=9), h, m, 1)
+        self.assertEqual(p.status, FAL.REJECTED)
+        self.assertLess(FAL.corroboration_score(p), 0)       # evidence went DOWN below zero
+
+    def test_untested_is_not_corroborated(self):
+        none = [{"A": 5, "C": i} for i in range(8)]          # source never varies -> no opportunity
+        h, m, opp = FAL.test_edge("A", "C", none)
+        self.assertEqual(opp, 0)
+        p = FAL.apply_heldout(FAL.make_proposal("A", "C", train_hits=9), h, m, 1)
+        self.assertEqual(p.status, FAL.PROPOSED)             # untested != survived
+
+
+class TestSelfConfirmationBenchmark(unittest.TestCase):
+    def test_gate_breaks_self_confirmation(self):
+        rows = SCB.run()
+        self.assertEqual(rows["true"]["status"], FAL.CORROBORATED)
+        self.assertIn(rows["confounder"]["status"], (FAL.REJECTED, FAL.DECAYING))
+        self.assertNotEqual(rows["regime"]["status"], FAL.CORROBORATED)
+        self.assertTrue(all(rows[w]["naive_promote"] for w in SCB.WORLDS))   # naive promotes all -> the contrast
+
+    def test_verdict_and_determinism(self):
+        v, _ = SCB.verdict()
+        self.assertEqual(v, "held-out-gate-breaks-self-confirmation")
+        self.assertEqual(SCB.run(), SCB.run())
+
+
+class TestTwoTierSplit(unittest.TestCase):
+    def _props(self):
+        out = []
+        for n in SCB.WORLDS:
+            tr, ho = SCB.WORLDS[n]()
+            th, tm, _ = FAL.test_edge("A", "C", tr)
+            p = FAL.make_proposal(n, "C", train_hits=th, train_misses=tm)
+            hh, hm, _ = FAL.test_edge("A", "C", ho)
+            out.append(FAL.apply_heldout(p, hh, hm, 1))
+        return out
+
+    def test_corroborated_subset_of_predictive(self):
+        rep = TIER.classify(self._props())               # classify asserts the subset invariant internally
+        self.assertTrue(set(rep["corroborated"]).issubset(set(rep["predictive"])))
+
+    def test_only_true_edge_may_claim_structure(self):
+        rep = TIER.classify(self._props())
+        self.assertEqual(rep["may_claim_structure"], [("true", "C")])
+
+    def test_vocabulary_gate(self):
+        ps = {p.source: p for p in self._props()}
+        self.assertIn("corroborated", TIER.vocabulary_for(ps["true"]))
+        self.assertIn("rejected", TIER.vocabulary_for(ps["confounder"]))
 
 
 if __name__ == "__main__":

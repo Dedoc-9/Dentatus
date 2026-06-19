@@ -6,7 +6,7 @@
 
 **To any human or model editing this repository:** this is a high-assurance,
 deterministic, content-addressed workbench ("Dentatus/Chronicle"). Code you add
-is bound by the contract below. The boundaries are enforced by 470 tests across 36
+is bound by the contract below. The boundaries are enforced by 482 tests across 36
 suites and by the Replay Court / Parity Proof — violate them and the regression
 suite fails. Equally binding is the *epistemic* rule: **never oversell what the
 code protects.**
@@ -149,7 +149,7 @@ done
 PYTHONHASHSEED=0 python3 integration/parity_proof.py   # must print: PARITY HOLDS
 ```
 
-**Current verification state: 470 tests passing across 36 suites (+ coupled/uncoupled parity proof).**
+**Current verification state: 482 tests passing across 36 suites (+ coupled/uncoupled parity proof).**
 
 | Suite | Tests | Guards |
 |---|---|---|
@@ -540,5 +540,5 @@ better.
 
 ```
 ACK: deterministic-capture=enforced  privilege-pep=required  integrity!=truth  fail-closed=on  sibling-law=enforced  non-claims=stated
-VERSION: 29-component / 27-sibling / 36-suite / 470-test workbench (+ parity proof)
+VERSION: 29-component / 27-sibling / 36-suite / 482-test workbench (+ parity proof)
 ```

@@ -57,6 +57,18 @@ constant leaves C untouched because both ride a hidden common cause. Only interv
 verdict is the safety case: a bidirectional dependency is flagged, never promoted to a stronger edge, because
 cycles are where causal discovery becomes self-fulfilling.
 
+## Natural experiments — real evidence from committed history (`natural_experiment.py`)
+
+The shadow `do()` tests a counterfactual *of the model*. The one thing the shadow lacks is the real kernel's
+actual transitions. `natural_experiment.mine(source, target, confounders, history)` scans committed history for
+moments the world *happened* to supply a natural experiment — `source` varied while the named confounders
+stayed stable — and asks whether `target` responded (instrumental-variable / quasi-experimental logic on real
+data). Verdicts: `SUPPORTS`, `REFUTES`, `MIXED`, or `NONE` (the history never isolated the cause — untested, not
+a false positive). No mutation, no alternate world, no fantasy counterfactual — pure observation. This is the
+third evidence source feeding a `StructureProposal`'s held-out track record, and the only one drawn from
+*reality* rather than the model. Law: `committed-history mining → evidence` ALLOWED; `→ committed reality`
+FORBIDDEN.
+
 ## Evidence, not authority
 
 A `CausalVerdict` carries an `evidence_delta` (+1 confirm / 0 cycle / −1 reject), updating the *weight of
@@ -71,7 +83,8 @@ is untouched.
 ```
 PYTHONHASHSEED=0 python3 benchmark.py             # the Causal Intervention Benchmark
 PYTHONHASHSEED=0 python3 demo_intervention.py     # full chain + experiment ⊥ committed AetherPulse history
-PYTHONHASHSEED=0 python3 tests/test_intervention.py  # 13 unit tests
+PYTHONHASHSEED=0 python3 natural_experiment.py    # quasi-experiments mined from committed history
+PYTHONHASHSEED=0 python3 tests/test_intervention.py  # 17 unit tests
 ```
 
 ## Honest bound
@@ -91,4 +104,5 @@ computation to the weakest part of the current map; it does not certify the map.
 | `benchmark.py` | the **Causal Intervention Benchmark** — true / confounder / feedback |
 | `demo_intervention.py` | full chain + proof that experiments ⊥ committed AetherPulse history |
 | `_wb.py` | path shim so demos/tests wire `coupling_discovery` + AetherPulse without core cross-imports |
-| `tests/test_intervention.py` | 13 unit tests |
+| `natural_experiment.py` | mine committed history for quasi-experiments (SUPPORTS/REFUTES/NONE; pure read) |
+| `tests/test_intervention.py` | 17 unit tests |
