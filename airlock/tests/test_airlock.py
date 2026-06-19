@@ -19,6 +19,7 @@ import contract
 import conformance as CF
 import admissibility as AD
 import possibility as PS
+import horizon as HZ
 import membrane as M
 
 K = A.K
@@ -380,6 +381,50 @@ class TestPossibilitySpace(unittest.TestCase):
 
     def test_empty(self):
         self.assertIsNone(PS.admissible_set(world(), [], A)["freedom_permille"])
+
+
+
+
+class TestPossibilityNeighborhood(unittest.TestCase):
+    """The geometry of the field of unrealized admissible alternatives around a realized state."""
+    def _W(self):
+        return A.K.make_world([A.K.body(0, (0, 5, 0), (0, 0, 0), (1, 1, 1))], ((-100, -100, -100), (100, 100, 100)))
+    def _B(self):
+        return {"budget": {"max_cost": 9, "max_delta": 10**18}, "constraints": {"max_bodies": 3}}
+
+    def test_pressure_reach_and_purity(self):
+        B = self._B(); W = self._W(); h0 = A.state_hash(W)
+        cands = [{"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}, **B},
+                 {"transition": {"op": "impulse", "id": 0, "dv": [40, 0, 0]}, **B},
+                 {"transition": {"op": "advance", "ticks": 8}, **B}]
+        g = HZ.neighborhood(W, 0, cands, A)
+        self.assertEqual(g["alternatives"], 2)
+        self.assertEqual(g["possibility_pressure"], sum(g["distances"].values()))
+        self.assertEqual(g["reach"], max(g["distances"].values()))
+        self.assertEqual(A.state_hash(W), h0)                  # shadow: reality untouched
+
+    def test_alive_exceeds_tight(self):
+        B = self._B(); W = self._W()
+        alive = [{"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}, **B},
+                 {"transition": {"op": "impulse", "id": 0, "dv": [40, 0, 0]}, **B},
+                 {"transition": {"op": "advance", "ticks": 8}, **B}]
+        tight = [{"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}, **B},
+                 {"transition": {"op": "impulse", "id": 0, "dv": [2, 0, 0]}, **B}]
+        self.assertGreater(HZ.neighborhood(W, 0, alive, A)["possibility_pressure"],
+                           HZ.neighborhood(W, 0, tight, A)["possibility_pressure"])
+
+    def test_realized_must_be_admissible(self):
+        B = self._B(); W = self._W()
+        cands = [{"transition": {"op": "teleport"}, **B},                              # inadmissible
+                 {"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}, **B}]
+        with self.assertRaises(ValueError):
+            HZ.neighborhood(W, 0, cands, A)                    # index 0 is not admissible
+
+    def test_deterministic(self):
+        B = self._B(); W = self._W()
+        cands = [{"transition": {"op": "impulse", "id": 0, "dv": [1, 0, 0]}, **B},
+                 {"transition": {"op": "advance", "ticks": 5}, **B}]
+        self.assertEqual(HZ.neighborhood(W, 0, cands, A), HZ.neighborhood(W, 0, cands, A))
 
 
 if __name__ == "__main__":

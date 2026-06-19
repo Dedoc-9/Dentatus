@@ -153,3 +153,26 @@ into an actual state.
 **Honest bound:** pure analysis — it never commits, gates, or enters identity. It measures the size/shape of
 the admissible set *under the declared structure* (airlock + adapter + constraints + severity), never that
 the structure is the right one. `integrity ≠ truth`.
+
+## The geometry of the unrealized field — possibility pressure
+
+Counting the unrealized is not measuring it. `horizon.py` measures the **shape** of the admissible-but-
+unrealized field *surrounding* a realized state — the deepest idea of the project made operational:
+
+> Reality is not only a trajectory through state space. It is a trajectory through a field of unrealized
+> admissible alternatives, and the geometry of that field can itself be measured.
+
+For each admissible-but-unrealized alternative it computes (in shadow) the exact-integer distance of that
+alternative's outcome from what became real, then aggregates:
+
+- **reach** — how far the surrounding possibility extends (max distance),
+- **dispersion** — how spread the field is (mean absolute deviation),
+- **possibility pressure** — Σ distances: the total magnitude of the could-have-been around what-was.
+
+Two states can share the *same realized history* yet sit in wildly different possibility fields (a demo shows
+pressure ≈ 77 vs ≈ 2). That difference is what a **player feels** — worlds feel *alive* when the engine knows
+not just what happened but what could have; and it is what a **physicist asks** — *why this realization
+instead of another admissible one?*. The engine can now count and shape those alternatives.
+
+**Honest bound:** pure shadow telemetry (reality is never touched); the geometry is measured *under the
+declared structure*, and "pressure"/"aliveness" are magnitudes, not claims about nature. `integrity ≠ truth`.
