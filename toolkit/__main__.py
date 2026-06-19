@@ -11,6 +11,8 @@ from .tournament import compare, robustness
 from .certify import certify
 from .evaluate import evaluate
 from .manifest import manifest
+from .stage import stage
+from .benchmarks import make_world
 from . import policies
 
 
@@ -30,8 +32,14 @@ def main(argv):
         print(evaluate(policies.future_surface).report())
     elif cmd == "manifest":
         print(manifest(policies.future_surface).to_json())
+    elif cmd == "stage":
+        action = stage(make_world(seed=2))
+        print(action.report())
+        if "--authorize" in argv and action.staged:
+            import json as _json
+            print("\nAUTHORIZED:\n" + _json.dumps(action.authorize(by="operator"), indent=2, sort_keys=True))
     else:
-        print("usage: python -m toolkit [proof|tournament|certify|evaluate|manifest]")
+        print("usage: python -m toolkit [proof|tournament|certify|evaluate|manifest|stage]")
 
 
 if __name__ == "__main__":

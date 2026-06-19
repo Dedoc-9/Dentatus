@@ -86,6 +86,7 @@ python3 -m toolkit tournament  # compare() + robustness() tables
 python3 -m toolkit certify     # certificate for future_surface
 python3 -m toolkit evaluate    # full allocator report (onboard any policy)
 python3 -m toolkit manifest    # portable Allocation Manifest (JSON evidence boundary)
+python3 -m toolkit stage       # propose-then-consent staged allocation (one-click boundary)
 ```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
@@ -314,6 +315,7 @@ toolkit/
     mutate.py       mutate() -> can the suite notice a degraded allocator? (+ replay/leakage in certify.py)
     evaluate.py     evaluate(policy) -> one-page Allocator Report (onboard a stranger's policy)
     manifest.py     manifest(policy) -> portable Allocation Manifest + matches(world)
+    stage.py        stage(world) -> propose-then-consent StagedAction (one-click boundary)
 ```
 
 ## Dev note — the `!=` family
@@ -452,6 +454,22 @@ example; it is declared FALSE if any single configuration violates any bound. Th
 *exactly because* it is this narrow: it asserts a deterministic property of policies over a stated
 integer model, and it names — in the manifest and the scope note — the one thing it does not claim,
 real-hardware throughput.
+
+## Staged actions — the one-click boundary
+
+`stage(world, scorer)` turns an allocation into a *proposal a human authorizes*, not an action a
+system takes. It checks the environment against the policy's manifest (`matches`) and either **STAGES**
+a refusable record or **REFUSES** with a reason (a declared signal is missing, or the environment has
+drifted outside the certified envelope). The staged record cites only observable provenance (never the
+graded objective `M`) and carries a **SHA-256 content digest**, so the one click signs off on a
+content-addressed, auditable record. Two laws govern it: `telemetry != control` (a proposal is
+information, not an instruction) and `intent != authority` (the click, not the proposal, is the
+authority — `authorize()` refuses to commit a REFUSED proposal).
+
+Scope: this stages an *allocation decision* and certifies the **integrity** of the record, never the
+**correctness** of the decision (`integrity != truth`). High-stakes actuation needs a domain-validated
+model behind the buffer; the toolkit supplies the buffer, the audit trail, and the consent gate — not
+the model.
 
 ## Honest scope — what this is and is not
 
