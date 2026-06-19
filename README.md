@@ -128,7 +128,7 @@ falsification → proposal status               ALLOWED
 falsification → committed reality             FORBIDDEN
 ```
 
-The ghost, then, is not a causal oracle but a **self-skepticism engine** — and that is the more general, more defensible architecture: *a system that maintains a continuously falsifiable model of where its own abstractions fail, and spends compute accordingly.*
+The ghost, then, is not a causal oracle but a **self-skepticism engine** — and that is the more general, more defensible architecture: *a system that maintains a continuously falsifiable model of where its own abstractions fail, and spends compute accordingly.* The engineering history — which assumption broke at each layer and which failure case forced the next — is recorded in [`GENEALOGY.md`](GENEALOGY.md), including the newest, still-a-hypothesis frontier: whether the same field can drive **rasterization** (`render_priority = future_surface × perceptual_sensitivity`, the bound `consequence ≠ visibility`).
 
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 
@@ -221,7 +221,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
 | [`intervention/`](intervention/README.md) | **controlled causal query protocol** — an airlock-authorized `do()` experiment on a discarded *shadow* world separates true coupling (CONFIRMED) / confounder (REJECTED) / feedback (CYCLE); law `causal_information→experiment` ALLOWED (shadow-only), never `→truth`; committed history untouched | `PYTHONHASHSEED=0 python3 demo_intervention.py` |
 
-All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **482 unit tests across 36 suites**
+All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **487 unit tests across 36 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows
@@ -575,9 +575,4 @@ expensive.
 **3. Propose, then test — never edit reality to learn.** A *persistent* ghost becomes a **proposed** coupling
 (integer-counted evidence across distinct contexts), held behind four locks so even an accepted proposal
 updates a *model* while the world hash never moves. `intervention/` then resolves what observation cannot: an
-airlock-authorized `do()` experiment on a discarded **shadow world** separates a true coupling (CONFIRMED) from
-a confounder (REJECTED — two effects of a hidden common cause) from a feedback loop (CYCLE warning). *What it
-gives:* a deterministic engine that allocates effort by future consequence and discovers where its own
-abstractions are incomplete — a closed epistemic loop. *Bound:* it improves the **map**; the **territory** (the
-committed hash trajectory) is never modified, and it proves counterfactuals *of the model*, not facts of
-nature. `integrity ≠ truth`.
+airlock-authorize

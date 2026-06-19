@@ -153,6 +153,33 @@ sources — that requires intervention (itself a transition through the airlock)
 aware *about its own ignorance* without the discovery mechanism being able to rewrite either reality or the
 model.
 
+## The LOD Falsification Bench — does the field reach the image? (`lod.py`)
+
+Everything above allocates compute, validation, network, AI. Rasterization is the last consumer, and it asks a
+*different* question — **which pixels can safely receive less effort?** — so consequence alone cannot drive it:
+a mountain is all pixels and no future; a quest switch is all future and 3 pixels. The new bound is
+**`consequence ≠ visibility`**, and the render quantity is a product, not a field already built:
+
+```
+render_priority(node) = future_surface(node) × perceptual_sensitivity(node)     (≈ screen_coverage)
+```
+
+This is a **falsification bench, not a renderer** — it allocates a fixed *triangle budget* across objects by
+three policies and measures **future-relevant visual error** at equal budget:
+
+```
+world    budget   future-relevant visual error:  distance   screen   future-surface
+flat     282      211099     216798     214167     ← negative control: importance ∝ distance ⇒ all tie
+hidden   304      420000     380000     0          ← a far, visible, future-critical bridge in near no-future clutter
+```
+
+Verdict `future-surface-LOD-preserves-future-relevant-fidelity`. On the hidden-importance world the
+future-surface policy funds the far **bridge** (40/40 triangles) that distance- and screen-space LOD both
+starve — and spends *nothing extra* on the high-future, 2-pixel **switch** (covered to its trivial 2/2, no more),
+because `consequence ≠ visibility`: its detail wouldn't be seen. Honest scope: a *policy* bench that allocates a
+triangle budget and measures error; it does **not** draw pixels. Until a real renderer consuming the field
+passes the same test, the rasterization benefit is a hypothesis (see [`GENEALOGY.md`](../GENEALOGY.md)).
+
 ## The Blind Discovery Benchmark — finding what nothing declared (`discovery.py`)
 
 A hidden node `H`: **consequence 0** (no declared dependency), **low visibility**, but an unusual transition at
@@ -213,7 +240,8 @@ PYTHONHASHSEED=0 python3 demo_coupling_discovery.py  # epistemic trap closed (wo
 PYTHONHASHSEED=0 python3 freshness.py                # the Causal Freshness Benchmark
 PYTHONHASHSEED=0 python3 demo_falsification.py       # held-out gate + Self-Confirmation Benchmark + tiers
 PYTHONHASHSEED=0 python3 self_confirmation.py        # the Self-Confirmation Benchmark alone
-PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 43 unit tests
+PYTHONHASHSEED=0 python3 lod.py                      # the LOD Falsification Bench (consequence != visibility)
+PYTHONHASHSEED=0 python3 tests/test_causal_runtime.py  # 48 unit tests
 ```
 
 ## Honest bound
@@ -243,4 +271,5 @@ claim about physical nature or a shipping 240fps engine. `integrity ≠ truth`; 
 | `demo_aether_attention.py` | wires the field onto **AetherPulse** + proves the committed-hash invariant |
 | `demo_dini_novelty.py` | **dini** as a novelty producer (Q16 canon boundary) + ghost; invariant re-proven |
 | `_wb.py` | path shim so demos/tests wire real sources (AetherPulse, consequence, dini) without the core importing across siblings |
-| `tests/test_causal_runtime.py` | 43 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |
+| `lod.py` | the **LOD Falsification Bench** — render_priority = future_surface × perceptual_sensitivity; `consequence ≠ visibility` |
+| `tests/test_causal_runtime.py` | 48 unit tests (incl. the cardinal invariant under dini, ghost rectification, blind discovery, the epistemic-trap locks) |

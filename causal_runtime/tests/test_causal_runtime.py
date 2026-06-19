@@ -19,6 +19,7 @@ import ghost_persistence as GPb
 import falsification as FAL
 import self_confirmation as SCB
 import tiers as TIER
+import lod as LOD
 
 S = F.SCALE
 
@@ -297,6 +298,37 @@ class TestTwoTierSplit(unittest.TestCase):
         ps = {p.source: p for p in self._props()}
         self.assertIn("corroborated", TIER.vocabulary_for(ps["true"]))
         self.assertIn("rejected", TIER.vocabulary_for(ps["confounder"]))
+
+
+class TestLODFalsificationBench(unittest.TestCase):
+    def test_flat_world_is_negative_control(self):
+        e = LOD.reconstruct("flat")["error"]
+        spread = max(e.values()) - min(e.values())
+        self.assertLessEqual(spread, 0.10 * max(1, min(e.values())))   # all 3 policies ~tie
+
+    def test_future_surface_wins_on_hidden_importance(self):
+        e = LOD.reconstruct("hidden")["error"]
+        self.assertLess(e["future"], e["distance"])
+        self.assertLess(e["future"], e["screen"])
+
+    def test_consequence_is_not_visibility(self):
+        # the tiny-coverage high-future switch must NOT consume render budget beyond its trivial need
+        r = LOD.reconstruct("hidden")
+        need = {o["id"]: o["needed"] for o in r["objs"]}
+        a = r["allocs"]["future"]
+        self.assertLessEqual(min(a.get("switch", 0), need["switch"]), need["switch"])   # capped at 2
+        self.assertGreaterEqual(min(a.get("bridge", 0), need["bridge"]), need["bridge"])  # bridge fully funded
+
+    def test_render_priority_is_product(self):
+        switch = {"id": "s", "distance": 95, "coverage": 2, "future_surface": 10000, "needed": 2}
+        wall = {"id": "w", "distance": 5, "coverage": 200, "future_surface": 0, "needed": 200}
+        self.assertGreater(LOD.render_priority(switch), LOD.render_priority(wall))  # future×coverage, not coverage
+        self.assertEqual(LOD.render_priority(wall), 0)                               # no future -> no render priority
+
+    def test_verdict_and_determinism(self):
+        v, _ = LOD.verdict()
+        self.assertEqual(v, "future-surface-LOD-preserves-future-relevant-fidelity")
+        self.assertEqual(LOD.run(), LOD.run())
 
 
 if __name__ == "__main__":
