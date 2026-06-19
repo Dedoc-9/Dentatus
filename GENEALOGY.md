@@ -348,25 +348,42 @@ assumed. *Lesson retained:* measure before optimizing; refuse the rewrite the pr
 each was re-scoped to what the code proves or recorded as a non-claim. *Lesson retained:* every component states
 its honest bound; a marketing-shaped claim is a non-claim.
 
-## Proven vs Hypothesis (current ledger)
+## Proven vs Hypothesis (current ledger) — three tiers
 
-- **Proven (runnable benchmarks, each with a negative control):** the field improves *compute / validation /
-  network / AI* allocation (Butterfly, Causal Freshness, Blind Discovery, Self-Confirmation, Causal
-  Intervention). The committed hash trajectory is byte-identical with every observation layer attached (the
-  cardinal invariant).
-- **Hypothesis under test (the deeper one):** the renderer is *not the destination* of the field — it is merely
-  another consumer. The real hypothesis is that a **single future-surface field can coordinate simulation,
-  networking, validation, AI attention, and rasterization** so that limited resources are spent on
-  future-relevant state rather than present magnitude — and for a competitive shooter the larger win may be
-  in **network bandwidth / rollback history / tick precision / validation depth** (where the chain has
-  repeatedly found the real bottleneck) *before* it ever reaches triangles. If it proves out, the benefit is
-  not that players see more pixels; it is that **at the same hardware budget the engine preserves more of the
-  information that determines what happens next.** The narrow, testable instance is that a *renderer* driven by
-  `future_surface × perceptual_sensitivity`
-  preserves more future-relevant visual fidelity per triangle than distance- or screen-space-driven LOD. The
-  **LOD Falsification Bench** (`causal_runtime/lod.py`) is the first evidence — at equal triangle budget on a
-  hidden-importance world, future-surface LOD drives future-relevant visual error to ~0 where distance/screen
-  starve the far future-critical object, and spends nothing extra on a high-future, ~0-coverage switch. But it
-  is a *policy* bench, **not a renderer**: it allocates a triangle budget and measures error; it does not draw
-  pixels. Until a real renderer consuming the field passes the same test, the rasterization benefit is a
-  hypothesis. When it passes, that is the moment the trace reaches the image.
+The state of the evidence has three distinct tiers; keeping them apart is the difference between honest and
+oversold. (Each ✓ item is a runnable benchmark with a negative control.)
+
+**✓ PROVEN.** Future-surface can *outperform conventional allocation policies in a constrained benchmark while
+preserving the anti-wallhack fairness invariant.* The fairness gate strengthens this rather than weakening it:
+a critic could say "of course it wins if it renders strategically-important hidden objects" — but the occlusion
+gate makes that impossible, so the policy's search space is **visibility-respecting only**, and it still wins.
+Evidence: the formal allocation test (`allocation.py`, beats distance/magnitude/random against an *independent*
+M, and is *falsifiable* — a bad-estimate world makes it lose); the LOD bench (`lod.py`); the fairness invariant
+(`fairness_invariant`: an occluded enemy with the largest future_surface in the scene gets **zero** budget);
+graceful degradation (`fallback.py`, beats both fixed policies across a regime shift); and the field winning
+across *already-distinct* domain benchmarks — cache/network (Causal Freshness), AI attention (Blind Discovery),
+structure-learning (Self-Confirmation), causal evidence (Causal Intervention). Plus the cardinal invariant: the
+committed hash trajectory is byte-identical with every observation layer attached.
+
+**✗ NOT YET PROVEN.** That *a real renderer* consuming the field produces measurably better gameplay-relevant
+visual fidelity. The current chain stops at an estimate:
+
+```
+future_surface → triangle allocation → ESTIMATED error metric          (proven: a policy result)
+future_surface → triangle allocation → actual rendered frame → actual perceptual loss   (needed: a rendering result)
+```
+
+`lod.py` measures allocation quality, not rendered outcomes. The transition from a **policy proof** to a
+**rendering proof** requires a real rasterizer; until one passes the same equal-budget, fairness-respecting
+test, the rasterization benefit is a hypothesis.
+
+**◇ THE UNDERLYING HYPOTHESIS (the most important one).** That **future relevance is a useful general-purpose
+resource-allocation signal across many domains** — compute, validation, networking, AI attention, *and*
+rasterization — so that at a fixed budget the engine preserves more of the information that determines what
+happens next. Evidence so far: the *same* future-surface composite already beats domain baselines across the
+distinct benchmarks above. What makes the renderer the decisive test is not graphics — it is that distance LOD
+and screen-space LOD are **decades-mature baselines** with enormous engineering behind them. Beating them at
+equal budget, while respecting the fairness invariant, would be strong evidence that the allocation principle
+*transfers* into a very different optimization problem. The renderer is simply the hardest place to test the
+real claim. *(Honest bound, unchanged: even if it transfers everywhere, the field still allocates attention,
+not truth — see the ROOT PRINCIPLE.)*
