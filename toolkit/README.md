@@ -43,6 +43,10 @@ print(certify(future_surface).report())
 from toolkit import diff_certificates, weighted_product
 old, new = certify(future_surface), certify(weighted_product)
 print(diff_certificates(old, new).report())   # judged by envelope + integrity, never score alone
+
+# provenance: why did an item get budget? (observable signals only, never the hidden objective)
+budget = attention.allocate(world, resources=1000)
+print(budget.explain("region_07"))
 ```
 
 ## The contract
@@ -67,18 +71,20 @@ picked well because the model says so."
 | coherence time | a fixed allocation has a finite useful horizon | coherence benchmark + `Field.tick()` |
 | `attention -> explanation` ALLOWED, `-> hidden justification` FORBIDDEN | every claim on a policy's label is a runnable check | `certify()` |
 | `observable drift != semantic drift` | a monitor sees marginals, not the signal->outcome map | `Monitor` blind-spot |
+| forbidden channels | the score must be invariant to M / future / hidden / private state | anti-oracle suite in `certify()` |
+| `attention should have provenance` | every decision cites observable signals, never truth | `Budget.reason()` / `.explain()` |
 
 ## Commands
 
 ```
-python3 -m toolkit              # the full proof (twenty-five asserted properties)
+python3 -m toolkit              # the full proof (thirty asserted properties)
 python3 -m toolkit tournament  # compare() + robustness() tables
 python3 -m toolkit certify     # certificate for future_surface
 ```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Twenty-five asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Thirty asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -191,6 +197,30 @@ The blind spot is the honest part: a distribution monitor sees the **marginals**
 the signal->outcome relationship, so it catches a new input domain but is invisible to a confidently
 misleading world. `observable drift != semantic drift`. The certificate artifact carries this in its
 `expires_if` field (input shift / policy change / new hidden variable).
+
+**[12] Anti-oracle suite + provenance.** Two halves of one boundary — *forbid reading reality, then
+prove the decision used only what was allowed.* `certify(policy, forbidden=(...))` requires the score
+to be invariant to every forbidden channel (`M`, `future_state`, `hidden`, `private`); a policy whose
+score moves when a forbidden channel moves is caught:
+
+```
+future_surface forbidden-channels read: none
+reads_hidden   forbidden-channels read: ['hidden']
+```
+
+And `Budget.reason(id)` / `.explain(id)` gives auditable provenance that cites observable signals only:
+
+```
+allocation_reason: region_00
+  signals (observable only): consequence=583  uncertainty=868  possibility=822  cost=37  magnitude=783
+  future_surface = 415   rank #1 of 20   outranked 18
+  funded: True   eligible: True
+  not read (forbidden): M, future_state, hidden, private
+```
+
+The proof asserts the trace never cites `M` and always declares it unread. Provenance is *allowed*
+(every decision is explainable); hidden justification is *forbidden* (the explanation can only name
+what the policy was permitted to see).
 
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 

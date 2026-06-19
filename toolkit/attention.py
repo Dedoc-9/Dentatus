@@ -26,6 +26,10 @@ from __future__ import annotations
 from .allocation import allocate as _allocate, captured as _captured
 from . import policies
 
+# Provenance may cite only OBSERVABLE signals; it must never read the graded objective or any oracle.
+OBSERVABLE = ("consequence", "uncertainty", "possibility", "cost", "magnitude")
+FORBIDDEN_IN_PROVENANCE = ("M", "future_state", "hidden", "private")
+
 
 class Budget:
     """Result of an allocation: which items were funded, what it cost, and what it captured."""
@@ -35,6 +39,56 @@ class Budget:
 
     def captured(self, objective="M"):
         return _captured(self.items, self.chosen, objective)
+
+    def reason(self, item_id):
+        """Provenance for one decision: why this item was (or was not) funded. Cites ONLY observable
+        signals; the graded objective M and any oracle channel are explicitly declared as not read.
+        attention -> explanation ALLOWED ; attention -> hidden justification FORBIDDEN."""
+        item = next((o for o in self.items if o["id"] == item_id), None)
+        if item is None:
+            return {"item": item_id, "error": "not found"}
+        eligible = [o for o in self.items if _is_eligible(o)]
+        ranked = sorted(eligible, key=lambda o: (-(o.get(self.policy, 0) * 1000) // max(1, o["cost"]),
+                                                  str(o["id"])))
+        rank = next((i + 1 for i, o in enumerate(ranked) if o["id"] == item_id), None)
+        outranked = sum(1 for o in self.items if o.get(self.policy, 0) < item.get(self.policy, 0))
+        elig = _is_eligible(item)
+        funded = item_id in self.chosen
+        if not elig:
+            why = "excluded by the eligibility gate, regardless of score (importance != eligibility)"
+        elif funded:
+            why = "funded: ranked #%s of %d eligible by %s/cost" % (rank, len(eligible), self.policy)
+        else:
+            why = "not funded: outranked under the budget (ranked #%s of %d eligible)" % (rank, len(eligible))
+        return {
+            "item": item_id,
+            "policy": self.policy,
+            "signals": {k: item[k] for k in OBSERVABLE if k in item},
+            "score": item.get(self.policy),
+            "rank": rank,
+            "of_eligible": len(eligible),
+            "outranked": outranked,
+            "eligible": elig,
+            "funded": funded,
+            "reason": why,
+            "not_read": list(FORBIDDEN_IN_PROVENANCE),
+        }
+
+    def explain(self, item_id):
+        """A printable provenance trace for one item."""
+        r = self.reason(item_id)
+        if "error" in r:
+            return "item %s: %s" % (item_id, r["error"])
+        sig = "  ".join("%s=%s" % (k, v) for k, v in r["signals"].items())
+        return "\n".join([
+            "allocation_reason: %s" % r["item"],
+            "  signals (observable only): %s" % sig,
+            "  %s = %s   rank #%s of %d   outranked %d" % (r["policy"], r["score"], r["rank"],
+                                                           r["of_eligible"], r["outranked"]),
+            "  funded: %s   eligible: %s" % (r["funded"], r["eligible"]),
+            "  why: %s" % r["reason"],
+            "  not read (forbidden): %s" % ", ".join(r["not_read"]),
+        ])
 
     def __repr__(self):
         return ("Budget(policy=%r, funded=%d/%d, spent=%d/%d)"

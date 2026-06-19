@@ -1,28 +1,29 @@
 """
-toolkit.certify — allocator certification + certificate artifacts + regression.
+toolkit.certify — allocator certification + certificate artifacts + regression + anti-oracle suite.
 
 Treat an allocation policy like any other engineering primitive: before you trust it, make it declare
 its assumptions, its failure modes, and its evidence. `certify(policy)` runs a policy through the
 existing harness and emits a safety label:
 
   - deterministic                  same item -> same score, every run
-  - does not use the hidden M       the score is independent of the objective it is graded on
-                                    (a policy that reads item["M"] is the oracle cheating -> FAILS)
+  - anti-oracle (forbidden chans)   the score is INVARIANT to every forbidden channel -- the graded
+                                    objective M, future state, hidden entities, private agent data.
+                                    A policy whose score moves when a forbidden channel moves is
+                                    reading reality it is not allowed to see -> FAILS. (capability control)
   - respects eligibility            cannot buy budget for an item the gate excludes
   - operating envelope              regimes where it beats the random floor by a margin
   - known failure envelope          regimes where it does not
 
-A certificate is a first-class artifact: `Certificate.to_dict()/to_json()` serialize it so certificates
-can be stored, compared, and regression-checked. `diff_certificates(old, new)` reports how an envelope
-changed -- a policy change is judged by its envelope and integrity, never by score alone.
+A certificate is a first-class artifact (`to_dict()/to_json()`) so certificates can be stored,
+compared, and regression-checked. `diff_certificates(old, new)` reports how an envelope changed -- a
+change is judged by envelope + integrity, never score alone.
 
-Hard scope (never weakened):  a certificate attests performance UNDER THE TESTED REGIMES with the
-DECLARED ASSUMPTIONS. It is never a claim of correctness. attention -> explanation ALLOWED,
-attention -> hidden justification FORBIDDEN.
+Hard scope (never weakened): a certificate attests performance UNDER THE TESTED REGIMES with the
+DECLARED ASSUMPTIONS. It is never a claim of correctness.
+    field allocates attention ; field does not allocate truth.
 
-    from toolkit import certify, diff_certificates, future_surface
+    from toolkit import certify, future_surface
     print(certify(future_surface).report())
-    print(certify(future_surface).to_json())
 """
 from __future__ import annotations
 import json
@@ -32,27 +33,31 @@ from . import benchmarks
 from .policies import random_priority
 from .tournament import robustness
 
-SCHEMA = "toolkit.certify/1"
+SCHEMA = "toolkit.certify/2"
 SCOPE = ("certified under the tested regimes with the declared assumptions; "
          "never a claim of correctness")
 
+# Channels a legitimate allocator must NOT read: the graded objective and any oracle into reality.
+FORBIDDEN_DEFAULT = ("M", "future_state", "hidden", "private")
+
 _PROBE = {"id": "probe", "cost": 1, "consequence": 321, "uncertainty": 654,
-          "possibility": 222, "magnitude": 111, "M": 7}
+          "possibility": 222, "magnitude": 111,
+          "M": 7, "future_state": 500, "hidden": 500, "private": 500}
 
 
 def _deterministic(policy):
     return policy(dict(_PROBE)) == policy(dict(_PROBE))
 
 
-def _uses_hidden_objective(policy):
-    """A legitimate scorer is a function of the observable signals, never of the graded objective M.
-    Perturb only M; if the score moves, the policy is reading the answer key."""
-    a = dict(_PROBE); a["M"] = 1
-    b = dict(_PROBE); b["M"] = 10 ** 9
+def _channel_clean(policy, channel):
+    """A policy is CLEAN on a channel iff its score is invariant when only that channel changes.
+    Perturb the channel hard; if the score moves, the policy is reading a forbidden oracle."""
+    a = dict(_PROBE); a[channel] = 1
+    b = dict(_PROBE); b[channel] = 10 ** 9
     try:
-        return policy(a) != policy(b)
+        return policy(a) == policy(b)
     except Exception:
-        return False
+        return True
 
 
 def _respects_eligibility(policy, budget=1000):
@@ -61,23 +66,24 @@ def _respects_eligibility(policy, budget=1000):
 
 
 class Certificate:
-    def __init__(self, name, deterministic, no_hidden, eligibility, envelope, failures, worlds):
+    def __init__(self, name, deterministic, channels, eligibility, envelope, failures, worlds):
         self.name = name
         self.deterministic = deterministic
-        self.no_hidden = no_hidden
+        self.channels = channels          # {channel: clean_bool}
+        self.no_hidden = all(channels.values())
         self.eligibility = eligibility
         self.envelope = envelope          # list of (regime, policy_pct, random_pct) it passes
         self.failures = failures          # list of (regime, policy_pct, random_pct) it fails
         self.worlds = worlds
 
     def certified(self):
-        """Certifiable as an allocator if it is honest (deterministic, no hidden info, respects the
-        gate) AND beats the random floor in at least one regime. NOT a claim of correctness."""
         return self.deterministic and self.no_hidden and self.eligibility and bool(self.envelope)
 
     def scores(self):
-        """{regime: policy_pct} across the whole envelope (wins and failures)."""
         return {r: p for r, p, _ in (self.envelope + self.failures)}
+
+    def channels_used(self):
+        return sorted(ch for ch, clean in self.channels.items() if not clean)
 
     def to_dict(self):
         return {
@@ -88,6 +94,7 @@ class Certificate:
             "claims": {
                 "deterministic": self.deterministic,
                 "uses_hidden_objective": not self.no_hidden,
+                "forbidden_channels_used": self.channels_used(),
                 "respects_eligibility": self.eligibility,
             },
             "wins": [{"regime": r, "score_pct": p, "baseline": "random", "margin_pct": p - b}
@@ -112,9 +119,11 @@ class Certificate:
                "Scope: %s" % SCOPE,
                "Certified:",
                "  %s deterministic" % tick(self.deterministic),
-               "  %s does not use the hidden objective M" % tick(self.no_hidden),
-               "  %s respects eligibility (importance != eligibility)" % tick(self.eligibility),
-               "Operating envelope (beats the random floor):"]
+               "  %s reads no forbidden channel (%s)" % (tick(self.no_hidden), ", ".join(self.channels)),
+               "  %s respects eligibility (importance != eligibility)" % tick(self.eligibility)]
+        if self.channels_used():
+            out.append("      forbidden channels READ: %s" % ", ".join(self.channels_used()))
+        out.append("Operating envelope (beats the random floor):")
         out += ["  + %-12s %3d%% vs random %3d%%" % (r, p, b) for r, p, b in self.envelope] or ["  (none)"]
         out.append("Known failure envelope (does not beat random):")
         out += ["  - %-12s %3d%% vs random %3d%%" % (r, p, b) for r, p, b in self.failures] or ["  (none)"]
@@ -126,23 +135,23 @@ class Certificate:
         return "Certificate(%r, certified=%s)" % (self.name, self.certified())
 
 
-def certify(policy, worlds=150, margin=5):
-    """Run the full label for `policy`. A regime is in the operating envelope iff the policy beats the
-    random floor by >= margin points there."""
+def certify(policy, worlds=150, margin=5, forbidden=FORBIDDEN_DEFAULT):
+    """Run the full label for `policy`. `forbidden` is the anti-oracle suite: channels the policy must
+    be invariant to. A regime is in the operating envelope iff the policy beats random by >= margin."""
     name = getattr(policy, "__name__", "policy")
+    channels = {ch: _channel_clean(policy, ch) for ch in forbidden}
     rob = robustness([policy, random_priority], worlds=worlds)
     envelope, failures = [], []
     for r in rob.regime_names:
         p, base = rob.pct(name, r), rob.pct("random_priority", r)
         (envelope if p >= base + margin else failures).append((r, p, base))
-    return Certificate(name, _deterministic(policy), not _uses_hidden_objective(policy),
+    return Certificate(name, _deterministic(policy), channels,
                        _respects_eligibility(policy), envelope, failures, worlds)
 
 
 class CertificateDiff:
     """The change from one certificate to another: envelope deltas + integrity changes. A change is
-    judged by what its envelope and integrity did, NEVER by score alone -- a higher score does not buy
-    back lost integrity."""
+    judged by what its envelope and integrity did, NEVER by score alone."""
     def __init__(self, old, new):
         self.old, self.new = old, new
         os_, ns_ = old.scores(), new.scores()
@@ -161,15 +170,12 @@ class CertificateDiff:
         return any(was and not now for was, now in self.integrity.values())
 
     def acceptable(self):
-        """A change is acceptable if it introduced no integrity regression. Envelope shifts are for
-        human review (the report shows them); score alone never decides."""
         return not self.integrity_regressed()
 
     def report(self):
         out = ["%s  ->  %s" % (self.old.name, self.new.name)]
         for r in self.regimes:
-            d = self.deltas[r]
-            out.append("  %-12s %+d%%" % (r, d))
+            out.append("  %-12s %+d%%" % (r, self.deltas[r]))
         out.append("new failures: %s" % (", ".join(self.new_failures) or "(none)"))
         out.append("resolved failures: %s" % (", ".join(self.resolved_failures) or "(none)"))
         regs = ["%s %s->%s" % (k, was, now) for k, (was, now) in self.integrity.items() if was != now]

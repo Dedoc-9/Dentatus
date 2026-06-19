@@ -360,7 +360,27 @@ def run(budget=1000):
     assert m_shift.status == Monitor.QUARANTINED, "a strong input-domain shift must quarantine the policy"
     assert m_adv.status == Monitor.CERTIFIED, "the monitor is BLIND to adversarial inversion (declared limitation)"
 
-    print("\n[OK] all twenty-five properties hold. The toolkit allocates by supplied signal; it does not")
+    fs_cert = certify(policies.future_surface, worlds=60)
+    def reads_hidden(item):                 # a policy that peeks at a forbidden oracle channel
+        return item["consequence"] * item.get("hidden", 1)
+    hidden_cert = certify(reads_hidden, worlds=40)
+    bud = attention.observe(make_fairness_world()).allocate(1000)
+    funded_id = sorted(bud.chosen)[0]
+    prov = bud.reason(funded_id)
+    jackpot = bud.reason("hidden_jackpot")
+    print("\n[12] anti-oracle suite + provenance -- forbid reading reality; explain using only signals:")
+    print("      future_surface forbidden-channels read: %s" % (fs_cert.channels_used() or "none"))
+    print("      reads_hidden   forbidden-channels read: %s" % hidden_cert.channels_used())
+    print("\n".join("      " + ln for ln in bud.explain(funded_id).splitlines()))
+    print("      hidden_jackpot -> funded=%s (%s)" % (jackpot["funded"], jackpot["reason"]))
+
+    assert fs_cert.no_hidden is True and fs_cert.channels_used() == [], "future_surface reads no forbidden channel"
+    assert hidden_cert.no_hidden is False and "hidden" in hidden_cert.channels_used(), "anti-oracle must catch a policy reading 'hidden'"
+    assert "M" not in prov["signals"], "provenance must never cite the graded objective M"
+    assert "M" in prov["not_read"], "provenance must declare M as a forbidden, unread channel"
+    assert jackpot["eligible"] is False and jackpot["funded"] is False, "provenance must explain an eligibility exclusion"
+
+    print("\n[OK] all thirty properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 
