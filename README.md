@@ -206,6 +206,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`salience/`](salience/README.md) | **a possibility-aware allocation field** — distributes a compute budget by **possibility density** (the doorway over the valley), not distance/LOD; exact-integer apportionment; law `possibility→allocation`, never `possibility→physics` | `PYTHONHASHSEED=0 python3 demo_salience.py` |
 | [`consequence/`](consequence/README.md) | **the State-Graph Taint Map** — the shared *what-matters-next?* field: dependency graph → consequence (`consequence ≠ magnitude`, the butterfly); one field, many consumers (compute · validation depth · network · AI); the Causal Reconstruction Test (delete most compute, keep the future — bounded by graph completeness) | `PYTHONHASHSEED=0 python3 demo_consequence.py` |
 | [`causal_runtime/`](causal_runtime/README.md) | **causal allocation of computation** — composes consequence × uncertainty × possibility into one *future-surface* field and an `AttentionField` that allocates compute/validation/network/AI; law `causal_information→attention`, never `→mutation`; **proven against AetherPulse: committed hash identical with/without the observer**; the Causal Freshness Benchmark | `PYTHONHASHSEED=0 python3 demo_causal_runtime.py` |
+| [`intervention/`](intervention/README.md) | **controlled causal query protocol** — an airlock-authorized `do()` experiment on a discarded *shadow* world separates true coupling (CONFIRMED) / confounder (REJECTED) / feedback (CYCLE); law `causal_information→experiment` ALLOWED (shadow-only), never `→truth`; committed history untouched | `PYTHONHASHSEED=0 python3 demo_intervention.py` |
 
 All twenty-nine refuse to run without `PYTHONHASHSEED=0`. Test suites total **470 unit tests across 36 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
@@ -529,3 +530,36 @@ across machines — it does **not** prevent an OS OOM-kill if the ceiling is set
 **Verifiable cross-machine migration (`stride/`).** Moving a deterministic computation to cloud/edge via raw
 snapshots leaks environment drift — a different library or arch forks the replayed path. `stride` makes the
 receiver verify its **environment fingerprint exactly matches the sender's** (e.g. `se
+
+## Use case — a self-auditing causal runtime (spend compute where the future branches; discover what the model misses)
+
+A galactic-scale simulation, an open-world game, a robotics stack, or a large scientific model cannot simulate,
+render, verify, and replicate everything equally — and the usual proxy (*importance ≈ distance × visibility*)
+is structurally blind to a tiny object that controls a huge future. The runtime layer changes the primitive to
+*importance ≈ future dependency surface* and then audits its own model of that surface, all while the committed
+history stays a single deterministic hash trajectory.
+
+**1. Spend computation where the future can branch.** `consequence/` weights every entity by
+`Δ · dependency_mass` rather than magnitude (the butterfly), and `causal_runtime/` apportions streaming, AI
+tick-rate, fidelity, network, and validation depth from one shared `AttentionField`. The Causal Reconstruction
+Test shows this **deletes ~87% of compute while preserving the full future** on structured worlds — and states
+its bound honestly (an undeclared coupling collapses reconstruction to 0.414). The kernel never reads the
+field, so this is provably *allocation*, never *physics*: the committed AetherPulse hash trajectory is
+byte-identical with the attention layer attached or removed.
+
+**2. Notice what the model does not yet know.** When the world moves an entity the dependency graph rated
+zero, the **ghost** `G⁺ = max(0, observed − predicted)` fires — a pure attention spike with no structural
+cause ("something matters here; I don't yet know what"). The Blind Discovery Benchmark shows distance and
+consequence both *miss* a hidden, low-visibility switch that controls a downstream cascade, while the ghost
+catches it. A switch in an ancient ruin that nothing visibly touches stays cheap until ignorance there becomes
+expensive.
+
+**3. Propose, then test — never edit reality to learn.** A *persistent* ghost becomes a **proposed** coupling
+(integer-counted evidence across distinct contexts), held behind four locks so even an accepted proposal
+updates a *model* while the world hash never moves. `intervention/` then resolves what observation cannot: an
+airlock-authorized `do()` experiment on a discarded **shadow world** separates a true coupling (CONFIRMED) from
+a confounder (REJECTED — two effects of a hidden common cause) from a feedback loop (CYCLE warning). *What it
+gives:* a deterministic engine that allocates effort by future consequence and discovers where its own
+abstractions are incomplete — a closed epistemic loop. *Bound:* it improves the **map**; the **territory** (the
+committed hash trajectory) is never modified, and it proves counterfactuals *of the model*, not facts of
+nature. `integrity ≠ truth`.

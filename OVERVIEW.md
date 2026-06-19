@@ -105,4 +105,39 @@ Each of these is a runnable proof, not a claim. Under `PYTHONHASHSEED=0`:
 | Property | Evidence |
 |---|---|
 | The whole workbench passes one gate — 36/36 suites + coupled/uncoupled parity, run as real subprocesses | `integration/preflight_check.py` → `[FOUNDRY VERIFIED]` |
-| Cores have not drifted from a pinned baseline; siblings vendor no core (t
+| Cores have not drifted from a pinned baseline; siblings vendor no core (the Sibling Law) | `selfaudit/` → `workbench_H` |
+| Replay court — record, tamper, rule-swap, fail-closed invariant, Ed25519 third-party verify | `chronicle/demo_policy.py` |
+| Exact integer consensus + the 2D (lateral×temporal) attestation lattice | `quorum/demo_quorum.py` |
+| A bounded integer VM whose run mints an offline-replayable proof shard | `fuel/demo_fuel.py`, `tessera/demo_tessera.py` |
+| A 1,000,000-step fixed-point manifold with deterministic self-retraction, no nondeterministic drift | `aether/demo_aether_physics.py` |
+| Consequence-aware allocation that leaves reality untouched — committed hash byte-identical with/without the observer, the ghost discovers an undeclared low-visibility anomaly distance & consequence both miss, and a persistent ghost is resolved by an airlock `do()` on a shadow world | `causal_runtime/demo_aether_attention.py`, `causal_runtime/ghost_persistence.py`, `intervention/benchmark.py` |
+| Standalone *applications* compose the stack into products (Sibling Law, read-only imports, own tests) | `aegis_gate/` (verifiable transfer agent, 14 tests), `VeriSim/` (verifiable simulation, 12 tests), `VeriVerse/` (verifiable voxel world+physics, 13 tests), `AetherPulse/` (deterministic engine kernel + conformance vectors, 15 tests), `AetherManifold/` (deterministic Riemannian optimization, 10 tests) |
+| *(legacy, in `docs/archive/`)* differential fuzzing 20k cases 0 violations; hardware-invariant replay; replay immunity; chaos-order invariance | `forge/oracle_fuzz.py`, `forge/duel_determinism_proof.py`, `forge/nonce_proof.py`, `forge/chaos_harness.py` |
+
+## The part that's actually worth showing: engineering judgment
+
+The methodology is more interesting than any feature, and the history shows it under load:
+
+- **Measure before optimizing.** A frame-time profiler was built before any optimization; it showed ~7×
+  headroom, so a tempting "v2 kernel" rewrite was *refused* as premature. Later profiling found the real
+  bottleneck was redundant hashing (75% of a tick), **not** the eigensolver everyone assumed.
+- **Caught fabricated numbers.** Several speculative experiments arrived with pre-written "results." Running
+  them disproved the numbers (a claimed 30.92% compression gain was really ~5% and sometimes *negative*; a
+  "Klein bottle" boundary had a real topological bug). Each was corrected in the ledger with the measured value.
+- **Found and fixed a real determinism leak.** Off-beat commits folded `time.time()` into a committed hash,
+  so replay would drift across machines — diagnosed, fixed (frame-derived), and proven.
+- **Honest framing enforced continuously.** Across the workbench expansion, marketing-shaped proposals
+  ("post-trust," "solves the Halting Problem," "diamond-hard," "100% certainty," a Collatz-indexed
+  derivative) were each either re-scoped to what the code proves or refused outright and recorded as a
+  non-claim. Every sibling README carries a "honest bounds" section.
+
+## Honest scope — what it is NOT
+
+- **Not a game engine or renderer.** A game was prototyped to exercise the kernel, but the workbench competes
+  on *determinism and verifiability*, not frame-rate or fidelity; the 240fps target lives in a native port, not here.
+- **Not a truth oracle.** Every proof is `integrity ≠ truth`: it certifies a record is unforged, reproducible,
+  and rule-faithful — never that the decision, model, or conclusion is correct, fair, or wise.
+- **Not host security.** It bounds *authority to act* and makes tampering *detectable*; on a compromised host
+  the same user can still abuse the capture path. It is tamper-evidence, not tamper-proofness.
+- **Not a self-modifying system.** The observation/causal layer improves the *model* (attention, proposals,
+  interventions); the committed hash trajectory — the territory — is never modified by any of it.

@@ -491,8 +491,54 @@ auditor trips when `E` exceeds the declared epsilon and self-retracts, logging e
 replayable bit-for-bit. *What it gives:* a deterministic, attestable simulation with no nondeterministic
 drift. *What it does not:* claim the simulation models real physics.
 
+#### Use case — a consequence-aware engine that audits its own causal model
+
+A large simulation/engine/agent cannot spend compute, validation, network, and AI equally everywhere, and the
+usual proxy (distance × visibility) is blind to a tiny entity that controls a large future. `consequence`
+weights each entity by `Δ · dependency_mass` (the butterfly), `causal_runtime` apportions every channel from
+one shared `AttentionField`, and the kernel never reads it — so the committed `AetherPulse` hash trajectory is
+byte-identical with the attention layer on or off (allocation, never physics). When the world moves an entity
+the graph rated zero, the **ghost** (`observed − predicted`, rectified) fires; a *persistent* ghost becomes a
+`coupling_discovery` **proposal** (four locks: propose-never-commit, evidence-not-authority, external review,
+reality-untouched), and `intervention` resolves it with an airlock-authorized `do()` on a shadow world —
+CONFIRMED / REJECTED (confounder) / CYCLE. *What it gives:* an engine that spends effort where the future
+branches and discovers where its own model is incomplete, as a closed loop. *What it does not:* modify the
+committed history (the map improves, the territory never moves) or prove a fact of nature — only a counterfactual
+of the declared model. `integrity ≠ truth`.
+
 #### Applications on the workbench (downstream products, not siblings)
 
 The Sibling Law scales from components to whole products: a standalone app imports the frozen cores + siblings
 read-only via a path shim, without being a sibling or entering the suite count. In-repo examples:
-`aegis_gate/` (a verifiable transf
+`aegis_gate/` (a verifiable transfer & KYC agent over exact gates + `ration` + `quorum` + `tessera`; a **mock**
+bank, 14 tests), `VeriSim/` (a verifiable simulation engine over `aether`/`fuel`/`tessera`/`stasis` that emits a
+replayable Shard; proves the *test was real*, not that the model is *true*; 12 tests), `VeriVerse/` (a
+verifiable procedural world/physics engine — deterministic integer terrain + content-addressed chunks,
+Collatz feature provenance, signed chunk shards, stdlib viewer; a *scaffold* for a deterministic-and-verifiable
+physics engine that competes on provable determinism, not render speed; 13 tests), `AetherPulse/` (a Stage-1
+deterministic engine kernel — 3-D fixed-point rigid bodies + the L1/L2/L3 render seam + cross-language
+conformance vectors a C++/Rust port must hash-match; 15 tests), and `AetherManifold/` (deterministic
+Riemannian optimization on the Stiefel manifold — fixed-point tangent projection + integer retraction,
+two-tier exact/approx, shadowing-Lyapunov observable; 10 tests). When you build
+one, the same rules apply — decoupled, content-addressed, fail-closed, and explicit about non-claims. **Native ports** (C++/Rust for performance, e.g. `AetherPulse/`) follow a stricter rule: the Python stays the
+*reference / source of truth*, and the native build is validated against it via **conformance vectors**
+(input → expected state hashes) — the native code reproduces the reference's hashes bit-for-bit or fails;
+it never defines semantics, lives in its own folder, and does not import the workbench.
+
+#### Use case — evolving the rules without breaking the chain of custody
+
+A rule in `elenchus` or a threshold in `fuel` turns out wrong. Instead of an unaudited code edit, `polity`
+runs a `quorum` vote among pinned governors; a ratified amendment mints a new constitution version bound to
+the prior by content hash. Downstream, `elenchus`/`fuel` enforce against the newly-active ruleset hash. The
+whole evolution is itself replayable. *Bound:* proves the vote and the lineage, never that the new rule is
+better.
+
+
+---
+
+## 7. Acknowledgement (machine-parseable)
+
+```
+ACK: deterministic-capture=enforced  privilege-pep=required  integrity!=truth  fail-closed=on  sibling-law=enforced  non-claims=stated
+VERSION: 29-component / 27-sibling / 36-suite / 470-test workbench (+ parity proof)
+```
