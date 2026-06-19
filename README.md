@@ -29,6 +29,18 @@ have not drifted, so your review shifts from line-by-line diff-reading to the on
 cannot certify: whether the new logic is actually *right*. (Honest bound: it catches the regressions
 its checks cover, not arbitrary badness — integrity is not truth.)
 
+### Applied result — micro-triangle scheduling (constructed-world)
+
+The newest front-door, a standalone **[`toolkit/`](toolkit/README.md)** for uncertainty-aware resource
+allocation, was pointed at a real problem: scheduling sub-pixel "micropolygon" triangle clusters for
+shading under a fixed compute budget (the helper-lane-waste problem that engines like UE5 Nanite solve
+with a two-path rasterizer). On a *constructed* micro-triangle workload, a coverage-gated scheduler
+preserved **5.2× the useful work** of naive geometry-density scheduling under extreme sub-pixel stress
+(99% vs 19% of an oracle), widening to **12–14×** in lighter regimes. Honest bound, enforced by the
+example's manifest: this is a property of the constructed workload, and its evidence **`expires_if`
+measured on real GPU silicon** — never a hardware speedup claim. See
+[`examples/raster_allocation.py`](examples/raster_allocation.py) and the toolkit's `≠` dev note.
+
 ### The families, at a glance
 
 Twenty-nine components group into a few families, each a different hat on the one idea. **The audit core**

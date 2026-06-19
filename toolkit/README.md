@@ -355,6 +355,20 @@ explosion it loses even to random — while a coverage-gated scheduler preserves
 **`expires_if` measured on real GPU silicon** — it proves a property of the *constructed* workload, not
 of hardware. (See the scope note below.)
 
+**Measured result (constructed workload, useful-work-preserved as % of an oracle):**
+
+| regime                | coverage-gated | naive (tri_count) | improvement |
+|-----------------------|:--------------:|:-----------------:|:-----------:|
+| **micro-triangle explosion** (extreme sub-pixel stress) | **99%** | **19%** | **5.2×** |
+| occluded              | 99%            | 8%                | 12.4×       |
+| clean                 | 99%            | 7%                | 14.1×       |
+
+Under **extreme sub-pixel stress** the coverage-gated scheduler preserves **5.2×** the useful work of
+naive geometry-density scheduling; in lighter regimes the gap widens to **12–14×** (because naive
+scheduling spends almost the entire budget on dense-but-inert geometry). These are ratios of
+useful-work-preserved in the *constructed* model — **not** a measured GPU speedup. Reproduce:
+`PYTHONHASHSEED=0 python3 examples/raster_allocation.py`.
+
 ## Honest scope — what this is and is not
 
 Two clarifications that keep the claims falsifiable:
