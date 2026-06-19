@@ -549,8 +549,41 @@ across machines — it does **not** prevent an OS OOM-kill if the ceiling is set
 
 **Verifiable cross-machine migration (`stride/`).** Moving a deterministic computation to cloud/edge via raw
 snapshots leaks environment drift — a different library or arch forks the replayed path. `stride` makes the
-receiver verify its **environment fingerprint exactly matches the sender's** (e.g. `se
+receiver verify its **environment fingerprint exactly matches the sender's** (e.g. `selfaudit`'s
+`workbench_H`) before accepting any state; a single byte of drift raises `EnvironmentMismatch` and the
+inbound path refuses to start. Network telemetry is captured, so a post-migration audit replays from the
+record without reopening a socket. *Bound:* proves *structural* environment identity and exact recorded
+inputs — **not** transport security (wrap TLS externally) and **not** that the remote hardware is honest.
 
 ## Use case — a self-auditing causal runtime (spend compute where the future branches; discover what the model misses)
 
-A galactic-scale simulation, an open-world game, a robotics stack, or a large s
+A galactic-scale simulation, an open-world game, a robotics stack, or a large scientific model cannot simulate,
+render, verify, and replicate everything equally — and the usual proxy (*importance ≈ distance × visibility*)
+is structurally blind to a tiny object that controls a huge future. The runtime layer changes the primitive to
+*importance ≈ future dependency surface* and then audits its own model of that surface, all while the committed
+history stays a single deterministic hash trajectory.
+
+**1. Spend computation where the future can branch.** `consequence/` weights every entity by
+`Δ · dependency_mass` rather than magnitude (the butterfly), and `causal_runtime/` apportions streaming, AI
+tick-rate, fidelity, network, and validation depth from one shared `AttentionField`. The Causal Reconstruction
+Test shows this **deletes ~87% of compute while preserving the full future** on structured worlds — and states
+its bound honestly (an undeclared coupling collapses reconstruction to 0.414). The kernel never reads the
+field, so this is provably *allocation*, never *physics*: the committed AetherPulse hash trajectory is
+byte-identical with the attention layer attached or removed.
+
+**2. Notice what the model does not yet know.** When the world moves an entity the dependency graph rated
+zero, the **ghost** `G⁺ = max(0, observed − predicted)` fires — a pure attention spike with no structural
+cause ("something matters here; I don't yet know what"). The Blind Discovery Benchmark shows distance and
+consequence both *miss* a hidden, low-visibility switch that controls a downstream cascade, while the ghost
+catches it. A switch in an ancient ruin that nothing visibly touches stays cheap until ignorance there becomes
+expensive.
+
+**3. Propose, then test — never edit reality to learn.** A *persistent* ghost becomes a **proposed** coupling
+(integer-counted evidence across distinct contexts), held behind four locks so even an accepted proposal
+updates a *model* while the world hash never moves. `intervention/` then resolves what observation cannot: an
+airlock-authorized `do()` experiment on a discarded **shadow world** separates a true coupling (CONFIRMED) from
+a confounder (REJECTED — two effects of a hidden common cause) from a feedback loop (CYCLE warning). *What it
+gives:* a deterministic engine that allocates effort by future consequence and discovers where its own
+abstractions are incomplete — a closed epistemic loop. *Bound:* it improves the **map**; the **territory** (the
+committed hash trajectory) is never modified, and it proves counterfactuals *of the model*, not facts of
+nature. `integrity ≠ truth`.
