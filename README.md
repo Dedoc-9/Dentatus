@@ -53,12 +53,26 @@ proposer never mutates state directly — it emits a *bounded candidate transiti
 architectural laws — **`telemetry ≠ control`** and **`intent ≠ authority`**. Because every *unrealized*
 transition leaves a trace, the runtime measures **what almost happened**: proposal pressure (`admissibility`),
 the lawful-but-unchosen set (`possibility`), and the *geometry* of that unrealized field (`horizon`).
-`salience/` then allocates a compute budget by **possibility density** — the doorway over the quiet valley —
-under the law **possibility informs attention, never truth** (`possibility → allocation`, never
-`possibility → physics`). The committed history stays singular and deterministic; only the runtime's
-*awareness* of nearby lawful futures changes. *(Honest bound: a reference runtime, not a shipping 240fps
-engine; it measures the admissible field under the declared structure, never that the structure is right.
-`integrity ≠ truth`.)*
+`salience/` then turns that field into a **scheduling primitive — possibility-aware *attention*** — and two
+falsifications back it, not rhetoric. Possibility is treated as **terrain**: a **Possibility Atlas** built
+once, sampled `O(1)`, and refreshed incrementally by a **cheap `O(local)` predictor** calibrated against
+*occasional* exact `horizon` rollouts — which dissolves the measured **~56×** cost of computing the future
+per frame. The cheap predictor reproduces the expensive signal's *ranking quality* (top-region overlap
+**1.00**) at **0.08% of the cost** and stays fresh in **1 frame** where the exact signal needs 366
+(`salience/demo_bench.py`). And against an *independent* consequence ground truth (counterfactual
+act-vs-freeze downstream divergence), **possibility-driven attention captures 3–5× more of the
+truly-consequential future than distance or visibility** — which turn out *slightly anti-correlated* with
+consequence — while **matching hand-authored importance automatically, deterministically, at scale, and
+self-updating** (`salience/demo_ccr.py`). The principle that emerges — **spend compute where the future is
+dense, not where the polygons are** — is split for safety into a **Truth scheduler** (authoritative physics,
+anti-cheat, networking — *never* possibility-aware) and an **Attention scheduler** (AI depth, simulation
+detail, streaming, rendering — possibility-aware), under the law **possibility informs attention, never
+truth** (`possibility → allocation`, never `possibility → physics`). The committed history stays singular and
+deterministic; only the runtime's *awareness* of nearby lawful futures changes — so the largest prize is AI
+(most NPCs cheap; the few near consequential futures expensive) with competitive integrity intact. *(Honest
+bound: controlled reference results on synthetic scenarios — a measurement framework and a scheduling
+principle, **not** a shipping 240fps engine and **not** a claim about physical nature; it measures the
+admissible field under the declared structure, never that the structure is right. `integrity ≠ truth`.)*
 
 ### The 2D Attestation Lattice — bounding an untrusted runtime on two axes
 
