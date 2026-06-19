@@ -54,6 +54,14 @@ class Budget:
         outranked = sum(1 for o in self.items if o.get(self.policy, 0) < item.get(self.policy, 0))
         elig = _is_eligible(item)
         funded = item_id in self.chosen
+        cum_above = 0                                       # greedy cost of everything ranked above it
+        for o in ranked:
+            if o["id"] == item_id:
+                break
+            cum_above += o["cost"]
+        # importance != selection: an eligible item can be left out purely because budget is finite.
+        budget_to_enter = (0 if funded else
+                           (None if not elig else max(1, (cum_above + item["cost"]) - self.resources)))
         if not elig:
             why = "excluded by the eligibility gate, regardless of score (importance != eligibility)"
         elif funded:
@@ -71,6 +79,7 @@ class Budget:
             "eligible": elig,
             "funded": funded,
             "reason": why,
+            "budget_to_enter": budget_to_enter,   # greedy upper bound; importance != selection
             "not_read": list(FORBIDDEN_IN_PROVENANCE),
         }
 
@@ -87,6 +96,8 @@ class Budget:
                                                            r["of_eligible"], r["outranked"]),
             "  funded: %s   eligible: %s" % (r["funded"], r["eligible"]),
             "  why: %s" % r["reason"],
+            ("  would enter if budget +%s (importance != selection)" % r["budget_to_enter"]
+             if r["budget_to_enter"] else "  selection: settled by score/eligibility, not budget"),
             "  not read (forbidden): %s" % ", ".join(r["not_read"]),
         ])
 

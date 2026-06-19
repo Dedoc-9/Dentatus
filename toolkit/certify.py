@@ -193,6 +193,30 @@ def diff_certificates(old, new):
     return CertificateDiff(old, new)
 
 
+def _spearman_abs(xs, ys):
+    """|Spearman rank correlation| x 1000 (integer, deterministic). 1000 = perfectly (anti)correlated."""
+    n = len(xs)
+    if n < 2:
+        return 0
+    def ranks(v):
+        order = sorted(range(n), key=lambda i: (v[i], i))
+        r = [0] * n
+        for rank, i in enumerate(order):
+            r[i] = rank
+        return r
+    rx, ry = ranks(xs), ranks(ys)
+    d2 = sum((rx[i] - ry[i]) ** 2 for i in range(n))
+    return abs(1000 - (6 * d2 * 1000) // (n * (n * n - 1)))
+
+
+def leakage(world, observable, forbidden):
+    """Does an ALLOWED observable channel carry information about a FORBIDDEN variable? Returns the
+    rank-correlation magnitude (0..1000) between them across the world. High means the observable is a
+    proxy -- using it leaks forbidden information even though the policy never names the forbidden field.
+    allowed input != allowed information."""
+    return _spearman_abs([o[observable] for o in world], [o[forbidden] for o in world])
+
+
 def replay(policy, certificate):
     """Re-derive a certificate's evidence from the policy and check it REPRODUCES. Confidence is not
     memory; it is reproducible evidence. A stored certificate is trustworthy only if re-running its

@@ -9,6 +9,7 @@ import sys
 from .benchmarks import run
 from .tournament import compare, robustness
 from .certify import certify
+from .evaluate import evaluate
 from . import policies
 
 
@@ -24,8 +25,10 @@ def main(argv):
         print(robustness(pols).table())
     elif cmd == "certify":
         print(certify(policies.future_surface).report())
+    elif cmd == "evaluate":
+        print(evaluate(policies.future_surface).report())
     else:
-        print("usage: python -m toolkit [proof|tournament|certify]")
+        print("usage: python -m toolkit [proof|tournament|certify|evaluate]")
 
 
 if __name__ == "__main__":

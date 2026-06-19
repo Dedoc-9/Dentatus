@@ -189,6 +189,23 @@ def make_shifted_world(n=60, seed=1, shift=0):
     return world
 
 
+def make_leakage_world(n=60, seed=1, leak=True):
+    """A world carrying a FORBIDDEN variable `hidden`. If leak=True an ALLOWED observable (consequence)
+    is engineered to encode it (a proxy); if leak=False the observable is independent. Used to test
+    `allowed input != allowed information`: a permitted channel can still smuggle forbidden info."""
+    rng = random.Random(seed)
+    world = []
+    for i in range(n):
+        hidden = rng.randint(1, 1000)
+        cons = max(1, hidden + rng.randint(-40, 40)) if leak else rng.randint(1, 1000)
+        world.append({
+            "id": "region_%02d" % i, "cost": rng.randint(20, 100),
+            "consequence": cons, "uncertainty": rng.randint(1, 1000), "possibility": rng.randint(1, 1000),
+            "magnitude": rng.randint(1, 1000), "hidden": hidden, "M": rng.randint(1, 1000),
+        })
+    return world
+
+
 # -- graders ---------------------------------------------------------------------------------------
 
 def grade(world, budget=1000):
@@ -276,9 +293,10 @@ def run(budget=1000):
           % ("hidden_jackpot" in fair.chosen))
 
     from .tournament import compare, robustness
-    from .certify import certify, diff_certificates, replay
+    from .certify import certify, diff_certificates, replay, leakage
     from .monitor import Monitor
     from .mutate import mutate
+    from .evaluate import evaluate
     comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
                     policies.magnitude, policies.random_priority], worlds=200)
     print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
@@ -404,7 +422,34 @@ def run(budget=1000):
     assert ok is True, "a certificate must reproduce when replayed against its own policy"
     assert bad is False and mism, "replay must catch a certificate that no longer matches the policy"
 
-    print("\n[OK] all thirty-four properties hold. The toolkit allocates by supplied signal; it does not")
+    scarce = attention.observe(make_world(seed=3)).allocate(150)   # tight budget -> many lose on finite resources
+    unfunded = next((o["id"] for o in scarce.items if o["id"] not in scarce.chosen), None)
+    cf = scarce.reason(unfunded)
+    leak_hi = leakage(make_leakage_world(leak=True), "consequence", "hidden")
+    leak_lo = leakage(make_leakage_world(leak=False), "consequence", "hidden")
+    print("\n[15] counterfactual provenance + leakage -- two more boundaries the framework refuses to blur:")
+    print("      importance != selection: %s not funded; would enter if budget +%s (rank #%s/%d)"
+          % (unfunded, cf["budget_to_enter"], cf["rank"], cf["of_eligible"]))
+    print("      allowed input != allowed information: consequence<->hidden leakage  proxy=%d  independent=%d"
+          % (leak_hi, leak_lo))
+
+    rep = evaluate(policies.future_surface, worlds=80)
+
+    def reads_hidden2(it):
+        return it["consequence"] * it.get("hidden", 1)
+    rep_cheat = evaluate(reads_hidden2, worlds=60)
+    print("\n[16] external allocator onboarding -- a stranger's policy, judged without the author's help:")
+    print("\n".join("      " + ln for ln in rep.report().splitlines()))
+    print("      contrast: reads_hidden2 -> verdict=%s, forbidden_access=%s"
+          % (rep_cheat.to_dict()["verdict"], rep_cheat.to_dict()["forbidden_access"]))
+
+    assert cf["budget_to_enter"] and cf["budget_to_enter"] > 0, "an eligible unfunded item must report a budget delta (importance != selection)"
+    assert leak_hi >= 700 and leak_lo <= 300, "leakage must flag a proxy channel and clear an independent one"
+    assert rep.certificate.certified() and rep.reproduced, "future_surface must pass onboarding (certified + replay)"
+    assert rep.to_dict()["forbidden_access"] == "PASS", "future_surface must pass forbidden-access in the report"
+    assert rep_cheat.to_dict()["forbidden_access"] == "FAIL", "onboarding must FAIL a policy that reads a forbidden channel"
+
+    print("\n[OK] all forty properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 

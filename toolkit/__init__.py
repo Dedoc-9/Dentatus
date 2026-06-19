@@ -25,19 +25,21 @@ Run the proof:  PYTHONHASHSEED=0 python3 -m toolkit
 """
 from .attention import attention, Field, Budget
 from .allocation import allocate, captured
-from . import policies, benchmarks, tournament, certify as _certify_mod, monitor as _monitor_mod, mutate as _mutate_mod
+from . import policies, benchmarks, tournament, certify as _certify_mod, monitor as _monitor_mod, mutate as _mutate_mod, evaluate as _evaluate_mod
 from .policies import future_surface, min_gate, weighted_product, magnitude, uniform, random_priority
 from .tournament import compare, robustness
 from .certify import certify, Certificate, diff_certificates, CertificateDiff
 from .monitor import Monitor, baseline_fingerprint
 from .certify import replay
 from .mutate import mutate
+from .certify import leakage
+from .evaluate import evaluate, AllocatorReport
 
 __all__ = [
     "attention", "Field", "Budget",
     "allocate", "captured",
     "policies", "benchmarks", "tournament", "compare", "robustness", "certify", "Certificate", "diff_certificates", "CertificateDiff",
-    "Monitor", "baseline_fingerprint", "replay", "mutate",
+    "Monitor", "baseline_fingerprint", "replay", "mutate", "leakage", "evaluate", "AllocatorReport",
     "future_surface", "min_gate", "weighted_product", "magnitude", "uniform", "random_priority",
 ]
 __version__ = "0.1.0"

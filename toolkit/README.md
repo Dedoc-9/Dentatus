@@ -75,18 +75,21 @@ picked well because the model says so."
 | `attention should have provenance` | every decision cites observable signals, never truth | `Budget.reason()` / `.explain()` |
 | `test_quality != test_count` | a suite that cannot notice a broken allocator is one test | `mutate()` mutation testing |
 | `confidence != memory` | a certificate is trustworthy only if it reproduces | `replay()` |
+| `importance != selection` | a thing can matter and still lose to a finite budget | counterfactual provenance |
+| `allowed input != allowed information` | a permitted channel can encode a forbidden variable | `leakage()` |
 
 ## Commands
 
 ```
-python3 -m toolkit              # the full proof (thirty-four asserted properties)
+python3 -m toolkit              # the full proof (forty asserted properties)
 python3 -m toolkit tournament  # compare() + robustness() tables
 python3 -m toolkit certify     # certificate for future_surface
+python3 -m toolkit evaluate    # full allocator report (onboard any policy)
 ```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Thirty-four asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Forty asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -250,6 +253,30 @@ replay(weighted_product, future_surface's certificate) -> reproduced=False (mism
 A certificate that no longer matches its policy is caught — the policy has drifted from the evidence
 that vouches for it.
 
+**[15] Counterfactual provenance + leakage.** Provenance also answers *why not*: an eligible item
+left out under a tight budget reports what would change it — `region_00 not funded; would enter if
+budget +576` (`importance != selection`: a thing can matter and still lose to finite resources). And
+`leakage(world, observable, forbidden)` catches a permitted channel that secretly encodes a forbidden
+one — proxy `995` vs independent `71` (`allowed input != allowed information`).
+
+**[16] External allocator onboarding.** The milestone: a stranger's policy, judged without the
+author's help. `evaluate(policy)` composes the whole harness into one report:
+
+```
+Allocator Report: future_surface
+  Verdict:            CERTIFIED
+  Operating envelope: clean
+  Failure envelope:   noisy, adversarial, stale
+  Forbidden access:   PASS
+  Replay:             PASS
+  Suite strength:     4/5 mutations detected (test_quality != test_count)
+  Scope:              certified under tested regimes; never a claim of correctness
+```
+
+A policy that reads a forbidden channel comes back `NOT CERTIFIED, forbidden_access=FAIL`. The toolkit
+is a **judge, not an optimizer**: it reports where a system should be trusted; it never modifies the
+policy or proposes a "better" one — that would turn an attention engine into a truth engine.
+
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 
 ## Layout
@@ -264,7 +291,36 @@ toolkit/
     tournament.py   compare() ranked table + robustness() policy x regime matrix
     certify.py      certify(policy) -> safety label + to_json() + diff_certificates()
     monitor.py      Monitor.observe(world) -> CERTIFIED/DEGRADED/QUARANTINED (runtime drift)
-    mutate.py       mutate() -> can the suite notice a degraded allocator? (+ replay in certify.py)
+    mutate.py       mutate() -> can the suite notice a degraded allocator? (+ replay/leakage in certify.py)
+    evaluate.py     evaluate(policy) -> one-page Allocator Report (onboard a stranger's policy)
+```
+
+## Dev note — the `!=` family
+
+The whole project keeps converging on one shape: a statement of the form *X is not Y*, where Y is the
+easy claim it would be convenient to collapse X into. Every module enforces one of these. Read top to
+bottom it is the spine of the toolkit:
+
+```
+score            != truth          a number is a request for resources, not a fact
+attention        != truth          allocating effort somewhere is not a claim it matters
+attention        != discovery      the field finds importance only where the signal encodes it
+possibility      != likelihood     a reachable option is not a probable one
+importance       != eligibility    a top score never buys budget an item is not entitled to
+importance       != selection      a thing can matter and still lose to a finite budget
+observable drift != semantic drift a monitor sees marginals, not the signal->outcome map
+allowed input    != allowed information   a permitted channel can still encode a forbidden one
+test_quality     != test_count     a suite that cannot notice a broken allocator is one test
+confidence       != memory         a certificate is trustworthy only if it reproduces
+```
+
+It inherits the same move from the wider project (`prediction != causation`, `proposal != authority`,
+`integrity != truth`). The one equality the toolkit *does* assert is the contract: `score -> allocation`.
+Everything else is a refusal. The toolkit becomes more useful by refusing to become a truth engine:
+
+```
+The system may decide where to look.
+It may never decide what reality is.
 ```
 
 Deterministic across `PYTHONHASHSEED`; integer math; standard library only. The `allocate`/`captured`
