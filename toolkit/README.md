@@ -38,6 +38,11 @@ print(robustness([future_surface, magnitude, random_priority]).table())
 # certify a policy: assumptions, honesty checks, and its known failure envelope
 from toolkit import certify
 print(certify(future_surface).report())
+
+# a certificate is a first-class artifact -- serialize, store, and regression-check it
+from toolkit import diff_certificates, weighted_product
+old, new = certify(future_surface), certify(weighted_product)
+print(diff_certificates(old, new).report())   # judged by envelope + integrity, never score alone
 ```
 
 ## The contract
@@ -65,14 +70,14 @@ picked well because the model says so."
 ## Commands
 
 ```
-python3 -m toolkit              # the full proof (eighteen asserted properties)
+python3 -m toolkit              # the full proof (twenty-two asserted properties)
 python3 -m toolkit tournament  # compare() + robustness() tables
 python3 -m toolkit certify     # certificate for future_surface
 ```
 
 ## Proof — `PYTHONHASHSEED=0 python3 -m toolkit`
 
-Eighteen asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
+Twenty-two asserted properties. Graded on the hidden `M` (% of the oracle upper bound):
 
 **[1] Signal quality.**
 
@@ -151,6 +156,25 @@ Verdict: CERTIFIED as an allocator (with the failure envelope above)
 
 The honesty checks are runnable, not assurances: a policy that reads `item["M"]` (the graded
 objective) **fails** the *no hidden objective* check automatically — the certifier catches a cheater.
+
+**[10] Certificate regression.** A certificate is a first-class artifact (`to_dict()` / `to_json()`),
+so a change to a policy is reviewed as a diff, not a score bump. The gate rejects a higher-scoring
+change if it regressed integrity:
+
+```
+future_surface  ->  _oracle (reads item["M"])
+  adversarial  +79%
+  clean         +4%
+  noisy        +48%
+  stale        +88%
+integrity changes: no_hidden True->False
+Acceptance: REJECTED -- integrity regression (a higher score does not buy it back)
+```
+
+The oracle scores higher in *every* regime and is still rejected. A change is accepted because its
+envelope moved in an understood way, never because the number went up. And the certificate's scope is
+fixed in the artifact itself — *"certified under the tested regimes with the declared assumptions;
+never a claim of correctness."*
 
 The losing rows are the feature, not the bug: a method that cannot lose is not a measurement.
 

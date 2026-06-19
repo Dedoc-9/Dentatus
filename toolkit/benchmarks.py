@@ -259,7 +259,7 @@ def run(budget=1000):
           % ("hidden_jackpot" in fair.chosen))
 
     from .tournament import compare, robustness
-    from .certify import certify
+    from .certify import certify, diff_certificates
     comp = compare([policies.future_surface, policies.weighted_product, policies.min_gate,
                     policies.magnitude, policies.random_priority], worlds=200)
     print("\n[7] policy competition -- avg captured M across 200 worlds (% of oracle):")
@@ -304,7 +304,25 @@ def run(budget=1000):
     assert any(r == "adversarial" for r, _, _ in cert.failures), "future_surface must declare adversarial as a failure"
     assert cheat.no_hidden is False, "the certifier must catch a policy that reads the hidden objective M"
 
-    print("\n[OK] all eighteen properties hold. The toolkit allocates by supplied signal; it does not")
+    base_cert = certify(policies.future_surface, worlds=80)
+    legit_cert = certify(policies.weighted_product, worlds=80)
+    def _oracle2(item):
+        return item["M"]
+    cheat_cert = certify(_oracle2, worlds=40)
+    d_legit = diff_certificates(base_cert, legit_cert)
+    d_cheat = diff_certificates(base_cert, cheat_cert)
+    print("\n[10] certificate regression -- a change is judged by envelope + integrity, not by score:")
+    print("\n".join("      " + ln for ln in d_cheat.report().splitlines()))
+    print("      (the cheater scores higher in every regime, yet is REJECTED: integrity regressed.)")
+
+    cd = base_cert.to_dict()
+    assert "never a claim of correctness" in cd["scope"], "the certificate must never claim correctness"
+    assert cd["claims"]["uses_hidden_objective"] is False, "future_surface must not use the hidden objective"
+    assert d_cheat.integrity_regressed() is True and d_cheat.acceptable() is False, \
+        "regression gate must REJECT a higher-scoring policy that cheats (reads M)"
+    assert d_legit.acceptable() is True, "a legitimate policy change must not trip the integrity gate"
+
+    print("\n[OK] all twenty-two properties hold. The toolkit allocates by supplied signal; it does not")
     print("     discover importance, and it loses whenever signal, freshness, or eligibility fails.")
 
 

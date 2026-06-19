@@ -28,12 +28,12 @@ from .allocation import allocate, captured
 from . import policies, benchmarks, tournament, certify as _certify_mod
 from .policies import future_surface, min_gate, weighted_product, magnitude, uniform, random_priority
 from .tournament import compare, robustness
-from .certify import certify, Certificate
+from .certify import certify, Certificate, diff_certificates, CertificateDiff
 
 __all__ = [
     "attention", "Field", "Budget",
     "allocate", "captured",
-    "policies", "benchmarks", "tournament", "compare", "robustness", "certify", "Certificate",
+    "policies", "benchmarks", "tournament", "compare", "robustness", "certify", "Certificate", "diff_certificates", "CertificateDiff",
     "future_surface", "min_gate", "weighted_product", "magnitude", "uniform", "random_priority",
 ]
 __version__ = "0.1.0"
