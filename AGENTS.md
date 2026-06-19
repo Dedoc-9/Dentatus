@@ -555,9 +555,73 @@ better.
 
 ---
 
-## 7. Acknowledgement (machine-parseable)
+## 7. The standalone `toolkit/` — uncertainty-aware allocation assurance (handoff)
+
+A self-contained package (stdlib-only, deterministic across `PYTHONHASHSEED`) that is **not** a sibling
+and **not** a workbench core. It is the project's plain-category front door: a framework for
+*characterizing, stress-testing, certifying, monitoring, and staging allocation policies under explicit
+assumptions*. **Status:** experimental allocation-assurance toolkit; **not** a trusted real-world
+decision-infrastructure component.
+
+**The contract — the only equality it asserts:** `score -> allocation`. Everything else is a refusal
+(the `!=` spine below). The recurring theme, inherited from the workbench: `integrity != truth`.
+
+**Run / verify:**
+
+```
+PYTHONHASHSEED=0 python3 -m toolkit                      # the full proof — 44 asserted properties, exit 0
+python3 -m toolkit [tournament|certify|evaluate|manifest|stage]
+PYTHONHASHSEED=0 python3 examples/raster_allocation.py   # a worked application + a grid-hardened theorem()
+```
+
+**Module map (13 modules; each is one boundary; read-only imports):**
+
+```
+attention.py   observe()->Field->allocate()->Budget; eligibility gate; tick(); Budget.reason()/explain() provenance
+allocation.py  the proven primitives allocate()+captured()  (identical logic to causal_runtime/allocation.py)
+policies.py    future_surface(default)/min_gate/weighted_product/magnitude/uniform/random_priority(crc32, not hash())
+benchmarks.py  the worlds + run() == the asserted proof (signal quality, calibration, coherence, fairness, ...)
+tournament.py  compare() ranked table + robustness() policy x regime matrix
+certify.py     certify()->Certificate (operating + failure envelope), to_json(), diff_certificates(), replay(), leakage()
+monitor.py     Monitor.observe(world)->CERTIFIED/DEGRADED/QUARANTINED (runtime drift; observable!=semantic)
+mutate.py      mutate() -- can the suite even NOTICE a degraded policy? (test_quality!=test_count; catches 4/5, honest miss)
+evaluate.py    evaluate(policy)->AllocatorReport (onboard a stranger's policy)
+manifest.py    manifest(policy)->portable evidence boundary + matches(world)
+stage.py       stage(world)->StagedAction: propose-then-consent; record carries attests/never_certifies inside its sha256
+```
+
+**The `!=` spine** (full prose in `toolkit/README.md` "Dev note — the != family"):
+`score!=truth  attention!=truth  attention!=discovery  possibility!=likelihood  importance!=eligibility
+importance!=selection  observable-drift!=semantic-drift  allowed-input!=allowed-information
+test_quality!=test_count  confidence!=memory  determinism!=correctness  attestation!=correctness
+test-passing!=good-allocation`
+
+**Cardinal rules for any agent that touches `toolkit/` (do not break these):**
+
+1. **Never let "verified"/"attested" drift to "correct".** Boundaries live as **data** (manifest
+   `scope`, `stage` `attestation.never_certifies`, the `!=` list inside artifacts), not just prose —
+   so a reader who never opens the README still inherits the limitation.
+2. **`M` (the graded objective) is an INPUT, never a result.** The toolkit shows "Policy A captured
+   more of `M`", never "`M` is the right objective." Real-world allocation *correctness* is out of
+   scope by design; that is the strongest contribution, not a gap to be closed.
+3. **Every claim ships with its assumptions, failure envelope, and evidence boundary.** A benchmark
+   that can no longer FAIL a policy is decoration. Keep the evaluator challenged (the Goodhart guard);
+   the tools for it already exist (`mutate`, unknown-unknown world, `replay`, `diff_certificates`, `leakage`).
+4. **Determinism is grounded in mathematical objects** (integers, `crc32`, content hashes): reproducibility
+   is a *theorem*, correctness is not. Keep `PYTHONHASHSEED`-independence, integer math, stdlib only.
+5. **Prefer narrowing claims over adding features.** The healthy recent direction was `verified->attested`,
+   `doc->artifact field`, single-config result -> grid-verified `theorem()`. Adding capability mostly adds
+   surface area for "verified" to drift back into "correct."
+
+**Honest scope:** `stage` certifies the *integrity* of a record (content-addressed, reproducible,
+provenance-bounded), never the *correctness* of the decision; `intent != authority` (the click, not the
+proposal, is the authority); `telemetry != control`. Real high-stakes actuation needs a domain-validated
+model behind the buffer — the toolkit supplies the buffer, the audit trail, and the consent gate, not the model.
+
+## 8. Acknowledgement (machine-parseable)
 
 ```
 ACK: deterministic-capture=enforced  privilege-pep=required  integrity!=truth  fail-closed=on  sibling-law=enforced  non-claims=stated
 VERSION: 29-component / 27-sibling / 36-suite / 510-test workbench (+ parity proof)
+TOOLKIT: standalone allocation-assurance / 13 modules / 44 asserted properties / stdlib-only / deterministic / integrity!=truth
 ```
