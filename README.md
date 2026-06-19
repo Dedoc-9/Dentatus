@@ -164,7 +164,7 @@ cd chronicle && PYTHONHASHSEED=0 python3 demo_policy.py
 | [`salience/`](salience/README.md) | **a possibility-aware allocation field** — distributes a compute budget by **possibility density** (the doorway over the valley), not distance/LOD; exact-integer apportionment; law `possibility→allocation`, never `possibility→physics` | `PYTHONHASHSEED=0 python3 demo_salience.py` |
 | [`consequence/`](consequence/README.md) | **the State-Graph Taint Map** — the shared *what-matters-next?* field: dependency graph → consequence (`consequence ≠ magnitude`, the butterfly); one field, many consumers (compute · validation depth · network · AI) | `PYTHONHASHSEED=0 python3 demo_consequence.py` |
 
-All twenty-seven refuse to run without `PYTHONHASHSEED=0`. Test suites total **405 unit tests across 34 suites**
+All twenty-seven refuse to run without `PYTHONHASHSEED=0`. Test suites total **422 unit tests across 34 suites**
 (the full per-suite list lives in `integration/preflight_check.py`) — that preflight runs them all and prints `[FOUNDRY VERIFIED]` only if green.
 
 ## The Sibling Law — how the workbench grows

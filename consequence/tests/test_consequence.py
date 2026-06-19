@@ -6,6 +6,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import graph as G
 import butterfly as BF
+import extractor as EX
+import propagation as PR
+import fingerprint as FP
+import cache as CA
+import reconstruct as RC
 
 S = G.SCALE
 
@@ -77,6 +82,127 @@ class TestButterflyBenchmark(unittest.TestCase):
         r1 = BF.run(seed=3); r2 = BF.run(seed=3)
         self.assertEqual(r1["verdict"], "consequence-wins-on-structure")
         self.assertEqual(r1, r2)                                     # deterministic given seed
+
+
+class TestExtractor(unittest.TestCase):
+    def test_pure_diff_and_magnitudes(self):
+        ch, mg = EX.extract({"a": 10, "b": 5, "c": 3}, {"a": 10, "b": 9, "d": 1})
+        self.assertEqual(sorted(ch), ["b", "c", "d"])
+        self.assertEqual(mg["b"], 4)                       # numeric delta
+        self.assertEqual(mg["c"], S)                        # disappear = full structural change
+        self.assertEqual(mg["d"], S)                        # appear   = full structural change
+
+    def test_no_change_empty(self):
+        ch, mg = EX.extract({"a": 1}, {"a": 1})
+        self.assertEqual(ch, frozenset()); self.assertEqual(mg, {})
+
+    def test_float_refused(self):
+        with self.assertRaises(TypeError):
+            EX.delta_magnitude(1, 2.0)
+
+
+class TestPropagation(unittest.TestCase):
+    def _chain(self):
+        g = G.Graph()
+        for u, v in [("h", "a"), ("a", "b"), ("b", "c")]:
+            g.add_edge(u, v, S)
+        g.add_node("z")
+        return g
+
+    def test_frontier_reaches_downstream(self):
+        g = self._chain()
+        F = PR.frontier(g, frozenset(["h"]), {"h": S})
+        self.assertEqual(set(F), {"h", "a", "b", "c"})
+
+    def test_isolated_node_alone(self):
+        g = self._chain()
+        F = PR.frontier(g, frozenset(["z"]), {"z": S})
+        self.assertEqual(set(F), {"z"})
+
+    def test_merge_matches_chain_values(self):
+        g = self._chain()
+        r = PR.reached(g, {"h": S})
+        self.assertGreater(r["a"], r["b"]); self.assertGreater(r["b"], r["c"])  # monotone decay
+
+
+class TestFingerprint(unittest.TestCase):
+    def _g(self):
+        g = G.Graph()
+        for u, v in [("h", "a"), ("a", "b"), ("b", "c")]:
+            g.add_edge(u, v, S)
+        g.add_node("leaf")
+        return g
+
+    def test_hub_exceeds_leaf(self):
+        g = self._g()
+        th = FP.fingerprint(g, "h", 1000); tl = FP.fingerprint(g, "leaf", 1000)
+        self.assertGreater(th.score, tl.score)
+
+    def test_uncertainty_scales_linearly(self):
+        g = self._g()
+        full = FP.fingerprint(g, "h", 1000, uncertainty=S).score
+        half = FP.fingerprint(g, "h", 1000, uncertainty=S // 2).score
+        self.assertEqual(half, full // 2)                   # epistemic axis is orthogonal & linear
+
+    def test_hash_deterministic(self):
+        g = self._g()
+        a = FP.fingerprint(g, "h", 1000, now=0, ttl=240, reachable_dependents=4)
+        b = FP.fingerprint(g, "h", 1000, now=0, ttl=240, reachable_dependents=4)
+        self.assertEqual(a.h, b.h)
+
+    def test_float_refused(self):
+        g = self._g()
+        with self.assertRaises(TypeError):
+            FP.fingerprint(g, "h", 1.0)
+
+
+class TestCache(unittest.TestCase):
+    def _seed(self, cap):
+        g = G.Graph()
+        for u, v in [("h", "a"), ("a", "b"), ("b", "c")]:
+            g.add_edge(u, v, S)
+        for n in ["leaf1", "leaf2"]:
+            g.add_node(n)
+        c = CA.ConsequenceCache(capacity=cap)
+        for n in ["h", "a", "b", "c", "leaf1", "leaf2"]:
+            c.put(FP.fingerprint(g, n, 1000, now=0, ttl=10))
+        return c
+
+    def test_capacity_keeps_top_scores(self):
+        c = self._seed(3)
+        self.assertEqual(len(c), 3)
+        self.assertEqual(c.frontier(3), ["h", "a", "b"])    # leaves (score 0) evicted
+
+    def test_tick_drops_expired(self):
+        c = self._seed(8)
+        self.assertEqual(c.tick(20), 6)                     # all 6 expire at 10
+        self.assertEqual(len(c), 0)
+
+
+class TestCausalReconstruction(unittest.TestCase):
+    def test_flat_is_negative_control(self):
+        r = RC.reconstruct(RC.flat_world(), steps=24)
+        self.assertLess(r["compute_saved"], 0.10)           # dense world: nothing to skip
+        self.assertGreaterEqual(r["divergence_preserved"], 0.99)
+
+    def test_chained_saves_and_preserves(self):
+        r = RC.reconstruct(RC.chained_world(), steps=24)
+        self.assertGreater(r["compute_saved"], 0.5)
+        self.assertGreaterEqual(r["divergence_preserved"], 0.99)
+
+    def test_declared_trigger_is_caught(self):
+        r = RC.reconstruct(RC.trigger_world(), steps=24)
+        self.assertGreaterEqual(r["divergence_preserved"], 0.99)  # per-step re-extraction catches it
+
+    def test_hidden_coupling_breaks_reconstruction(self):
+        r = RC.reconstruct(RC.hidden_trigger_world(), steps=24)
+        self.assertLess(r["divergence_preserved"], 0.9)     # THE BOUND: undeclared coupling is missed
+
+    def test_verdict_and_determinism(self):
+        tag, overall = RC.verdict()
+        self.assertEqual(overall, "reconstruction-valid-with-declared-bound")
+        self.assertTrue(tag["hidden"].startswith("BOUND"))
+        self.assertEqual(RC.run(), RC.run())                # deterministic
 
 
 if __name__ == "__main__":
