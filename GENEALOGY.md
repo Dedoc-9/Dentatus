@@ -47,6 +47,44 @@ it may spend more budget on an *already-visible* object because it is predicted 
 *hidden* object because it is predicted to matter. The difference between those two is the difference between
 attention and truth.
 
+## How success is judged — the burden of proof a ranking system carries
+
+The root principle changes the *evaluation criteria*, and this is the part most likely to be misread. A truth
+system is judged by **correspondence** — *is it correct? accurate? did it find what was objectively important?*
+An attention system cannot be judged that way and must never be asked to be. It is judged by **comparative
+utility under a fixed budget**:
+
+```
+a TRUTH     claim requires   correspondence with reality        (often impossible to establish)
+an ATTENTION claim requires   comparative utility vs a baseline  (a beatable, falsifiable target)
+```
+
+So the only legitimate benchmark question in this architecture is:
+
+> **"Did this allocation policy preserve more future-relevant information than the alternative, under the same
+> budget?"**
+
+— never *"did this field correctly identify what was objectively important?"* (that is a truth claim in
+disguise, and the system refuses it). A ghost can be entirely **wrong** about the cause of an anomaly and still
+**succeed**, if it directed attention to the region where the model is actually failing. A consequence field
+need not identify true causation; it need only **rank** future-sensitive state better than a competing
+allocator. This is exactly why **every benchmark in this project is comparative and carries a negative control**
+(distance vs future-surface, naive vs held-out gate, screen-space vs `render_priority`): the principle forbids
+an absolute-correctness claim, so the evidence is always *relative-to-an-alternative*, never
+*correspondence-to-reality*.
+
+Two operational restatements, for an engineer reading the code rather than the philosophy:
+
+```
+Observational layers may PRIORITIZE.   They may not CERTIFY.
+The system may RANK.                    The system may not DECLARE.
+```
+
+Seen this way, the architecture is **not a stack of prediction systems — it is a stack of increasingly
+sophisticated ranking systems**, every one held to the same rule: *they may influence where finite resources go
+next; they may not redefine what happened.* The only thing that certifies reality is the committed trajectory
+itself.
+
 ## The method that generated everything
 
 The architecture did not grow by asking "what feature next?" It grew by asking, repeatedly:
