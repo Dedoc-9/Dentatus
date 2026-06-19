@@ -333,10 +333,17 @@ observable drift != semantic drift a monitor sees marginals, not the signal->out
 allowed input    != allowed information   a permitted channel can still encode a forbidden one
 test_quality     != test_count     a suite that cannot notice a broken allocator is one test
 confidence       != memory         a certificate is trustworthy only if it reproduces
+determinism      != correctness    a result that reproduces bit-for-bit is reproducible, not right
 ```
 
 It inherits the same move from the wider project (`prediction != causation`, `proposal != authority`,
 `integrity != truth`). The one equality the toolkit *does* assert is the contract: `score -> allocation`.
+
+Determinism here is grounded in mathematical objects, not hope: integer arithmetic (not floats),
+`crc32(id)` rather than a salted `hash()`, and — in the wider project — content-addressed SHA-256 hashes
+and exact-integer consensus. That is what makes reproducibility a *theorem* (`replay` works because the
+evidence is a deterministic function of the policy and seeds) while leaving correctness explicitly
+outside what those objects can certify.
 Everything else is a refusal. The toolkit becomes more useful by refusing to become a truth engine:
 
 ```

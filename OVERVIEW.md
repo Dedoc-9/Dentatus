@@ -62,6 +62,13 @@ falsehood); a reasoning trace that follows the rules is not a true conclusion; a
 exactly constrained in integer space, not "perfect" in real space. The system is built *around* that limit
 rather than pretending to break it.
 
+Determinism itself is tied to mathematical objects rather than maintained by effort: identity is a
+*function* (`H = SHA-256(canonical_bytes(state))`), state lives in integers and fixed-point rather than
+drifting floats, and agreement is exact-integer equality (`quorum`). This is what makes reproducibility a
+theorem instead of a hope — but it certifies only that a record reproduces, never that it is correct: a
+fixed-point manifold is an exact integer *shadow* of a continuous object, deterministic to the bit and
+still not "true" in real space.
+
 **The possibility-aware runtime (`airlock`, `salience`, `consequence`, `causal_runtime`).** The most recent
 layer turns the workbench into a deterministic reality engine an LLM/agent/human integrates with *as an
 untrusted proposer*, and then allocates computation over the committed result. `airlock/` is a general
